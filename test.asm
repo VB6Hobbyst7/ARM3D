@@ -511,6 +511,7 @@ boucle_divisions_calcpoints:
 	
 face_visible:
 	; il faut tracer les lignes
+	; essayer de garder les points deja lus
 	nop
 	nop
 	nop
