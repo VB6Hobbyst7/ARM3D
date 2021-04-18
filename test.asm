@@ -1,7 +1,22 @@
+; remplissage :
+;	- petites lignes, and entre les bords
+;	- bords + centre
+;	- tenir compte des multiples de 16 octets
+
+; jump dans repetition calcul gauche/droit
+; CLS limité à zone max - zone min nouvelement calculée
+; - tableaux x gauches et droits, directement en adresse video ?
+; - remplissage normal
+; - remplissage optimisé avec stm sur les multiples de 4 : a gauche, sur 16 octets, puis centre, puis droite, sur 16 octets
+
+; cercles
+; ellipses
+
 ; OK : ne plus utiliser la pile dans la vbl
 ; OK : la vbl compte juste le nb de frame
 ; OK : la boucle principale attend la vbl
 ; OK : modif du pointeur ecran en supervisor dans la boucle principale
+; OK - revoir le cls, pour multiple de 4 doubles mots
 ; plot d'un point
 
 ;Address registers (addresses in binary) :
@@ -25,6 +40,7 @@
 ;	swi 0x44B85
 
 .equ Screen_Mode, 13
+.equ	IKey_Escape, 0x9d
 
 ;.global		screen1,screen2
 
@@ -45,6 +61,8 @@ scr_bank:
 
 
 main:
+
+
 	MOV r0,#22	;Set MODE
 	SWI OS_WriteC
 	MOV r0,#Screen_Mode
@@ -179,49 +197,76 @@ boucle:
 	str		r3,screenaddr1_MEMC
 	str		r4,screenaddr2_MEMC
 
+; change border color
+	mov   r0,#0x3400000               
+	mov   r1,#1000                  
+	orr   r1,r1,#0x40000000            
+	SWI 22
+	MOVNV R0,R0            
+	str   r1,[r0]                     
+	teqp  r15,#0                     
+	mov   r0,r0    
+
 
 	;ldr	r0,screenaddr1
 	;add r0,r0,#320
 	;str r0,screenaddr1
 
 	bl	cls_ecran_actuel
+	
+	; change border color
+	mov   r0,#0x3400000               
+	mov   r1,#10000                  
+	orr   r1,r1,#0x40000000            
+	SWI 22
+	MOVNV R0,R0            
+	str   r1,[r0]                     
+	teqp  r15,#0                     
+	mov   r0,r0  
+	
 
 	bl	calc3D
-
-	mov r11,#coordonnees_projetees
-
-		.rept	3
-	ldr		r1,[r11],#4		;x1
-	add		r1,r1,#160
-	ldr		r3,[r11],#4		;y1
-	add		r3,r3,#128
-	ldr		r2,[r11],#4		;x2
-	add		r2,r2,#160
-	ldr		r4,[r11],#4		;y2
-	add		r4,r4,#128
 	
-
-	;ldr	r1,x1
-	;ldr r2,x2
-	;ldr r3,y1
-	;ldr r4,y2
-
-	bl	drawline
-	
-	sub		r11,r11,#8
-	
-	.endr
-
-
-	ldr		r0,x1
-	add		r0,r0,#1
-	movnes	r1,#319
-	cmp		r0,r1
-	moveq	r0,#0
-	
-	str		r0,x1
+		; change border color
+	mov   r0,#0x3400000               
+	mov   r1,#100000                  
+	orr   r1,r1,#0x40000000            
+	SWI 22
+	MOVNV R0,R0            
+	str   r1,[r0]                     
+	teqp  r15,#0                     
+	mov   r0,r0  
 	
 	
+
+	bl	affiche_OBJ
+
+
+	
+	
+
+	
+	
+
+; change border color
+	mov   r0,#0x3400000               
+	mov   r1,#111000                  
+	orr   r1,r1,#0x40000000            
+	SWI 22
+	MOVNV R0,R0            
+	str   r1,[r0]                     
+	teqp  r15,#0                     
+	mov   r0,r0    
+
+	; exit if SPACE is pressed
+	MOV r0, #OSByte_ReadKey
+	MOV r1, #IKey_Escape
+	MOV r2, #0xff
+	SWI OS_Byte
+	
+	CMP r1, #0xff
+	CMPEQ r2, #0xff
+	BEQ exit
 
 ; change border color
 	mov   r0,#0x3400000               
@@ -231,15 +276,16 @@ boucle:
 	MOVNV R0,R0            
 	str   r1,[r0]                     
 	teqp  r15,#0                     
-	mov   r0,r0    
+	mov   r0,r0  
 
 
+	b	boucle
 	
-	
-	LDR r0, vsync_count
-	cmp r0,#500
-	bne boucle
+;	LDR r0, vsync_count
+;	cmp r0,#500
+;	bne boucle
 
+exit:
 
 ;-----------------------
 ;sortie
@@ -275,6 +321,9 @@ boucle:
 noir:	.long 	0b01000000111111111110000000000000
 
 
+;#{ 
+;-----------------------------------------------------------------------------------------
+
 ; https://fr.wikipedia.org/wiki/Algorithme_de_trac%C3%A9_de_segment_de_Bresenham
 drawline:
 ; r1=x1, r2=x2, r3=y1, r4=y2
@@ -308,6 +357,9 @@ drawline:
 		cmp		r4,r3		; Y2 > Y1 ?
 		rsblt	r12,r12,#0
 		
+		mov		r13,#1
+		cmp		r2,r1		; X2 > X1 ?
+		rsblt	r13,r13,#0		
 		
 		mov		r9,#0x2000000 		; pointeur video
 		mov		r9,#0x000000
@@ -323,7 +375,6 @@ drawline:
 		
 		mov		r10,#45				; couleur		
 		
-
 		add		r6,r5,r5	; r6 = dx =e*2
 		
 		add 	r7,r7,r7	; r7= dy = (y2 - y1) × 2
@@ -336,10 +387,10 @@ drawline:
 		strb	r10,[r9]			; plot pixel avec couleur
 				
 		adds r9,r9,#1				; on incremente pointeur ecran en x
-		adds r1,r1,#1				; on incremente x
+		adds r1,r1,r13				; on incremente x
 					
 		subs r5,r5,r7				; on avance e
-		;addlt r3,r3,#1				; on incremente y si lower than
+		;addlt r3,r3,r13			; on incremente y si lower than
 		addlt r9,r9,r12			; on incremente pointeur ecran de 320 si y+1
 		addlt r5,r5,r6				; on incremente e si lower than
 		
@@ -364,6 +415,10 @@ ligne_increment_en_Y:
 		mov		r12,#320
 		cmp		r4,r3		; Y2 > Y1 ?
 		rsblt	r12,r12,#0		
+		
+		mov		r13,#1
+		cmp		r2,r1		; X2 > X1 ?
+		rsblt	r13,r13,#0
 		
 		mov		r9,#0x2000000 		; pointeur video
 		mov		r9,#0x000000
@@ -403,7 +458,7 @@ ligne_increment_en_Y:
 					
 		subs r7,r7,r5				; on avance e
 		;addlt r1,r1,#1				; on incremente x si lower than
-		addlt r9,r9,#1				; on incremente pointeur ecran de 1 si x+1
+		addlt r9,r9,r13				; on incremente pointeur ecran de 1 si x+1
 		addlt r7,r7,r6				; on incremente e=e +dx  si lower than
 		
 		
@@ -414,13 +469,13 @@ ligne_increment_en_Y:
 		
 		mov pc, r14
 		
-		
+;-----------------------------------------------------------------------------------------		
 
 
-x1:		.long		0
+x1:		.long		160
 y1:		.long		0
 x2:		.long		319
-y2:		.long		255
+y2:		.long		25
 
 table320:	.skip		256*4
 	
@@ -456,9 +511,10 @@ event_handler:
 	
 	ldr pc,savelr
 
+;#}
+
 vsync_count:	.long 0
 last_vsync:		.long -1
-saver0:		.long 0
 
 
 	
@@ -483,7 +539,7 @@ cls_ecran_actuel:
 	str		r14,saver14
 ;320x256 = 81920
 	ldr		r0,screenaddr1
-	mov		r14,#63
+	mov		r14,#50
 	mov		r1,#0
 	mov		r2,r1
 	mov		r3,r1
@@ -496,16 +552,22 @@ cls_ecran_actuel:
 	mov		r10,r1
 	mov		r11,r1
 	mov		r12,r1
-	mov		r13,r1
-;13*4 = 52
+	
+;12*4 = 48
+; 320*256 = 81 920
+
 .boucleCLS:
-	.rept	25
-	stmia	r0!,{r1-r13}
+	.rept	34
+	stmia	r0!,{r1-r12}
 	.endr
 	subs	r14,r14,#1
 	bne		.boucleCLS
+;81408
+	.rept	6
+	stmia	r0!,{r1-r12}
+	.endr
 	
-	stmia	r0!,{r1-r5}
+	stmia	r0!,{r1-r8}
 	
 	ldr		r15,saver14
 	
@@ -517,6 +579,8 @@ screenaddr2:	.long 0
 screenaddr1_MEMC:	.long 0
 screenaddr2_MEMC:	.long 0
 
+
+;#{
 ; PORTION DE CODE EFFECTUANT LES PROJECTIONS DES POINTS
 
 ; SX=SIN/COS ANGLE X,SY=SIN/COS ANGLE Y,SZ=SIN/COS ANGLE Z
@@ -536,6 +600,7 @@ screenaddr2_MEMC:	.long 0
 
 
 calc3D:
+
 
 	str r14,save_R14
 
@@ -599,12 +664,14 @@ calc3D:
 	mov r0,#0
 	sub r13,r0,r1,asr #15	; r1=-(CY*SZ*CX+SX*SY) / 32768
 	;str r1, [r12], #4	;r13
+
+	;swi 0x44B85
 	
 	; calcul de CY*SZ*SX-SY*CX
 	muls r1,r8,r2		; CY*SZ*SX
 	
-	muls r0,r4,r3		; SY*CX
-	subs r1,r0,r1 		; CY*SZ*SX-SY*CX
+	muls r0,r4,r3		; r0=SY*CX
+	subs r1,r1,r0 		; CY*SZ*SX-SY*CX
 	mov r10,r1,asr #15	; / 32768
 	;str r1, [r12], #4	; r10
 	
@@ -670,6 +737,8 @@ calc3D:
 	mov r0,#coordonnees_transformees
 	str r1,[r0],#4			; nb points
 	
+;matrice transformation : r14 , r13 , r12 , r11 , r10 , r8, r7 , r6, r4
+; reste : rien
 boucle_calc_points:
 	str r1,nb_points_en_cours
 
@@ -871,18 +940,35 @@ boucle_divisions_calcpoints:
 	ldr r14,save_R14
 	mov pc, r14
 
-; breakpoint
-;	swi 0x44B85
+;finbloc
+;#}
+
+;----------------------------------------------------------------------------------------------------------------
+
+nb_faces_restantes:		.long	0
+
 ; les points sont dans coordonnees_projetees
 ; 
+affiche_OBJ:
+		str r14,save_R14
+; breakpoint
+	;swi 0x44B85
+
 
 	ldr r0,numero_objet	; numero objet en cours
 	mov r1,#all_objects
 	add R1, R1, R0, LSL #3	; numero objet *8
 	
-	ldr r5,[r1,#4]			; r5 = pointeur vers les faces
+	ldr r5,[r1,#4]			; r5 = r1 + 4 : pointeur vers les faces
 	
 	ldr r0,[r5],#4			; r0=nb faces
+
+boucle_affiche_OBJ:
+	
+	str		R0,nb_faces_restantes
+	
+	ldr 	R0,[r5],#4			; r0=nb de cotés de la face
+	
 	
 	mov r10,#coordonnees_projetees
 	
@@ -892,14 +978,14 @@ boucle_divisions_calcpoints:
 	; point b = 3
 	; point c = 2
 
-	ldr r11,[r5],#4		; numero point A * 8
-	ldr r12,[r5],#4		; numero point B * 8
-	ldr r13,[r5],#4		; numero point C * 8
-	ldr r14,[r5],#4		; numero point D * 8
+	ldr r11,[r5]			; numero point A * 8
+	ldr r12,[r5,#4]			; numero point B * 8
+	ldr r13,[r5,#8]			; numero point C * 8
+	ldr r14,[r5,#12]		; numero point D * 8
 	
 	ldr r1,[r10,r11]		; r1=XA
 	ldr r3,[r10,r14]		; r3=XB
-	ldr r5,[r10,r12]		; r5=XC
+	ldr r7,[r10,r12]		; r7=XC
 	
 	add r6,r10,#4			; R6 = R10+4 temporaire
 
@@ -910,41 +996,344 @@ boucle_divisions_calcpoints:
 	subs r1,r1,r3			; r1 = xa-xb
 	subs r6,r6,r4			; r6 = yc-yb
 	subs r2,r2,r4			; r2 = ya-yb
-	subs r5,r5,r3			; r5 = xc-xb
+	subs r7,r7,r3			; r7 = xc-xb
 
 	muls r1,r6,r1			; r1 = (xa-xb)*(yc-yb)
-	muls r2,r5,r2			; r2 = (ya-yb)*(xc-xb)
+	muls r2,r7,r2			; r2 = (ya-yb)*(xc-xb)
 	
 	subs r1,r1,r2			; (xa-xb)*(yc-yb) - (ya-yb)*(xc-xb)
-	bmi face_invisible		; face visible ?
+	bpl face_invisible		; face visible ?
+	; bmi ?
 	
 face_visible:
 	; il faut tracer les lignes
-	; essayer de garder les points deja lus
-	nop
-	nop
-	nop
-	nop
-	
-	; swp r1,r0
-	; xor a la place
 
 	
+	
+	
+; calcul point gauche ou droite
+; registres:
+; R0 : nb faces
+; R1 : X , partie entiere
+; R2 : X , partie virgule
+; R3 : increment, partie entiere
+; R4 : increment partie virgule
+; R5 : source numéros des points / structure
+; R6 : Y max pour cette face
+; R10 : coordonnees_projetees
+; R11 : Y min pour cette face
+; R12 : destination memoire X
+
+; R7 , R8 , R9 : pour les calculs
+; R13 , R14 dispos
+
+; - recuperer les numéros de 2 points
+; - recuperer X1,Y1 et X2,Y2
+; - tester ligne verticale
+; - tester ligne horizontale
+; pour calculer la pente, DX et DY , 
+
+; xmax, xmin, ymax, ymin ? 4 registres
+
+
+	mov		r11,#512		; Y min
+	mov		r6,#0			; Y max
+	
+
+
+.boucle_calcul_bords_face:
+
+
+
+	mov		r12,#tableau_des_X_gauche
+
+	ldr 	r13,[r5],#4			; numero point 1 * 8
+	ldr		r14,[r5]			; numero point 2 * 8
+	
+	
+	ldr		r1,[r13,r10]			; X1
+	ldr		r3,[r14,r10]			; X2
+	
+	add		r4,r10,#4				; on saute les X
+
+	ldr		r2,[r13,r4]			; Y1
+	ldr		r4,[r14,r4]			; Y2
+	
+; centrage
+	adds	r1,r1,#160			; centrage X1
+	adds	r3,r3,#160			; centrage X2
+	adds	r2,r2,#128			; centrage Y1
+	adds	r4,r4,#128			; centrage Y2
+
+	
+	cmp		r4,r2
+	beq		.sortie				; ligne horizontale
+	bgt		.YBsupYA
 
 ; breakpoint
 ;	swi 0x44B85
 
+; echange les 2 points
+	eor		r1,r1,r3		; swap r1,r3 ( x1,x2)
+	eor		r3,r1,r3
+	eor		r1,r1,r3
+	eor		r2,r2,r4		; swap r2,r4 ( y1,y2)
+	eor		r4,r2,r4
+	eor		r2,r2,r4
+
+; Y1 > Y2 => ligne à droite remontante
+; on bascule sur les X droite	
+	add		r12,r12,#1024
+	
+
+
+.YBsupYA:
+; mise à jour Y min
+		cmp		R11,R2
+		ble		.pas_mise_a_jour_Y_min
+
+		mov		R11,R2			; Y min = Y1
+
+.pas_mise_a_jour_Y_min:
+; mise à jour Y max
+		cmp		R6,R4
+		bge		.pas_mise_a_jour_Y_max
+
+		mov		R6,R4			; Y max = Y2
+
+.pas_mise_a_jour_Y_max:
+
+; il faut calculer DX/DY
+; avec virgule
+; x maxi 320 : 9 bits
+; y maxi 200
+; on a 32 bits
+
+
+
+	; ptr destination des X : + YA *4
+	add		R12,R12,R2, asl #2
+	
+
+	mov		R9,#0
+	subs	r3,r3,r1		; r3 = Delta X
+	;beq		.vertline		; ligne verticale car x1=x2
+
+	; tester si R3 Delta X negatif, R9=1, R3=-R3 et inverser en sortant
+
+	bpl 	.0002
+; r3 négatif
+
+	rsb 	r3,r3,#0	
+	mov 	R9,#1		; R9 = 1 si Delta X negatif
+.0002:
+	
+	subs	r4,r4,r2		; r4 = Delta Y
+	mov		R13,R4			; R13 = Delta Y
+
+	mov		r3,r3,asl #16	; Delta X * 65536
+
+
+
+	
+; il faut diviser R3 (Delta X ) par R4 ( Delta Y )
+; division = 2 registres écrasés : R7 R8 
+	
+; R7 = R3 / R14
+	MOV      R7,#0
+	MOV      R8,#1
+
+.startdivX1:
+	CMP      R4,R3
+	MOVLS    R4,R4,LSL#1
+	MOVLS    R8,R8,LSL#1
+	BLS      .startdivX1
+
+
+.nextdivX1:
+	CMP       R3,R4
+	SUBCS     R3,R3,R4
+                     
+	ADDCS     R7,R7,R8
+
+	MOVS      R8,R8,LSR#1
+	MOVCC     R4,R4,LSR#1
+	BCC       .nextdivX1
+
+.divide_enddivX1:
+
+; resultat dans R7
+; R7 = resultat * 65536 
+
+
+
+
+
+
+	cmp		R9,#0
+	beq		Delta_X_positif
+	;	delta X était négatif, resultat négatif
+	rsb 	r7,r7,#0
+	;rsb		r3,r3,#0			; on garde la partie entiere de l'increment en positif vu qu'on va faire un sub
+	;rsb		R4,R4,#0			; - increment virgule
+
+Delta_X_positif:
+	mov		R2,#32768			; X virgule= 0.5
+	mov		R1,R1,asl #16		; X actuel * 65536
+	add		R1,R1,R2			; X+0.5
+
+; R1 = (X entier +0.5 )* 65536
+	
+	
+
+
+boucle_increment_pente:
+; nb octets : 12 octets par calcul
+	mov		R4,R1,asr #16		; X / 65536
+	str		R4,[R12],#4			; on stocke X	
+	adds	R1,R1,R7			; X=X + DX/DY ( entier + virgule)
+	
+	subs	R13,R13,#1			; Delta Y - 1
+	bge		boucle_increment_pente
+
+
+.sortie:
+; on a calculé les bords d'un coté
+	
+
+	subs	R0,R0,#1
+	bgt		.boucle_calcul_bords_face
+
+; en sortie :
+; R6 : Y max pour cette face
+; R11 : Y min pour cette face
+
+;-------------------------------------------------------------------------------------------------------------------------
+;
+;              Remplissage
+;
+;-------------------------------------------------------------------------------------------------------------------------
+
+
+; remplir une face
+; dans #tableau_des_X_gauche et #tableau_des_X_droite
+; de R11 * 4 à R6 * 4
+; lire XGAUCHE et XDROITE
+;
+; registres:
+; R0 : couleur
+; R1 : X Gauche
+; R2 : X Droite
+; R6 : Delta Y = nombre de lignes à remplir
+; R9 : pointeur ecran ligne actuelle
+; R12 : source X gauche
+; R13 : source X droite
+; R14 : pointeur mémoire destination ecran
+
+; 1 registre pour #320
+; 1 registre le masque de and pour 4 pixels
+
+; dispos : R3,R4,R5,R7,R8,R10,R11,R0
+
+		; change border color
+	mov   r0,#0x3400000               
+	mov   r1,#10                  
+	orr   r1,r1,#0x40000000            
+	SWI 22
+	MOVNV R0,R0            
+	str   r1,[r0]                     
+	teqp  r15,#0                     
+	mov   r0,r0  
+
+; breakpoint
+;	swi 0x44B85
+	
+	
+	mov		R12,#tableau_des_X_gauche
+	
+	add		R12, R12, R11, asl #2			; points gauche = tableau_des_X_gauche + Y min * 4
+	add		R13,R12,#1024					; R13 = tableau des X droites + Y min * 4
+
+
+
+	sub		R6,R6,R11				; nb lignes = Y max - Y min
+
+	ldr		r9,screenaddr1
+	; on ajoute y debut
+	mov		r10,#table320
+	mov		r8,r11,lsl #2		; R8 = y min * 4
+	ldr		r8,[r10,r8]				; r8=y min * 320
+	add		r9,r8,r9			; pointeur ecran + y*320
+		
+	mov		r0,#45				; couleur	
+
+
+boucle_remplissage_simple:	
+
+	
+
+
+
+
+	ldr		r1,[r12],#4			; r1 = x gauche
+
+	add		R14,r1,r9			; R7 = pointeur ecran + X gauche
+	
+	ldr		r2,[r13],#4			; x droite
+	
+	sub		r2,r2,r1			; x droite - x gauche = nb points
+bouclefill:	
+	strb	r0,[r14],#1		; plot point
+	subs	r2,r2,#1
+	bgt		bouclefill
+	
+	add		r9,r9,#320			; ligne suivante
+	
+	subs	R6,R6,#1			; delta Y - 1
+	bgt		boucle_remplissage_simple
+
+	ldr		R0,nb_faces_restantes
+	subs	R0,R0,#1
+	
+	bgt		boucle_affiche_OBJ
+	
+		; retour
+	ldr pc,save_R14
 
 face_invisible:
+; breakpoint
+;	swi 0x44B85
+
+	; R0 = nb de cotés de la face
+	; R5 = pointeur sur point 0 de la face
+
+; on saute par dessus les points	
+	add		R0,R0,#1
+	add		R5,R5,R0, asl #2
+	
+	ldr		R0,nb_faces_restantes
+	subs	R0,R0,#1
+	
+	bgt		boucle_affiche_OBJ
 
 	; retour
-	ldr r14,save_R14
-	mov pc, r14
+	ldr pc,save_R14
+	;mov pc, r14
 
 pointeur_en_cours_liste_points:		.long 0	
 nb_points_en_cours:		.long 0
-distance_z:				.long 0x60
+distance_z:				.long 0x80
 
+masques_gauche:
+	.long	0b1111
+	.long	0b0111
+	.long	0b0011
+	.long	0b0001
+masques_droite:
+	.long	0b1000
+	.long	0b1100
+	.long	0b1110
+	.long	0b1111
 
 
 save_R14:	
@@ -953,6 +1342,8 @@ save_R14:
 saver14:	.long 0
 saver13:	.long 0
 savelr:		.long 0
+saver5:		.long 0
+saver0:		.long 0
 
 matrice:
 	.long	1,2,3,4,5,6,7,8,9
@@ -965,11 +1356,14 @@ angleY:			.long 0
 angleZ:			.long 0
 incrementX:		.long 0
 incrementY:		.long 0
-incrementZ:		.long 1
+incrementZ:		.long 2
+
+
 
 all_objects:	
 	.long coords_cube
-	.long cube
+	;.long cubelines
+	.long	faces_cube
 
 coords_cube:
 	.long	8
@@ -983,17 +1377,46 @@ coords_cube:
 	.long	50,-50,50	;7
 	.long	50,50,50	;8
 
-cube:
-	.long	6
-	.long	0*8,1*8,2*8,3*8
-	.long	0*8,3*8,7*8,4*8
-	.long	3*8,2*8,6*8,7*8
-	.long	0*8,4*8,5*8,1*8
-	.long	7*8,6*8,5*8,4*8
-	.long	2*8,1*8,5*8,6*8
+faces_cube:
+; nb faces
+	.long	1
+; nb de cotés de la face
+	.long	4, 7*8,6*8,5*8,4*8,7*8
+	.long	4, 0*8,1*8,2*8,3*8,0*8
+	
+	.long	4, 0*8,3*8,7*8,4*8,0*8
+	.long	4, 3*8,2*8,6*8,7*8,3*8
+	.long	4, 0*8,4*8,5*8,1*8,0*8
+	.long	4, 7*8,6*8,5*8,4*8,7*8
+	.long	4, 2*8,1*8,5*8,6*8,2*8
+
+cubelines:
+	.long	12
+	.long	0*8,1*8
+	.long	1*8,2*8
+	.long	2*8,3*8
+	.long	3*8,0*8
+	.long	4*8,5*8
+	.long	5*8,6*8
+	.long	6*8,7*8
+	.long	7*8,4*8
+	.long	0*8,4*8
+	.long	1*8,5*8
+	.long	2*8,6*8
+	.long	3*8,7*8
+	
 
 coordonnees_transformees:	.space 256
 coordonnees_projetees:	.space 256
+
+tableau_des_X_gauche:		.space 1024
+tableau_des_X_droite:		.space 1024
+
+
+
+; table de sinus, cosinus de 1/512 * 32768 ( $8000 )
+; 8 par lignes
+; 64 lignes
 
 SINCOS:
         .long   0, 32768,402, 32765,804, 32758,1206, 32745,1607, 32728,2009, 32706,2410, 32679,2811, 32647
@@ -1061,6 +1484,62 @@ SINCOS:
         .long   -6392, 32138,-5997, 32214,-5602, 32285,-5205, 32351,-4808, 32413,-4409, 32469,-4011, 32521,-3611, 32568
         .long   -3211, 32610,-2811, 32647,-2410, 32679,-2009, 32706,-1607, 32728,-1206, 32745,-804, 32758,-402, 32765
 
+	;ldr r0,numero_objet	; numero objet en cours
+	mov r1,#all_objects
+	add R1, R1, R0, LSL #3	; numero objet *8
+	
+	ldr r5,[r1,#4]			; r5 = pointeur vers les faces
+	
+	ldr r0,[r5],#4			; r0=nb faces
 
 
+.boucle_draw_lines_objet:	
+	mov r10,#coordonnees_projetees
 
+	ldr r11,[r5],#4		; numero point A * 8
+	ldr r12,[r5],#4		; numero point B * 8
+	
+	ldr r1,[r10,r11]		; r1=XA
+	ldr r2,[r10,r12]		; r3=XB
+	
+	add r10,r10,#4			; R6 = R10+4 temporaire
+
+	ldr r3,[r10,r11]			; r2=YA
+	ldr r4,[r10,r12]			; r4=YB	
+
+	adds	r1,r1,#160
+	adds	r2,r2,#160
+	adds	r3,r3,#128
+	adds	r4,r4,#128
+
+	str		r0,saver0_2
+	str		r5,saver5_2
+
+	bl	drawline
+
+	ldr		r5,saver5_2
+	ldr		r0,saver0_2
+	subs	r0,r0,#1
+	bgt		.boucle_draw_lines_objet
+
+
+saver0_2:	.long 0
+saver5_2:	.long 0
+
+; test de calcul a virgule
+
+	mov		r10,#SINCOS
+	mov		r0,#0			; partie entiere
+	mov		r1,#0			; virgule
+	
+	mov		r3,#1			; add entiere
+	mov		r4,#2147483648		; add virgule
+	
+	adds		r1,r1,r4		; addition virgule
+	adc		r0,r0,r3		; addition partie entiere + carry
+	adds		r1,r1,r4		; addition virgule
+	adc		r0,r0,r3		; addition partie entiere + carry	
+	adds		r1,r1,r4		; addition virgule
+	adc		r0,r0,r3		; addition partie entiere + carry	
+
+	str		r0,[r10],#4
