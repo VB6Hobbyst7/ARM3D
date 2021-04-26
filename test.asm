@@ -3,6 +3,7 @@
 ;	- bords + centre
 ;	- tenir compte des multiples de 16 octets
 
+; améliorer remplissage petites lignes
 ; jump dans repetition calcul gauche/droit
 ; CLS limité à zone max - zone min nouvelement calculée
 ; - tableaux x gauches et droits, directement en adresse video ?
@@ -61,7 +62,6 @@ scr_bank:
 
 
 main:
-
 
 	MOV r0,#22	;Set MODE
 	SWI OS_WriteC
@@ -964,10 +964,14 @@ affiche_OBJ:
 	ldr r0,[r5],#4			; r0=nb faces
 
 boucle_affiche_OBJ:
+
 	
+	str		R5,saver5
 	str		R0,nb_faces_restantes
 	
 	ldr 	R0,[r5],#4			; r0=nb de cotés de la face
+	ldr		R11,[R5],#4			; couleur de la face 
+	str		R11,couleur_de_la_face
 	
 	
 	mov r10,#coordonnees_projetees
@@ -979,18 +983,17 @@ boucle_affiche_OBJ:
 	; point c = 2
 
 	ldr r11,[r5]			; numero point A * 8
-	ldr r12,[r5,#4]			; numero point B * 8
-	ldr r13,[r5,#8]			; numero point C * 8
-	ldr r14,[r5,#12]		; numero point D * 8
+	ldr r12,[r5,#4]			; numero point C * 8
+	ldr r13,[r5,#8]			; numero point B * 8
 	
 	ldr r1,[r10,r11]		; r1=XA
-	ldr r3,[r10,r14]		; r3=XB
+	ldr r3,[r10,r13]		; r3=XB
 	ldr r7,[r10,r12]		; r7=XC
 	
 	add r6,r10,#4			; R6 = R10+4 temporaire
 
 	ldr r2,[r6,r11]			; r2=YA
-	ldr r4,[r6,r14]			; r4=YB
+	ldr r4,[r6,r13]			; r4=YB
 	ldr r6,[r6,r12]			; r6=YC
 	
 	subs r1,r1,r3			; r1 = xa-xb
@@ -1003,7 +1006,7 @@ boucle_affiche_OBJ:
 	
 	subs r1,r1,r2			; (xa-xb)*(yc-yb) - (ya-yb)*(xc-xb)
 	bpl face_invisible		; face visible ?
-	; bmi ?
+	; bmi ? bpl ?
 	
 face_visible:
 	; il faut tracer les lignes
@@ -1220,20 +1223,6 @@ boucle_increment_pente:
 ; de R11 * 4 à R6 * 4
 ; lire XGAUCHE et XDROITE
 ;
-; registres:
-; R0 : couleur
-; R1 : X Gauche
-; R2 : X Droite
-; R6 : Delta Y = nombre de lignes à remplir
-; R9 : pointeur ecran ligne actuelle
-; R12 : source X gauche
-; R13 : source X droite
-; R14 : pointeur mémoire destination ecran
-
-; 1 registre pour #320
-; 1 registre le masque de and pour 4 pixels
-
-; dispos : R3,R4,R5,R7,R8,R10,R11,R0
 
 		; change border color
 	mov   r0,#0x3400000               
@@ -1245,60 +1234,367 @@ boucle_increment_pente:
 	teqp  r15,#0                     
 	mov   r0,r0  
 
-; breakpoint
-;	swi 0x44B85
+
+
+;- recuperer X gauche
+;- recuperer X droite
+;- positionner destination ecran sur Y min
+;- and X gauche, # 0b111111100 : on garde entre 512 et 320 modulo 4
+;- and Y gauche, # 0b111111100 : on garde entre 512 et 320 modulo 4
+;- and X gauche , #0b11
+;- and X droite, #0b11
+;- X droite - X gauche 
+;- si 0 = petite ligne
+;- petite ligne : 
+; 		- masque G and masque D
+;		- or sur l'ecran 		
+; 		ou alors 2 strb ???
+; 
+;  ---------------------------------------> reflechir si bord gauche puis bord droit puis centre avec plein de registres
+;
+; R0 = masque #0x000F
+; R1,R2,R3,R4 = couleur
+; R5 = masque #0xFFF0
+; R7 = nb lignes à remplir
+; R8 = source X gauche
+; R9 = source X droite
+; R13 = destination ecran Y min
+; R14 = destination ecran Y min en cours + x gauche 
+
+; R6 = ((XD - XG) and #0xFFF0 ) lsr # 2 ( /4 )
+; R10 = 
+; R11 = (XG and #0x000F ) lsl #2
+; R12 = ( XD and #0x000F ) lsl #2
+ 
+
+
+	mov		R8,#tableau_des_X_gauche
+	
+	add		R8, R8, R11, asl #2			; points gauche = tableau_des_X_gauche + Y min * 4
+	add		R9,R8,#1024					; R13 = tableau des X droites + Y min * 4
+
+
+
+	sub		R7,R6,R11				; nb lignes = Y max - Y min
 	
 	
-	mov		R12,#tableau_des_X_gauche
-	
-	add		R12, R12, R11, asl #2			; points gauche = tableau_des_X_gauche + Y min * 4
-	add		R13,R12,#1024					; R13 = tableau des X droites + Y min * 4
 
-
-
-	sub		R6,R6,R11				; nb lignes = Y max - Y min
-
-	ldr		r9,screenaddr1
+	ldr		r13,screenaddr1
 	; on ajoute y debut
-	mov		r10,#table320
-	mov		r8,r11,lsl #2		; R8 = y min * 4
-	ldr		r8,[r10,r8]				; r8=y min * 320
-	add		r9,r8,r9			; pointeur ecran + y*320
+	mov		r1,#table320
+	mov		r2,r11,lsl #2		; R2 = y min * 4
+	ldr		r2,[r1,r2]				; r2=y min * 320
+	add		r13,r2,r13			; pointeur ecran + y*320
 		
-	mov		r0,#45				; couleur	
+	ldr		r1,couleur_de_la_face			; couleur dans 4 registres
+	mov		r2,r1
+	mov		r3,r1
+	mov		r4,r1
+
+	mov		R5,#0xFFFFFFF0			; masque sur 16
+
+boucle_remplissage_avec_sauts:
+
+	swi 0x44B85	
+	
+	ldr		R11,[R8],#4			; X Gauche
+	ldr		R12,[R9],#4			; X Droite
 
 
-boucle_remplissage_simple:	
 
 	
+;	mov		R11,#31
+;	mov		R12,#32
 
 
 
 
-	ldr		r1,[r12],#4			; r1 = x gauche
 
-	add		R14,r1,r9			; R7 = pointeur ecran + X gauche
+; il faut calculer:
+;   X droite and 0x0F dans R12
+;   delta X and 0xFFF0 dans R6
+;   delta X - -   dans R11
+
+	and		R0,R12,R5			; X droite and 0xFFF0
+	subs	R6,R0,R11			; Delta X : XD - XG
+
+	ands	R10,R6,R5				; on élimine les bits 0x0F des valeurs 0-15
+	ble		remplisage_petite_ligne		; ligne inferieure à 16 pixels
+	add		R14,R11,R13			; pointeur ecran + X gauche
+
+; on peut réutiliser R11
+	mov		R0,#0x000F			; masque 0-15
+	and		R12,R12,R0			; X droite and 0x0F
+
+	sub		R11,R6,R10			; nb pixels à afficher - nb pixels milieu
 	
-	ldr		r2,[r13],#4			; x droite
 	
-	sub		r2,r2,r1			; x droite - x gauche = nb points
-bouclefill:	
-	strb	r0,[r14],#1		; plot point
-	subs	r2,r2,#1
-	bgt		bouclefill
+
+; j'ai besoin de :
+; nb pixels gauche : R11
+; nb pixels milieu : R10
+; nb pixels droite : R12
+
+	mov		R6,#fin_milieu			; pointeur sur les routines de milieu
+	sub		R6,R6,R10,lsr #2		; /4 
+
+	mov		R10,#table_gauche
+	ldr		R11,[R10,R11, lsl #2]	; table gauche + 4* x gauche masqué 0x0F
+	mov		R15,R11				; on saute à R11
 	
-	add		r9,r9,#320			; ligne suivante
 	
-	subs	R6,R6,#1			; delta Y - 1
-	bgt		boucle_remplissage_simple
+	
+
+remplisage_petite_ligne:
+; j'arrive avec:
+; R6 = X droite - X gauche = nb points à remplir
+; R0 = X droite and 0xFFF0
+	add		R14,R11,R13			; pointeur ecran + X gauche
+
+
+	subs	R6,R12,R11			; nb points total à afficher
+	beq		droite1
+
+	mov		R0,#0x000F			; masque 0-15
+	and		R12,R12,R0			; X droite and 0x0F
+
+	sub		R0,R6,R12			; nb points a gauche
+	mov		R10,#table_gauche
+	ldr		R0,[R10,R0, lsl #2]	; table gauche + 4* x gauche masqué 0x0F
+
+; pour le coté droite
+	add		R11,R10,#64				; table routine droite
+	ldr		R6,[R11,R12, lsl #2]	; table droite + 4* x  droite masqué 0x0F
+
+; R6 = destination routine de droite	
+	
+	mov		R15,R0				; saut 
+	
+couleur_de_la_face:		.long 	0
+	.align	8
+
+
+
+saut_petit:
+	.rept	32
+	strb	r1,[R14],#1
+	.endr
+saut_petit_bas:
+	b		suite_remplissage
+
+
+table_gauche:
+	.long	gauche0
+	.long	gauche1
+	.long	gauche2
+	.long	gauche3
+	.long	gauche4
+	.long	gauche5
+	.long	gauche6
+	.long	gauche7
+	.long	gauche8
+	.long	gauche9
+	.long	gauche10
+	.long	gauche11
+	.long	gauche12
+	.long	gauche13
+	.long	gauche14
+	.long	gauche15
+table_droite:
+	.long	droite1
+	.long	droite2
+	.long	droite3
+	.long	droite4
+	.long	droite5
+	.long	droite6
+	.long	droite7
+	.long	droite8
+	.long	droite9
+	.long	droite10
+	.long	droite11
+	.long	droite12
+	.long	droite13
+	.long	droite14
+	.long	droite15
+	.long	droite16
+	
+
+; sur 16 pixels
+gauche0:
+	mov		R15,R6
+gauche1:
+	strb	r1,[R14],#1
+	mov		R15,R6
+gauche2:
+	strb	r2,[R14],#1
+	strb	r2,[R14],#1
+	mov		R15,R6
+gauche3:
+	strb	r2,[R14],#1
+	strb	r2,[R14],#1
+	strb	r2,[R14],#1
+	mov		R15,R6
+gauche4:
+	str		R1,[R14],#4
+	mov		R15,R6
+gauche5:
+	strb	r1,[R14],#1
+	str		R1,[R14],#4
+	mov		R15,R6
+gauche6:
+	strb	r1,[R14],#1
+	strb	r1,[R14],#1
+	str		R1,[R14],#4
+	mov		R15,R6
+gauche7:
+	strb	r1,[R14],#1
+	strb	r1,[R14],#1
+	strb	r1,[R14],#1
+	str		R1,[R14],#4
+	mov		R15,R6
+gauche8:
+	stmia	R14!,{r3-r4}
+	mov		R15,R6
+gauche9:
+	strb	r1,[R14],#1
+	stmia	R14!,{r3-r4}
+	mov		R15,R6
+gauche10:
+	strb	r1,[R14],#1
+	strb	r1,[R14],#1
+	stmia	R14!,{r3-r4}
+	mov		R15,R6
+gauche11:
+	strb	r1,[R14],#1
+	strb	r1,[R14],#1
+	strb	r1,[R14],#1
+	stmia	R14!,{r3-r4}
+	mov		R15,R6
+gauche12:
+	stmia	R14!,{r1-r3}
+	mov		R15,R6
+gauche13:
+	strb	r1,[R14],#1
+	stmia	R14!,{r1-r3}
+	mov		R15,R6
+gauche14:
+	strb	r1,[R14],#1
+	strb	r1,[R14],#1
+	stmia	R14!,{r1-r3}
+	mov		R15,R6
+gauche15:
+	strb	r1,[R14],#1
+	strb	r1,[R14],#1
+	strb	r1,[R14],#1
+	stmia	R14!,{r1-r3}
+	mov		R15,R6
+
+
+droite16:
+	stmia	R14!,{r1-r4}
+	b		suite_remplissage
+droite1:
+	strb	r1,[R14],#1
+	b		suite_remplissage
+droite2:
+	strb	r1,[R14],#1
+	strb	r1,[R14],#1
+	b		suite_remplissage
+droite3:
+	strb	r1,[R14],#1
+	strb	r1,[R14],#1
+	strb	r1,[R14],#1
+	b		suite_remplissage
+droite4:
+	str		R1,[R14],#4
+	b		suite_remplissage
+droite5:
+	str		R1,[R14],#4
+	strb	r1,[R14],#1
+	b		suite_remplissage
+droite6:
+	str		R1,[R14],#4
+	strb	r1,[R14],#1
+	strb	r1,[R14],#1
+	b		suite_remplissage
+droite7:
+	str		R1,[R14],#4
+	strb	r1,[R14],#1
+	strb	r1,[R14],#1
+	strb	r1,[R14],#1
+	b		suite_remplissage
+droite8:
+	stmia	R14!,{r1-r2}
+	b		suite_remplissage
+droite9:
+	stmia	R14!,{r1-r2}
+	strb	r1,[R14],#1
+	b		suite_remplissage
+droite10:
+	stmia	R14!,{r1-r2}
+	strb	r1,[R14],#1
+	strb	r1,[R14],#1
+	b		suite_remplissage
+droite11:
+	stmia	R14!,{r1-r2}
+	strb	r1,[R14],#1
+	strb	r1,[R14],#1
+	strb	r1,[R14],#1
+	b		suite_remplissage
+droite12:
+	stmia	R14!,{r1-r3}
+	b		suite_remplissage
+droite13:
+	stmia	R14!,{r1-r3}
+	strb	r1,[R14],#1
+	b		suite_remplissage
+droite14:
+	stmia	R14!,{r1-r3}
+	strb	r1,[R14],#1
+	strb	r1,[R14],#1
+	b		suite_remplissage
+droite15:
+	stmia	R14!,{r1-r3}
+	strb	r1,[R14],#1
+	strb	r1,[R14],#1
+	strb	r1,[R14],#1
+	b		suite_remplissage
+	
+
+milieu:
+	.rept		20
+	stmia	R14!,{r1-r4}		; 4 octets
+	.endr
+fin_milieu:
+
+; gerer coté droite !!	
+; depend de :
+; R12 = nb points a droite
+
+	add		R11,R10,#64				; table routine droite
+	ldr		R12,[R11,R12, lsl #2]	; table droite + 4* x  droite masqué 0x0F
+	mov		R15,R12				; on saute à R11
+	
+
+; ligne suivante	
+suite_remplissage:
+	add		R13,R13,#320
+	subs	R7,R7,#1
+	bgt		boucle_remplissage_avec_sauts
+
+
+
+	ldr		R5,saver5
+	add		R5,R5,#7*4
 
 	ldr		R0,nb_faces_restantes
 	subs	R0,R0,#1
 	
 	bgt		boucle_affiche_OBJ
-	
-		; retour
+
+; retour
 	ldr pc,save_R14
+	;mov pc, r14	
 
 face_invisible:
 ; breakpoint
@@ -1322,7 +1618,7 @@ face_invisible:
 
 pointeur_en_cours_liste_points:		.long 0	
 nb_points_en_cours:		.long 0
-distance_z:				.long 0x80
+distance_z:				.long 0x500
 
 masques_gauche:
 	.long	0b1111
@@ -1353,10 +1649,10 @@ numero_objet:
 
 angleX:			.long 0
 angleY:			.long 0
-angleZ:			.long 0
+angleZ:			.long 17
 incrementX:		.long 0
 incrementY:		.long 0
-incrementZ:		.long 2
+incrementZ:		.long 0
 
 
 
@@ -1364,31 +1660,36 @@ all_objects:
 	.long coords_cube
 	;.long cubelines
 	.long	faces_cube
+	
+	.long	coords_pyramide
+	.long	fpyramide
 
 coords_cube:
 	.long	8
-	.long	-50,50,-50	;1
-	.long	-50,-50,-50	;2
-	.long	50,-50,-50	;3
-	.long	50,50,-50	;4
+	.long	-500,500,-500	;1
+	.long	-500,-500,-500	;2
+	.long	500,-500,-500	;3
+	.long	500,500,-500	;4
 
-	.long	-50,50,50	;5
-	.long	-50,-50,50	;6
-	.long	50,-50,50	;7
-	.long	50,50,50	;8
+	.long	-500,500,500	;5
+	.long	-500,-500,500	;6
+	.long	500,-500,500	;7
+	.long	500,500,500	;8
 
 faces_cube:
 ; nb faces
-	.long	1
+	.long	6
 ; nb de cotés de la face
-	.long	4, 7*8,6*8,5*8,4*8,7*8
-	.long	4, 0*8,1*8,2*8,3*8,0*8
+
+	.long	4, 0x15151515, 0*8,3*8,7*8,4*8,0*8			; face dessus
+	.long	4, 0x25252525, 7*8,6*8,5*8,4*8,7*8			; face avant
+	.long	4, 0x05050505, 0*8,1*8,2*8,3*8,0*8			; face arrière
 	
-	.long	4, 0*8,3*8,7*8,4*8,0*8
-	.long	4, 3*8,2*8,6*8,7*8,3*8
-	.long	4, 0*8,4*8,5*8,1*8,0*8
-	.long	4, 7*8,6*8,5*8,4*8,7*8
-	.long	4, 2*8,1*8,5*8,6*8,2*8
+	
+	.long	4, 0xE5E5E5E5, 3*8,2*8,6*8,7*8,3*8
+	
+	.long	4, 0xD5D5D5D5, 0*8,4*8,5*8,1*8,0*8
+	.long	4, 0xB5B5B5B5 ,2*8,1*8,5*8,6*8,2*8
 
 cubelines:
 	.long	12
@@ -1404,6 +1705,41 @@ cubelines:
 	.long	1*8,5*8
 	.long	2*8,6*8
 	.long	3*8,7*8
+
+
+coords_pyramide:
+	.long	13
+	.long	-300,300,0
+	.long	300,300,0
+	.long	300,-300,0
+	.long	-300,-300,0
+	.long	-200,200,200
+	.long	200,200,200
+	.long	200,-200,200
+	.long	-200,-200,200
+	.long	-150,150,300
+	.long	150,150,300
+	.long	150,-150,300
+	.long	-150,-150,300
+	.long	0,0,600
+
+fpyramide:
+	.long	1
+	.long	4,0x18181818, 5*8,1*8,2*8,6*8
+	.long	4,0x17171717, 11*8,10*8,9*8,8*8
+
+	.long	4,0x15151515, 4*8,5*8,6*8,7*8
+	
+	;INV4	0,-1,8,9,10,11
+	;INV4	1,-1,0,1,2,3
+	;INV3	2,-1,12,9,8
+	;INV4	2,-1,5,1,0,4
+	;INV3	3,-1,12,10,9
+	;INV4	3,-1,6,2,1,5
+	;INV3	1,-1,12,11,10	;4
+	;INV4	2,-1,7,3,2,6	;4
+	;INV3	3,-1,12,8,11	;4
+	;INV4	1,-1,4,0,3,7	;4
 	
 
 coordonnees_transformees:	.space 256
@@ -1526,20 +1862,3 @@ SINCOS:
 saver0_2:	.long 0
 saver5_2:	.long 0
 
-; test de calcul a virgule
-
-	mov		r10,#SINCOS
-	mov		r0,#0			; partie entiere
-	mov		r1,#0			; virgule
-	
-	mov		r3,#1			; add entiere
-	mov		r4,#2147483648		; add virgule
-	
-	adds		r1,r1,r4		; addition virgule
-	adc		r0,r0,r3		; addition partie entiere + carry
-	adds		r1,r1,r4		; addition virgule
-	adc		r0,r0,r3		; addition partie entiere + carry	
-	adds		r1,r1,r4		; addition virgule
-	adc		r0,r0,r3		; addition partie entiere + carry	
-
-	str		r0,[r10],#4
