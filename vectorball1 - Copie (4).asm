@@ -1,13 +1,13 @@
-; !!! faire des sequences d'elements d'animation pour repeter certains mouvements
-; !!! table pour les positions de boules
+; !!! compresser les données : 9 bits pour X, 9 bits pour Y, 2 bits pour n° sprite = 20 bits   :   1 Mega = 26 secondes
+
+
+; !!!!!   ==============>    permettre une animation de déplacement dans l'espace de l'objet : table mouvement, inc X, inc Y , inc Z de l'objet en entier
 
 ; !!!!!   ==============>    faire un scrolling completement dynamique en 3D
 
 ; idées objets : transformation décompte de chiffres, 
 
 
-
-; - OK :  compresser les données : position dans mémoire vidéo <<4 + n° sprite
 ; - OK : Gérer clipping Y<-16 Y>258, X<0 X>416 
 ; -OK: calculs 3D
 ; -OK: tri quicksort / comparer bubble sort
@@ -63,8 +63,8 @@
 ;	- nb frame animation, une fois à zéro => retour au début des coordonnées des points d'animation
 
 
-.equ	nombre_de_boules_maxi, 64
-.equ	taille_buffer_calculs, 512*nombre_de_boules_maxi*4
+
+.equ	taille_buffer_calculs, 512*32*16
 
 .equ Screen_Mode, 97
 .equ	IKey_Escape, 0x9d
@@ -128,16 +128,6 @@ main:
 	ldr		R1,pointeur_module97
 	SWI		0x1E
 
-; gestion de la RAM
-; lecture des infos actuelles
-	mov		R0,#-1
-	mov		R1,#-1
-	SWI		0x400EC			; Wimp_SlotSize 
-
-	mov		R0,#taille_buffer_calculs*4
-	mov		R1,#-1
-	SWI 	0x400EC			; Wimp_SlotSize 
-
 	mov		R1,#0			; stop color flashing
 	mov		R0,#9
 	swi		OS_Byte
@@ -148,15 +138,11 @@ main:
 	mov		R0,#0
 	str		R0,nb_frames_total_calcul
 
-; on démarre une sequence de calculs, donc on pointe au debut du buffer de calcul
 	ldr		R5,pointeur_buffer_en_cours_de_calcul
 	str		R5,pointeur_actuel_buffer_en_cours_de_calcul
 
 
 boucle_lecture_animations:
-	
-	ldr		R1,pointeur_buffer_calculs_intermediaire
-	str		R1,pointeur_buffer_calculs_intermediaire_actuel
 	
 	mov		R1,#0
 	str		R1,flag_transformation_en_cours			; pas de transformation
@@ -425,7 +411,7 @@ boucle_calcul_frames_classiques:
 	bl		realisation_transformation
 
 .pas_de_transformation:
-	ldr		R5,pointeur_buffer_calculs_intermediaire
+	ldr		R5,pointeur_actuel_buffer_en_cours_de_calcul
 	str		R5,pointeur_coordonnees_projetees
 
 
@@ -503,14 +489,10 @@ boucle_calcul_frames_classiques:
 .pas_d_animation_dans_la_boucle_de_calcul_principale:
 	
 	bl		bubblesort_XYZ
-
-	bl		copie_dans_buffer_calcul_final
 	
-; on avance dans le gros buffer final	
 	ldr		R2,pointeur_actuel_buffer_en_cours_de_calcul
 	ldr		R1,nb_points_objet_en_cours
-;	add		R2,R2,R1,asl #4			; + nb points * 16
-	add		R2,R2,R1,asl #2			; + nb points * 4
+	add		R2,R2,R1,asl #4			; + nb points * 16
 	str		R2,pointeur_actuel_buffer_en_cours_de_calcul
 
 ; erroné :
@@ -545,13 +527,11 @@ boucle_calcul_frames_classiques:
 	b		boucle_lecture_animations
 
 sortie_boucle_animations:
-
 	
 ; on swappe calcul et affichage
 	ldr		R1,pointeur_buffer_en_cours_d_affichage
 	ldr		R2,pointeur_buffer_en_cours_de_calcul
 	str		R2,pointeur_buffer_en_cours_d_affichage
-	str		R2,pointeur_actuel_buffer_en_cours_d_affichage
 	str		R1,pointeur_buffer_en_cours_de_calcul
 	
 	ldr		R0,nb_sprites_en_cours_calcul
@@ -560,11 +540,6 @@ sortie_boucle_animations:
 	ldr		R0,nb_frames_total_calcul
 	str		R0,nb_frames_total_affichage
 	str		R0,nb_frame_en_cours_affichage
-
-	;ldr		R0,nb_frames_total_affichage
-	;ldr		R12,pointeur_buffer_en_cours_d_affichage
-	;str		R0,nb_frame_en_cours_affichage
-	;str		R12,pointeur_actuel_buffer_en_cours_d_affichage
 
 
 
@@ -740,7 +715,10 @@ sortie_boucle_animations:
 	mov   r0,r0
 	
 
-	
+	ldr		R0,nb_frames_total_affichage
+	ldr		R12,pointeur_buffer_en_cours_d_affichage
+	str		R0,nb_frame_en_cours_affichage
+	str		R12,pointeur_actuel_buffer_en_cours_d_affichage	
 
 	
 	
@@ -954,23 +932,19 @@ event_handler:
 
 
 
-;	SWI BKP
+
 	ldr		R12,pointeur_actuel_buffer_en_cours_d_affichage
 	ldr		R11,nb_sprites_en_cours_affichage
 
+	;mov		R11,#32
+	;mov		R12,#0
+	;mov		R10,#0
 
 boucle_affiche_sprites_vbl:	
-;	SWI BKP
+	ldr		R0,[R12],#4
+	ldr		R1,[R12],#4
+	add		R12,R12,#8			; saute le Z et le N° de sprite pour arrondi à 16 octets
 	
-	ldr		R0,[R12],#4			; octet compressé : position mémoire ecran + n° décalage X + n° sprite
-
-; décodage
-; R0 = Y*416 +x << 4 + n° sprite
-; cible : R0=position, R5 = X n° décalage, R6 = n° sprite
-	and		R6,R0,#0b1111
-	mov		R0,R0,asr #4
-	and		R5,R0,#0b11
-;	mov		R0,R0,asr #2
 
 	;bl		copie_sprite
 
@@ -983,8 +957,7 @@ boucle_affiche_sprites_vbl:
 	
 	;mov		R0,R10
 	;mov		R1,R12
-
-; R0 = position écran
+	
 	bl		plot_boule16x16_position0
 	
 ;	.rept	4
@@ -1042,16 +1015,9 @@ saveR10_local:		.long 0
 saveR0_local:		.long 0
 saveR1_local:		.long 0
 
-		.p2align		2
+		.p2align		3
 pointeur_module97:		.long	module97
 
-; en fonction de X modulo 4
-table_sprites:
-	.long	plot_boule16x16_position0
-	.long	plot_boule16x16_position0
-	.long	plot_boule16x16_position0
-	.long	plot_boule16x16_position0
-	
 
 ;--------------------------------------------------------------------
 
@@ -1378,10 +1344,6 @@ nombre_etapes_repetition_du_mouvement_initial:				.long 0
 pointeur_initial_repetition_mouvement:				.long 0
 pointeur_actuel_repetition_mouvement:				.long 0
 
-; variables buffer intermediaire pour reduction de taille du buffer de calcul
-pointeur_buffer_calculs_intermediaire:			.long buffer_calculs_intermediaire
-pointeur_buffer_calculs_intermediaire_actuel:			.long buffer_calculs_intermediaire
-
 saveR1:			.long 0
 
 angleX:			.long 0
@@ -1615,12 +1577,9 @@ boucle_calc_points:
 	ldr r1,nb_points_en_cours
 	subs r1,r1,#1
 	bne boucle_calc_points
-
-;----------------------------------------------------------
+	
 ; projection des points dans pointeur_coordonnees_projetees
 ; calculs des divisons X/Z et Y/Z
-;----------------------------------------------------------
-
 	ldr r9,pointeur_coordonnees_transformees
 	ldr r8,nb_points_objet_en_cours			; r8=nb points
 	ldr r10,pointeur_coordonnees_projetees_actuel
@@ -1879,8 +1838,8 @@ bsort_loop:                     ;// Start loop
 	STRGT   R9,[R10,R2,LSL #4]   ;// If R4 > R5, store current value at next
     STRGT   R8,[R10,R3,LSL #4]   ;// If R4 > R5, Store next value at current
 	
-	LDRGT   R8,[R12,R2,LSL #4]	; n° sprite 1
-	LDRGT   R9,[R12,R3,LSL #4]	; n° sprite 2
+	LDRGT   R8,[R12,R2,LSL #4]	; Z1
+	LDRGT   R9,[R12,R3,LSL #4]	; Z2
 	STRGT   R9,[R12,R2,LSL #4]   ;// If R4 > R5, store current value at next
     STRGT   R8,[R12,R3,LSL #4]   ;// If R4 > R5, Store next value at current
 	
@@ -1895,69 +1854,6 @@ bsort_check:                    ;// Check for changes
 bsort_done: 
 
 	mov		pc,lr
-
-
-copie_dans_buffer_calcul_final:
-
-; encodage :
-; 9 bits pour X
-; 9 bits pour Y
-; 4 bits pour n° sprite
-; = 22 bits , reste 10 bits
-
-; X << 13
-; Y << 4
-; X peut etre negatif
-; Y ne peut pas etre negatif
-; n° ne peut pas etre negatif
-
-	ldr		R0,nb_points_objet_en_cours
-	
-	ldr		R11,pointeur_coordonnees_projetees					; source
-	ldr		R12,pointeur_actuel_buffer_en_cours_de_calcul		; destination
-	
-	ldr		r13,pointeur_table416
-	
-;		swi		BKP
-.boucle_copie_avec_reduction:
-
-	
-	
-	ldr		R1,[R11],#4				; X projeté écran
-	ldr		R2,[R11],#4				; Y projeté écran
-	add		R11,R11,#4				; on saute le Z
-	ldr		R3,[R11],#4				; n° sprite
-
-; on calcule le position ecran
-	ldr		R2,[r13,R2,asl #2]		; R2=Y * 416
-	adds	R2,R2,R1				; R1 = position mémoire écran : X + 416 * Y
-; valeur maxi : 107 328 : 18 bits
-; il faut garder le bas du X pour choisir le bon décalage de  sprite
-;	mov		R2,R2,asl #2			; 2 bits pour position X 
-
-;	and		R1,R1,#0b11				; on garde la position X sur 4
-;	adds	R2,R2,R1				; on ajoute à la position mémoire
-	mov		R2,R2,asl #4			; + 4 bits pour le n° sprite 
-	adds	R2,R2,R3				; + n° sprite		
-	
-	str		R2,[R12],#4
-; décodage
-; R1 = Y*416 +x << 4 + n° sprite
-; cible : R4=position, R5 = X n° décalage, R6 = n° sprite
-;	and		R6,R2,#0b1111
-;	mov		R2,R2,asr #4
-;	and		R5,R2,#0b11
-;	mov		R4,R2,asr #2
-	
-	
-	
-	subs	R0,R0,#1
-	bgt		.boucle_copie_avec_reduction
-	
-
-	mov		pc,lr
-
-masque_decodage_X:			.long 0b11111111111111111110000000000000
 
 debut_data:
 
@@ -2027,23 +1923,26 @@ SavedR14:	.long 0
 			.long 0
 			
 plot_boule16x16_position0:
-; on arrive avec R0 = position ecran
 	str 	R13,SavedR13
 	str 	R14,SavedR14
 	
 	ldr		r2,screenaddr1
-	add		R1,R2,R0			; R2=R2+X
+	add		R2,R2,R0			; R2=R2+X
+	ldr		r10,pointeur_table416
+	mov		r1,r1,lsl #2		; y * 4
+	ldr		r8,[r10,R1]				; r8=y*320
+	add		r1,r8,r2			; pointeur ecran + y*320
 	
 	
-	adr 	R14,Databoule16x16
-	ldmia 	R14!,{R0,R2-R12}
+	adr R14,Databoule16x16
+	ldmia R14!,{R0,R2-R12}
 
 ; Line #0
-	ldrb 	R13,[R1,#4]!    ; Pos 4
-	add 	R0,R0,R13
-	ldrb R13,[R1,#7]
-	add R13,R2,R13,lsl#24
-	stmia R1,{R0,R13}
+ldrb R13,[R1,#4]!    ; Pos 4
+add R0,R0,R13
+ldrb R13,[R1,#7]
+add R13,R2,R13,lsl#24
+stmia R1,{R0,R13}
 
 ; Line #1
 mov R0,#1
@@ -3233,9 +3132,8 @@ table_increments_pas_transformations:		.space			64*7*4
 		.p2align 4
 buffer_coordonnees_objet_transformees:		.space			64*4*4
 	.p2align 4
-buffer_calculs_intermediaire:			.skip		300*4*4
 buffer_calcul1:
-		.skip		512*nombre_de_boules_maxi*4
+		.skip		512*64*16
 	.p2align 4
 buffer_calcul2:		
-		.skip		512*nombre_de_boules_maxi*4
+		.skip		512*64*16

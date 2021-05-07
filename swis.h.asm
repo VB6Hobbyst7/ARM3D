@@ -14,6 +14,8 @@
 .equ OS_ReadDynamicArea, 0x5c
 .equ OS_ConvertCardinal4, 0xd8	
 
+.equ OS_Module, 0x1E
+
 .equ OSByte_EventEnable, 14
 .equ OSByte_EventDisable, 13
 .equ OSByte_Vsync, 19
@@ -47,3 +49,19 @@
 .equ QTM_Start, 0x47E41
 .equ QTM_Stop, 0x47E42
 .equ QTM_SetSampleSpeed, 0x47E49
+
+; Rasterman 
+.equ	RasterMan_Version,			0x47e84
+.equ	RasterMan_SetTables,		0x47e83
+.equ	RasterMan_Install,			0x47e80
+.equ	RasterMan_Release,			0x47e81
+.equ	RasterMan_Wait,				0x47e82
+.equ	RasterMan_ReadScanline,		0x47e85
+.equ	RasterMan_SetVIDCRegister,	0x47e86
+.equ	RasterMan_SetMEMCRegister,	0x47e87
+.equ	RasterMan_QTMParamAddr,		0x47e88
+.equ	RasterMan_ScanKeyboard,		0x47e89
+.equ	RasterMan_ClearKeyBuffer, 	0x47e8a
+.equ	RasterMan_ReadScanAddr,		0x47e8b
+
+.equ	BKP, 0x44B85

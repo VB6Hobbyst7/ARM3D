@@ -1,14 +1,8 @@
-; !!! faire des sequences d'elements d'animation pour repeter certains mouvements
-; !!! table pour les positions de boules
-
-; !!!!!   ==============>    faire un scrolling completement dynamique en 3D
-
-; idées objets : transformation décompte de chiffres, 
+; !!!!!   ==============>   ajouter n° sprite apres X,Y,Z
+; dans calc3D + preparation transformation + execution transformation + routine affichage sprite + bubble sort + 
 
 
 
-; - OK :  compresser les données : position dans mémoire vidéo <<4 + n° sprite
-; - OK : Gérer clipping Y<-16 Y>258, X<0 X>416 
 ; -OK: calculs 3D
 ; -OK: tri quicksort / comparer bubble sort
 ; - faire 1 objet avec beaucoup de points
@@ -63,10 +57,10 @@
 ;	- nb frame animation, une fois à zéro => retour au début des coordonnées des points d'animation
 
 
-.equ	nombre_de_boules_maxi, 64
-.equ	taille_buffer_calculs, 512*nombre_de_boules_maxi*4
 
-.equ Screen_Mode, 97
+.equ	taille_buffer_calculs, 512*32*16
+
+.equ Screen_Mode, 13
 .equ	IKey_Escape, 0x9d
 
 .include "swis.h.asm"
@@ -76,8 +70,6 @@
 
 
 main:
-				
-
 
 	
 
@@ -124,46 +116,27 @@ main:
 ;	mov		R0,#01
 ;	swi		OS_Module
 
-	mov		R0,#11			; OS_Module 11 : Insert module from memory and move into RMA
-	ldr		R1,pointeur_module97
-	SWI		0x1E
-
-; gestion de la RAM
-; lecture des infos actuelles
-	mov		R0,#-1
-	mov		R1,#-1
-	SWI		0x400EC			; Wimp_SlotSize 
-
-	mov		R0,#taille_buffer_calculs*4
-	mov		R1,#-1
-	SWI 	0x400EC			; Wimp_SlotSize 
-
 	mov		R1,#0			; stop color flashing
 	mov		R0,#9
 	swi		OS_Byte
 
-	bl 		creer_table_416
+	bl 		creer_table_320
 
 
 	mov		R0,#0
 	str		R0,nb_frames_total_calcul
 
-; on démarre une sequence de calculs, donc on pointe au debut du buffer de calcul
 	ldr		R5,pointeur_buffer_en_cours_de_calcul
 	str		R5,pointeur_actuel_buffer_en_cours_de_calcul
 
 
 boucle_lecture_animations:
 	
-	ldr		R1,pointeur_buffer_calculs_intermediaire
-	str		R1,pointeur_buffer_calculs_intermediaire_actuel
-	
 	mov		R1,#0
 	str		R1,flag_transformation_en_cours			; pas de transformation
 	str		R1,flag_animation_en_cours				; pas d'animation
 	str		R1,flag_classique_en_cours				; pas d'objet classique
-	str		R1,flag_mouvement_en_cours
-	str		R1,flag_repetition_mouvement_en_cours
+	
 
 	;mov		R0,#debut_data
 	;mov		R3,#pointeur_position_dans_les_animations-debut_data	
@@ -299,47 +272,6 @@ pas_de_transformation:
 .pas_d_animation_init:
 	add		R1,R1,#8			; on saute ajout de points pour animation
 
-
-; ; --------- gestion des initialisations du mouvement 
-	
-	ldr		R4,[R1],#4			; pointeur vers table de mouvements de l'objet
-	cmp		R4,#0			
-	beq		.pas_de_mouvement_de_l_objet
-
-;	.long		0	; nombre étapes du mouvement
-;	.long		-1	; pointeur vers table de mouvement pour repetition, -1 = pas de repetition, mouvement terminé
-	
-	str		R4,pointeur_debut_mouvement
-	str		R4,pointeur_index_actuel_mouvement
-
-	mov		R4,#1
-	str		R4,flag_mouvement_en_cours
-
-	
-	ldr		R4,[R1]				; nombre étapes du mouvement 
-	str		R4,nombre_etapes_du_mouvement_initial
-	str		R4,nombre_etapes_du_mouvement_en_cours
-	
-	ldr		R4,[R1,#4]			; pointeur vers table de mouvement pour repetition, -1 = pas de repetition, mouvement terminé
-	cmp		R4,#0
-	ble		.pas_de_mouvement_de_l_objet		; pas de repetition
-	str		R4,pointeur_initial_repetition_mouvement
-	str		R4,pointeur_actuel_repetition_mouvement
-
-	mov		R4,#1
-	str 	R4,flag_repetition_mouvement_en_cours
-	
-	ldr		R4,[R1,#8]					; nombre etapes de la repetition
-	str		R4,nombre_etapes_repetition_du_mouvement_initial
-	str		R4,nombre_etapes_repetition_du_mouvement_en_cours
-	
-
-	mov		R4,#1
-	str		R4,flag_mouvement_en_cours
-.pas_de_mouvement_de_l_objet:
-
-	add		R1,R1,#12			; on saute 
-
 ; modification du Z observateur ?
 	ldr		R0,[R1],#4			; Z observateur
 	cmp		R0,#0
@@ -360,60 +292,9 @@ pas_de_transformation:
 	ldr		R0,nb_frames_rotation_classique
 	str		R0,nb_frame_en_cours
 
-;-------------------- boucle principale précalcul des points
-
-
 boucle_calcul_frames_classiques:
 
-; gestion du mouvement de l'objet en entier
-; 
-	
-
-	ldr		R0,flag_mouvement_en_cours
-	cmp		r0,#0
-	beq		.pas_de_mouvement_pendant_calcul
-; on applique la table de mouvements
-
-	ldr		R0,nombre_etapes_du_mouvement_en_cours
-	subs	R0,R0,#1
-	bne		.pas_fin_du_mouvement_pendant_calcul
-
-; fin du mouvement
-; y a t il répetition ?
-	ldr		R1,flag_repetition_mouvement_en_cours
-	cmp		R1,#0
-	beq		.pas_de_repetition_mouvement_pendant_calcul
-
-; on sort du mouvement initial et on initialize la répétition
-	ldr		R2,pointeur_initial_repetition_mouvement		; on pointe vers la table de repetition
-	str		R2,pointeur_index_actuel_mouvement
-	
-	ldr		R0,nombre_etapes_repetition_du_mouvement_initial
-	;str		R0,nombre_etapes_du_mouvement_en_cours			; nb etapes mouvement en cours = nb etapes de repetition
-	
-	
-	b		.pas_fin_du_mouvement_pendant_calcul
-	
-.pas_de_repetition_mouvement_pendant_calcul:
-	str		R1,flag_mouvement_en_cours					; pas de repetition = mouvement terminé = 0
-	
-
-.pas_fin_du_mouvement_pendant_calcul:
-	str		R0,nombre_etapes_du_mouvement_en_cours
-
-	ldr		R10,pointeur_index_actuel_mouvement
-	ldr		R2,[R10],#4								; X objet sur l ecran
-	str		R2,position_objet_sur_ecran_X
-	ldr		R2,[R10],#4								; Y objet sur l ecran
-	str		R2,position_objet_sur_ecran_Y
-	str		R10,pointeur_index_actuel_mouvement
-	
-	
-.pas_de_mouvement_pendant_calcul:
-
-
-
-
+;	swi		BKP
 
 	; si transformation :
 	; on calcul les points transformes dans pointeur_buffer_coordonnees_objet_transformees
@@ -425,7 +306,7 @@ boucle_calcul_frames_classiques:
 	bl		realisation_transformation
 
 .pas_de_transformation:
-	ldr		R5,pointeur_buffer_calculs_intermediaire
+	ldr		R5,pointeur_actuel_buffer_en_cours_de_calcul
 	str		R5,pointeur_coordonnees_projetees
 
 
@@ -503,14 +384,10 @@ boucle_calcul_frames_classiques:
 .pas_d_animation_dans_la_boucle_de_calcul_principale:
 	
 	bl		bubblesort_XYZ
-
-	bl		copie_dans_buffer_calcul_final
 	
-; on avance dans le gros buffer final	
 	ldr		R2,pointeur_actuel_buffer_en_cours_de_calcul
 	ldr		R1,nb_points_objet_en_cours
-;	add		R2,R2,R1,asl #4			; + nb points * 16
-	add		R2,R2,R1,asl #2			; + nb points * 4
+	add		R2,R2,R1,asl #4			; + nb points * 16
 	str		R2,pointeur_actuel_buffer_en_cours_de_calcul
 
 ; erroné :
@@ -545,13 +422,11 @@ boucle_calcul_frames_classiques:
 	b		boucle_lecture_animations
 
 sortie_boucle_animations:
-
 	
 ; on swappe calcul et affichage
 	ldr		R1,pointeur_buffer_en_cours_d_affichage
 	ldr		R2,pointeur_buffer_en_cours_de_calcul
 	str		R2,pointeur_buffer_en_cours_d_affichage
-	str		R2,pointeur_actuel_buffer_en_cours_d_affichage
 	str		R1,pointeur_buffer_en_cours_de_calcul
 	
 	ldr		R0,nb_sprites_en_cours_calcul
@@ -560,11 +435,6 @@ sortie_boucle_animations:
 	ldr		R0,nb_frames_total_calcul
 	str		R0,nb_frames_total_affichage
 	str		R0,nb_frame_en_cours_affichage
-
-	;ldr		R0,nb_frames_total_affichage
-	;ldr		R12,pointeur_buffer_en_cours_d_affichage
-	;str		R0,nb_frame_en_cours_affichage
-	;str		R12,pointeur_actuel_buffer_en_cours_d_affichage
 
 
 
@@ -593,9 +463,7 @@ sortie_boucle_animations:
 	SWI OS_ReadDynamicArea
 	; r1=taille actuelle de la memoire ecran
 	MOV r0, #DynArea_Screen
-; 416 * ( 32+258+32+258+32)
-	MOV r2, #416*612
-
+	MOV r2, #320*256*2
 	; 320*256 * 2 ecrans
 	SUBS r1, r2, r1
 	SWI OS_ChangeDynamicArea
@@ -607,20 +475,18 @@ sortie_boucle_animations:
 	
 	; r0 = pointeur memoire ecrans
 	
-	add		R0,R0,#416*32
 	str		r0,screenaddr1
-	add		r0,r0,#416*290
+	add		r0,r0,#320*256
 	str		r0,screenaddr2
-	
-	mov		r0,#416*32
+	mov		r0,#0
 	str		r0,screenaddr1_MEMC
-	add		r0,r0,#416*290
+	add		r0,r0,#320*256
 	str		r0,screenaddr2_MEMC
 	
 	ldr		r1,screenaddr1
 	ldr		r2,screenaddr2
 	ldr		r3,couleur
-	mov		r0,#26832/2
+	mov		r0,#20480/2
 .clsall:
 	str		r3,[r1],#4
 	str		r3,[r2],#4
@@ -628,7 +494,7 @@ sortie_boucle_animations:
 	bne		.clsall
 	
 	ldr		r3,couleur2
-	mov		r0,#26832/2
+	mov		r0,#20480/2
 .clsall2:
 	str		r3,[r1],#4
 	str		r3,[r2],#4
@@ -644,7 +510,7 @@ sortie_boucle_animations:
 	mov   r0,#0x3400000               
 	mov   r1,#1000  
 ; border	
-	orr   r1,r1,#0x00000000            
+	orr   r1,r1,#0x40000000            
 	str   r1,[r0]                     
 
 	mov   r0,#0x3400000               
@@ -700,47 +566,11 @@ sortie_boucle_animations:
 	subs	r11,r11,#1
 	bgt		.boucle_couleurs_OS
 	
-	
-	;------------------
 
-
-    MOV R0,#19
-    SWI OS_Byte
-
-	SWI		22
-	MOVNV R0,R0
-	
-
-	
-	
-	; update pointeur video hardware
-	ldr	r0,screenaddr1_MEMC
-	mov r0,r0,lsr #4
-	mov r0,r0,lsl #2
-	mov r1,#0x3600000
-	add r0,r0,r1
-	str r0,[r0]
-
-	;b		toto
-
-;	ldr		R3,pointeur_table_mode97
-;	ldr		R2,[R3],#4			; nb de registres
-;	mov   	r0,#0x3400000
-	
-;boucle_mode97:
-;	ldr		R1,[R3],#4
-;	str		r1,[r0]
-;	mov   r0,r0
-;	
-;	subs	R2,R2,#1
-;	bgt		boucle_mode97
-
-
-	teqp  r15,#0                     
-	mov   r0,r0
-	
-
-	
+	ldr		R0,nb_frames_total_affichage
+	ldr		R12,pointeur_buffer_en_cours_d_affichage
+	str		R0,nb_frame_en_cours_affichage
+	str		R12,pointeur_actuel_buffer_en_cours_d_affichage	
 
 	
 	
@@ -777,7 +607,6 @@ boucle:
 
 
 	b	boucle
-
 	
 exit:
 
@@ -852,8 +681,7 @@ event_handler:
 	mov   r0,#0x3400000               
 	mov   r1,#470  
 ; border	
-	;orr   r1,r1,#0x40000000            
-	orr   r1,r1,#0x00000000
+	orr   r1,r1,#0x40000000            
 	str   r1,[r0]                     
 
 ; update pointeur video hardware
@@ -898,9 +726,9 @@ event_handler:
 
 
 ;	bl	cls_ecran_actuel
-;416x258 = 107328
+;320x256 = 81920
 	ldr		r0,screenaddr1
-	mov		r14,#52
+	mov		r14,#50
 	mov		r1,#0
 	mov		r2,r1
 	mov		r3,r1
@@ -915,19 +743,18 @@ event_handler:
 	mov		r12,r1
 	
 ;12*4 = 48
-
-; 107328
-; 107328 /4 = 26832
-; 26832 / 12 = 2236
-; 
-
+; 320*256 = 81 920
 
 .boucleCLS:
-	.rept	43
+	.rept	34
 	stmia	r0!,{r1-r12}
 	.endr
 	subs	r14,r14,#1
 	bne		.boucleCLS
+;81408
+	.rept	6
+	stmia	r0!,{r1-r12}
+	.endr
 	
 	stmia	r0!,{r1-r8}
 
@@ -936,8 +763,7 @@ event_handler:
 	mov   r0,#0x3400000               
 	mov   r1,#47  
 ; border	
-	orr   r1,r1,#0x00000000            
-	;orr   r1,r1,#0x40000000            
+	orr   r1,r1,#0x40000000            
 	str   r1,[r0]       
 
 
@@ -954,53 +780,36 @@ event_handler:
 
 
 
-;	SWI BKP
+
 	ldr		R12,pointeur_actuel_buffer_en_cours_d_affichage
 	ldr		R11,nb_sprites_en_cours_affichage
 
+	mov		R11,#8
+	mov		R12,#0
+	mov		R10,#0
 
 boucle_affiche_sprites_vbl:	
-;	SWI BKP
+;	ldr		R0,[R12],#4
+;	ldr		R1,[R12],#4
+;	add		R12,R12,#8			; saute le Z et le N° de sprite pour arrondi à 16 octets
 	
-	ldr		R0,[R12],#4			; octet compressé : position mémoire ecran + n° décalage X + n° sprite
-
-; décodage
-; R0 = Y*416 +x << 4 + n° sprite
-; cible : R0=position, R5 = X n° décalage, R6 = n° sprite
-	and		R6,R0,#0b1111
-	mov		R0,R0,asr #4
-	and		R5,R0,#0b11
-;	mov		R0,R0,asr #2
 
 	;bl		copie_sprite
-
 	str		R11,saveR11_local
 	str		R12,saveR12_local
 	str		R10,saveR10_local
-;	str		R0,saveR0_local
-;	str		R1,saveR1_local
 	
+	mov		R0,R10
+	mov		R1,R12
 	
-	;mov		R0,R10
-	;mov		R1,R12
-
-; R0 = position écran
-	bl		plot_boule16x16_position0
-	
-;	.rept	4
-;	ldr		R0,saveR0_local
-;	ldr		R1,saveR1_local
-;	bl		plot_boule16x16_position0
-;	.endr
-	
-	;bl		Plot_Violette_Sphere_Pos_0
+	bl		Plot_Violette_Sphere_Pos_0
 	
 	ldr		R11,saveR11_local
 	ldr		R12,saveR12_local
 	ldr		R10,saveR10_local
 	
-	;add		R12,R12,#32
-	;add		R10,R10,#33
+	add		R12,R12,#32
+	add		R10,R10,#33
 
 	subs	R11,R11,#1
 	bgt		boucle_affiche_sprites_vbl
@@ -1021,11 +830,9 @@ boucle_affiche_sprites_vbl:
 	mov   r0,#0x3400000               
 	mov   r1,#000
 ; border	
-	;orr   r1,r1,#0x40000000            
-	orr   r1,r1,#0x00000000            
-
+	orr   r1,r1,#0x40000000            
 	str   r1,[r0]   
-	nop
+
 
 	mov		R0,#save_regs
 	ldmia	R0,{R1-R14}
@@ -1039,19 +846,9 @@ boucle_affiche_sprites_vbl:
 saveR11_local:		.long 0
 saveR12_local:		.long 0	
 saveR10_local:		.long 0	
-saveR0_local:		.long 0
-saveR1_local:		.long 0
 
-		.p2align		2
-pointeur_module97:		.long	module97
 
-; en fonction de X modulo 4
-table_sprites:
-	.long	plot_boule16x16_position0
-	.long	plot_boule16x16_position0
-	.long	plot_boule16x16_position0
-	.long	plot_boule16x16_position0
-	
+
 
 ;--------------------------------------------------------------------
 
@@ -1097,7 +894,7 @@ copie_sprite:
 
 	ldr		r2,screenaddr1
 	add		R2,R2,R0			; R2=R2+X
-	ldr		r10,pointeur_table416
+	ldr		r10,pointeur_table320
 	mov		r1,r1,lsl #2		; y * 4
 	ldr		r8,[r10,R1]				; r8=y*320
 	add		r2,r8,r2			; pointeur ecran + y*320
@@ -1123,7 +920,7 @@ copie_sprite:
 	subs		r0,r0,#1
 	bgt		.boucle_copie_sprite_pixel
 	
-	add		r2,r2,#416-16
+	add		r2,r2,#320-16
 	subs		r4,r4,#1
 	bgt		.boucle_copie_sprite_ligne
 	
@@ -1135,7 +932,7 @@ copie_sprite:
 	subs		r0,r0,#1
 	bgt		.boucle_copie_sprite_pixel
 	
-	add		r2,r2,#416-16
+	add		r2,r2,#320-16
 	subs		r4,r4,#1
 	bgt		.boucle_copie_sprite_ligne
 	
@@ -1150,22 +947,22 @@ cls_ecran_actuel:
 ;320x256 = 81920
 	
 	ldr		r15,saver14
-	
-	
-creer_table_416:
 
-	ldr		r1,pointeur_table416negatif
-	ldr		r0,valeur_N_13312					;-416*32
-	mov		r2,#292								; 260 + 32
-.boucle416:
+table320:	.skip		256*4
+	
+creer_table_320:
+
+	ldr		r1,pointeur_table320
+	mov		r0,#0
+	mov		r2,#256
+.boucle320:
 	
 	str		r0,[r1],#4
-	add		r0,r0,#416
+	add		r0,r0,#320
 	subs	r2,r2,#1
-	bgt		.boucle416
+	bgt		.boucle320
 	mov pc, r14
 
-valeur_N_13312:			.long 		0xFFFFCC00							;-416*32
 ;--------------------------------------------------------------------
 ;    Transformation
 ;--------------------------------------------------------------------
@@ -1333,7 +1130,7 @@ nb_points_objet_en_cours_objet_classique:		.long	8
 nb_points_objet_en_cours_objet_anime:		.long	8
 
 
-pointeur_position_dans_les_animations:		.long	anim4
+pointeur_position_dans_les_animations:		.long	anim3
 
 nb_frames_rotation_classique:				.long 0
 nb_frames_total_calcul:						.long 0
@@ -1354,8 +1151,6 @@ nb_etapes_transformation:			.long 0
 flag_transformation_en_cours:		.long 0
 flag_animation_en_cours:			.long 0
 flag_classique_en_cours:			.long 0
-flag_mouvement_en_cours:			.long 0
-flag_repetition_mouvement_en_cours:			.long 0
 
 pointeur_sprite_boule_violette:			.long sprite_boule_violette
 pointeur_table_increments_pas_transformations:		.long		table_increments_pas_transformations
@@ -1367,36 +1162,8 @@ nb_points_animation_en_cours:									.long 0
 nb_frame_animation_en_cours:									.long 0
 nb_frame_animation:												.long 0
 nb_points_animation_en_cours_objet_anime:						.long 0
-nombre_etapes_du_mouvement_initial:								.long 0
-nombre_etapes_du_mouvement_en_cours:							.long 0
-pointeur_index_actuel_mouvement:								.long 0
-pointeur_debut_mouvement:										.long 0
-
-; variables gestion du mouvement de l'objet
-nombre_etapes_repetition_du_mouvement_en_cours:				.long 0
-nombre_etapes_repetition_du_mouvement_initial:				.long 0
-pointeur_initial_repetition_mouvement:				.long 0
-pointeur_actuel_repetition_mouvement:				.long 0
-
-; variables buffer intermediaire pour reduction de taille du buffer de calcul
-pointeur_buffer_calculs_intermediaire:			.long buffer_calculs_intermediaire
-pointeur_buffer_calculs_intermediaire_actuel:			.long buffer_calculs_intermediaire
 
 saveR1:			.long 0
-
-angleX:			.long 0
-angleY:			.long 0
-angleZ:			.long 0
-incrementX:		.long 0
-incrementY:		.long 0
-incrementZ:		.long 2
-
-X_objet_en_cours:		.long 0
-Y_objet_en_cours:		.long 0
-Z_objet_en_cours:		.long 0
-
-position_objet_sur_ecran_X:			.long 0
-position_objet_sur_ecran_Y:			.long 0
 
 
 ; PORTION DE CODE EFFECTUANT LES PROJECTIONS DES POINTS
@@ -1615,27 +1382,20 @@ boucle_calc_points:
 	ldr r1,nb_points_en_cours
 	subs r1,r1,#1
 	bne boucle_calc_points
-
-;----------------------------------------------------------
+	
 ; projection des points dans pointeur_coordonnees_projetees
 ; calculs des divisons X/Z et Y/Z
-;----------------------------------------------------------
-
 	ldr r9,pointeur_coordonnees_transformees
 	ldr r8,nb_points_objet_en_cours			; r8=nb points
 	ldr r10,pointeur_coordonnees_projetees_actuel
-
-	ldr		R2,position_objet_sur_ecran_X
-	ldr		R4,position_objet_sur_ecran_Y
 	
-; unsued : R7 R10 R14
 boucle_divisions_calcpoints:
 	
 	ldr 	r11,[r9],#4			; X point
 	ldr 	r12,[r9],#4			; Y point
 	ldr 	r13,[r9],#4			; Z point
-	ldr		R1,[r9],#4			; n° sprite
-	;str		R0,save_numero_sprite
+	ldr		R0,[r9],#4			; n° sprite
+	str		R0,save_numero_sprite
 
 ; si r11 négatif , 
  
@@ -1710,20 +1470,8 @@ boucle_divisions_calcpoints:
 
 .contplus:
 ; stock X projeté
-
-	adds	R0,R0,#208						; centrage horizontal
-	adds	R0,R0,R2						; + deplacement objet X
-	cmp		R0,#0
-	bge	.clipping_ok_pas_X_negatif
-	mov		R0,#0
-.clipping_ok_pas_X_negatif:
-	cmp		R0,#384							; 416-32
-	blt		.clipping_ok_pas_X_sup_416
-	mov		R0,#384
-	
-
-.clipping_ok_pas_X_sup_416:
-	str 	r0,[r10],#4
+	add	R0,R0,#160-8
+	str r0,[r10],#4
 
 
 ;---
@@ -1780,33 +1528,15 @@ boucle_divisions_calcpoints:
 	rsb r0,r0,#0
 
 .contplus1:
-
 ; stock Y projeté
-
-	adds	R0,R0,#129						; centrage vertical
-	adds	R0,R0,R4						; + deplacement objet Y
-
-	cmp		R0,#-32
-	bge		.clipping_ok_pas_Y_negatif
-	mov		R0,#-32
-.clipping_ok_pas_Y_negatif:
-	mov		R5,#258							; 258 lignes de hauteur d'ecran
-	cmp		R0,R5
-	blt		.clipping_ok_pas_Y_sup_258
-	;swi		BKP
-	mov		R0,R5
-	
-
-.clipping_ok_pas_Y_sup_258:
-
-	
-	str 	r0,[r10],#4					; stock Y projeté
+	add	R0,R0,#128-8
+	str r0,[r10],#4
 	
 ; stock Z pour tri
 	str 	R13,[r10],#4
 	
-	;ldr		R0,save_numero_sprite
-	str		R1,[r10],#4				; stock numéro de sprite
+	ldr		R0,save_numero_sprite
+	str		R0,[r10],#4				; stock numéro de sprite
 	
 
 ; boucle
@@ -1822,7 +1552,7 @@ boucle_divisions_calcpoints:
 
 pointeur_en_cours_liste_points:		.long 0	
 nb_points_en_cours:		.long 0
-distance_z:				.long 0x400
+distance_z:				.long 0x600
 
 save_numero_sprite:		.long 0
 save_R14:	
@@ -1835,8 +1565,16 @@ matrice:
 numero_objet:
 	.long 0
 
+angleX:			.long 0
+angleY:			.long 0
+angleZ:			.long 0
+incrementX:		.long 0
+incrementY:		.long 0
+incrementZ:		.long 2
 
-
+X_objet_en_cours:		.long 0
+Y_objet_en_cours:		.long 0
+Z_objet_en_cours:		.long 0
 
 
 all_objects:	
@@ -1879,8 +1617,8 @@ bsort_loop:                     ;// Start loop
 	STRGT   R9,[R10,R2,LSL #4]   ;// If R4 > R5, store current value at next
     STRGT   R8,[R10,R3,LSL #4]   ;// If R4 > R5, Store next value at current
 	
-	LDRGT   R8,[R12,R2,LSL #4]	; n° sprite 1
-	LDRGT   R9,[R12,R3,LSL #4]	; n° sprite 2
+	LDRGT   R8,[R12,R2,LSL #4]	; Z1
+	LDRGT   R9,[R12,R3,LSL #4]	; Z2
 	STRGT   R9,[R12,R2,LSL #4]   ;// If R4 > R5, store current value at next
     STRGT   R8,[R12,R3,LSL #4]   ;// If R4 > R5, Store next value at current
 	
@@ -1896,75 +1634,11 @@ bsort_done:
 
 	mov		pc,lr
 
-
-copie_dans_buffer_calcul_final:
-
-; encodage :
-; 9 bits pour X
-; 9 bits pour Y
-; 4 bits pour n° sprite
-; = 22 bits , reste 10 bits
-
-; X << 13
-; Y << 4
-; X peut etre negatif
-; Y ne peut pas etre negatif
-; n° ne peut pas etre negatif
-
-	ldr		R0,nb_points_objet_en_cours
-	
-	ldr		R11,pointeur_coordonnees_projetees					; source
-	ldr		R12,pointeur_actuel_buffer_en_cours_de_calcul		; destination
-	
-	ldr		r13,pointeur_table416
-	
-;		swi		BKP
-.boucle_copie_avec_reduction:
-
-	
-	
-	ldr		R1,[R11],#4				; X projeté écran
-	ldr		R2,[R11],#4				; Y projeté écran
-	add		R11,R11,#4				; on saute le Z
-	ldr		R3,[R11],#4				; n° sprite
-
-; on calcule le position ecran
-	ldr		R2,[r13,R2,asl #2]		; R2=Y * 416
-	adds	R2,R2,R1				; R1 = position mémoire écran : X + 416 * Y
-; valeur maxi : 107 328 : 18 bits
-; il faut garder le bas du X pour choisir le bon décalage de  sprite
-;	mov		R2,R2,asl #2			; 2 bits pour position X 
-
-;	and		R1,R1,#0b11				; on garde la position X sur 4
-;	adds	R2,R2,R1				; on ajoute à la position mémoire
-	mov		R2,R2,asl #4			; + 4 bits pour le n° sprite 
-	adds	R2,R2,R3				; + n° sprite		
-	
-	str		R2,[R12],#4
-; décodage
-; R1 = Y*416 +x << 4 + n° sprite
-; cible : R4=position, R5 = X n° décalage, R6 = n° sprite
-;	and		R6,R2,#0b1111
-;	mov		R2,R2,asr #4
-;	and		R5,R2,#0b11
-;	mov		R4,R2,asr #2
-	
-	
-	
-	subs	R0,R0,#1
-	bgt		.boucle_copie_avec_reduction
-	
-
-	mov		pc,lr
-
-masque_decodage_X:			.long 0b11111111111111111110000000000000
-
 debut_data:
 
 .include "palette.asm"
 
-pointeur_table416:			.long table416
-pointeur_table416negatif:			.long table416negatif
+pointeur_table320:			.long table320
 
 vsync_count:	.long 0
 last_vsync:		.long -1
@@ -1986,795 +1660,554 @@ couleur2:	.long	0x1e1e1e1e
 couleurforce:		.long		0x0F000000
 
 
-pointeur_table_mode97:		.long table_mode97
-table_mode97:
-	.long		14
-; valeur en passant par customvdu
-	.long		0x803FC000
-	.long		0x84048000
-	.long		0x880ec000
-	.long		0x8c0a4000
-	.long		0x903e4000
-	.long		0x943ac000
-	.long		0xa04dc000
-	.long		0xa4008000
-	.long		0xa8094000
-	.long		0xAC094000
-	.long		0xB049C000
-	.long		0xB449C000
-	.long		0xe000000c
-	.long		0x9c400000
-	   
-; valeur module mode 97	
-	.long			0x803FC000
-	.long   	    0x84048000
-    .long           0x880EC000
-    .long           0x8C0A4000
-    .long           0x903E4000
-    .long           0x943AC000
-    .long           0xA8094000
-    .long           0xAC094000
-    .long           0xB049C000
-    .long           0xB449C000
-    .long           0xE000000C
+	.long	0
+	.long	0
+pile_Xavier:
 
 
 SphereAddress:		.long 0
-	.p2align 3
-SavedR13:	.long 0
-SavedR14:	.long 0
-			.long 0
-			.long 0
-			
-plot_boule16x16_position0:
-; on arrive avec R0 = position ecran
-	str 	R13,SavedR13
-	str 	R14,SavedR14
-	
-	ldr		r2,screenaddr1
-	add		R1,R2,R0			; R2=R2+X
-	
-	
-	adr 	R14,Databoule16x16
-	ldmia 	R14!,{R0,R2-R12}
 
-; Line #0
-	ldrb 	R13,[R1,#4]!    ; Pos 4
-	add 	R0,R0,R13
-	ldrb R13,[R1,#7]
-	add R13,R2,R13,lsl#24
-	stmia R1,{R0,R13}
-
-; Line #1
-mov R0,#1
-strb R0,[R1,#416-1]! ; Pos 3
-stmib R1,{R3-R4}
-strb R0,[R1,#9]
-
-; Line #2
-ldr R0,[R1,#416-1]!  ; Pos 2
-add R0,R5,R0,lsr#16
-ldr R13,[R1,#12]
-add R13,R8,R13,lsl#16
-stmia R1,{R0,R6-R7,R13}
-
-; Line #3
-ldrb R0,[R1,#416-2]!   ; Pos 0
-add R0,R9,R0
-ldrb R13,[R1,#15]
-add R13,R12,R13,lsl#24
-stmia R1,{R0,R10-R11,R13}
-
-ldmia R14!,{R0,R2-R4,R5-R8,R9-R12}
-; Line #4
-ldrb R13,[R1,#416]!      ; Pos 0
-add R0,R0,R13
-ldrb R13,[R1,#15]
-add R13,R4,R13,lsl#24
-stmia R1,{R0,R2-R3,R13}
-
-; Line #5
-add R1,R1,#416
-stmia R1,{R5-R8}
-
-; Line #6
-add R1,R1,#416
-stmia R1,{R9-R12}
-
-ldmia R14!,{R0,R2-R4,R5-R8,R9-R12}
-; Line #7
-add R1,R1,#416
-stmia R1,{R0,R2-R4}
-
-; Line #8
-add R1,R1,#416
-stmia R1,{R5-R8}
-
-; Line #9
-add R1,R1,#416
-stmia R1,{R9-R12}
-
-ldmia R14!,{R0,R2-R4,R5-R8,R9-R12}
-; Line #10
-add R1,R1,#416
-stmia R1,{R0,R2-R4}
-
-; Line #11
-ldrb R0,[R1,#416]!  ; Pos 0
-add R0,R5,R0
-ldrb R13,[R1,#15]
-add R13,R8,R13,lsl#24
-stmia R1,{R0,R6-R7,R13}
-
-; Line #12
-ldrb R0,[R1,#416]!  ; Pos 0
-add R0,R9,R0
-ldrb R13,[R1,#15]
-add R13,R12,R13,lsl#24
-stmia R1,{R0,R10-R11,R13}
-
-ldmia R14!,{R0,R2-R4,R5-R6,R7-R8}
-; Line #13
-ldr R13,[R1,#416+2]!  ; Pos 2
-add R0,R0,R13,lsr#16
-ldr R13,[R1,#12]
-add R13,R4,R13,lsl#16
-stmia R1,{R0,R2-R3,R13}
-
-; Line #14
-mov R0,#1
-strb R0,[R1,#416+1]!  ; Pos 3
-stmib R1,{R5-R6}
-mov R0,#9
-strb R0,[R1,#9]
-
-; Line #15
-ldrb R0,[R1,#416+2]!    ; Pos 5
-add R0,R7,R0
-ldrb R13,[R1,#7]
-add R13,R8,R13,lsl#24
-stmia R1,{R0,R13}
-
-
-ldr R13,SavedR13
-ldr pc,SavedR14
-
-		.p2align 3
-Databoule16x16:
-; line #0
-.byte 0, 1, 34, 34       ; r0
-.byte 34, 34, 1, 0       ; r2
-
-; line #1
-.byte 35, 164, 164, 164  ; r3
-.byte 164, 165, 35, 34   ; r4
-
-; line #2
-.byte 0, 0, 34, 165      ; r5
-.byte 198, 198, 198, 198 ; r6
-.byte 199, 164, 165, 35  ; r7
-.byte 34, 1, 0, 0        ; r8
-
-; line #3
-.byte 0, 1, 165, 198     ; r9
-.byte 200, 200, 200, 200 ; r10
-.byte 198, 199, 164, 165 ; r11
-.byte 35, 9, 1, 0        ; r12
-
-; line #4
-.byte 0, 35, 198, 200    ; r0
-.byte 235, 252, 252, 235 ; r2
-.byte 200, 198, 164, 164 ; r3
-.byte 35, 9, 34, 0       ; r4
-
-; line #5
-.byte 9, 165, 198, 200   ; r5
-.byte 252, 253, 253, 252 ; r6
-.byte 200, 198, 164, 164 ; r7
-.byte 165, 9, 35, 1      ; r8
-
-; line #6
-.byte 34, 164, 198, 200   ; r9
-.byte 252, 253, 253, 252 ; r10
-.byte 200, 198, 164, 164 ; r11
-.byte 165, 9, 165, 34    ; r12
-
-; line #7
-.byte 35, 164, 198, 200  ; r0
-.byte 235, 252, 252, 235 ; r2
-.byte 200, 198, 164, 164 ; r3
-.byte 35, 9, 164, 35     ; r4
-
-; line #8
-.byte 35, 164, 199, 198  ; r5
-.byte 200, 200, 200, 200 ; r6
-.byte 198, 199, 164, 165 ; r7
-.byte 34, 9, 199, 35     ; r8
-
-; line #9
-.byte 34, 165, 164, 199  ; r9
-.byte 198, 198, 198, 198 ; r10
-.byte 199, 164, 165, 35  ; r11
-.byte 9, 35, 199, 34     ; r12
-
-; line #10
-.byte 9, 35, 165, 164    ; r0
-.byte 164, 164, 164, 164 ; r2
-.byte 164, 165, 35, 9    ; r3
-.byte 34, 199, 165, 1    ; r4
-
-; line #11
-.byte 0, 34, 35, 165     ; r5
-.byte 165, 165, 165, 165 ; r6
-.byte 165, 35, 9, 34     ; r7
-.byte 165, 199, 35, 0    ; r8
-
-; line #12
-.byte 0, 1, 34, 35       ; r9
-.byte 35, 35, 35, 35     ; r10
-.byte 34, 9, 34, 165     ; r11
-.byte 199, 165, 1, 0     ; r12
-
-; line #13
-.byte 0, 0, 9, 34        ; r0
-.byte 34, 34, 34, 34     ; r2
-.byte 34, 35, 165, 199   ; r3
-.byte 165, 9, 0, 0       ; r4
-
-; line #14
-.byte 34, 34, 35, 35     ; r5
-.byte 165, 164, 164, 34  ; r6
-
-; line #15
-.byte 0, 1, 9, 34        ; r7
-.byte 34, 9, 1, 0        ; r8
-
-.p2align	3
-
-	
 Plot_Violette_Sphere_Pos_0:
 
 	; R0=X
 	; R1=Y
-	str 	R13,SavedR13
-	str 	R14,SavedR14
 
-
+	mov R2,#pile_Xavier
+	str R13,[R2,#-4]
+	str R14,[R2,#-8]
 
 
 	ldr		r2,screenaddr1
 	add		R2,R2,R0			; R2=R2+X
-	ldr		r10,pointeur_table416
+	ldr		r10,pointeur_table320
 	mov		r1,r1,lsl #2		; y * 4
 	ldr		r8,[r10,R1]				; r8=y*320
 	add		r1,r8,r2			; pointeur ecran + y*320
 
 
-; Eric, copy everything from here and make sure it is on a QWA address +8
-
 Code_To_Plot_Violette_Sphere_Pos_0:
+	adr 	R14,VioletteSpehereDataPos0		; Data must be at QWA address +4, checked by BASIC
 
-		adr		R14,VioletteSphereDataPos0
 
-; Code must be at QWA address +8, checked by BASIC
-; Data must be at QWA address +4, checked by BASIC
 
-; lines #0 and #10
-		ldmia R14!,{R2-R4,R5-R12}  ; 11 registers, exits QWA
+; lines #40960
+	ldmia R14!,{R2-R4,R5-R12} ; 11 registers, exits QWA
 ; line #0
-		ldr R0,[R1,#10]!        ; Pos 10  #2*4+2
-		strb R5,[R1,#10]        ; r5b = 1   #-10+5*4
-		add R0,R2,R0,lsr#16
-		stmia R1,{R0,R3-R4}       ; Exits pos R10, unchanged
+	ldr R0,[R1,#10]!     ; Pos 10
+	add R0,R2,R0,lsr#16
+	stmia R1,{R0,R3-R4}       ; Exits pos R10, unchanged
+	strb R5,[R1,#10]   ; r5b = 1
+
 
 ; line #10
-		ldrb R13,[R1,#3221]! 		; Pos 31    #-10+320*(10-0)+31 missed opportunity
-		add R13,R12,R13,lsl#24
-		stmda R1,{R5-R11,R13}    ; exits pos 31,unchanged
+ldrb R13,[R1,#3221]! ; Pos 31
+add R13,R12,R13,lsl#24
+stmda R1,{R5-R11,R13}    ; exits pos 31,unchanged
 
 ; line #9
-		ldmia R14!,{R2,R8-R11}    ; 5 registers, exits QWA + 4
+ldmia R14!,{R2,R8-R11}    ; 5 registers, exits QWA + 4
 ; line #9
 ; r6 is reused
 ; r7 is rused
 ; r12 is reused
 ; line #9
-		ldrb R13,[R1,#-320]!         ; Pos 31   #+320*(9-10)
-		ldrb R0,[R1,#-31]            ; Pos 31, unchanged
-		add R13,R12,R13,lsl#24
-		add R0,R2,R0
-		stmda R1,{R0,R6-R11,R13}
+ldrb R13,[R1,#-320]!         ; Pos 31
+add R13,R12,R13,lsl#24
 
-; lines #24
+
+ldrb R0,[R1,#-31]            ; Pos 31, unchanged
+add R0,R2,R0
+stmda R1,{R0,R6-R12}
+
+; lines #-31
+ldmia R14!,{R2-R8,R9-R12}       ; 11 registers, exits QWA
 ; line #6
-		ldr R0,[R1,#-989]!    ; Pos 2   #-31+320*(6-9)+2
-		ldmia R14!,{R2-R8,R9-R12}       ; 11 registers, exits QWA
-		add R0,R2,R0,lsr#16
-		stmia R1,{R0,R3-R8}            ; Pos R2, unchanged
-; Note 5 at position 6*4 isnt plotted now
+ldr R0,[R1,#-989]!    ; Pos 2
+add R0,R2,R0,lsr#16
+stmia R1,{R0,R3-R8}            ; Pos R2, unchanged
+; Note 5 at position 6*4 isn t plotted now
 
 ; line #1
-		ldrb R0,[R1,#-1594]!  ; Pos 8    #-2+320*(1-6)+2*4
-		add R0,R9,R0
-		stmia R1,{R0,R10-R12}          ; Exits pos R8, unchanged
-		
+ldrb R0,[R1,#-1594]!  ; Pos 8
+add R0,R9,R0
+stmia R1,{R0,R10-R12}          ; Exits pos R8, unchanged
+
 ; lines #-1594
-		ldmia R14!,{R2-R7,R8-R13}       ; 12 registers
+ldmia R14!,{R2-R7,R8-R13}        ; 12 registers
 ; line #3
 ; starts with the end
-		ldr R0,[R1,#658]! ; Pos 26   ; #-8+320*(3-1)+6*4+2
-		add R7,R7,R0,lsl#16
-		ldrb R0,[R1,#-22]        ; Pos 26, unchanged
-		add R0,R2,R0
-		stmda R1,{R0,R3-R7}      ; Missed ldr(b) or str(b)
+ldr R0,[R1,#658]! ; Pos 26
+add R7,R7,R0,lsl#16
+
+ldrb R0,[R1,#-22]        ; Pos 26, unchanged
+add R0,R2,R0
+stmda R1,{R0,R3-R7}
 
 ; line #4
-		ldrb R0,[R1,#321]! ; Pos 27     ; #-26+320*(4-3)+6*4+3
-		add R13,R13,R0,lsl#24
-		stmda R1,{R8-R13}             ; Exits pos 27, unchanged
+ldrb R0,[R1,#321]! ; Pos 27
+add R13,R13,R0,lsl#24
+stmda R1,{R8-R13}             ; Exits pos 27, unchanged
 
 ; pixel 5 at the end of line #5
-; 5 is in 8b lets plot 5 at the beginning of line #5
-		strb R8,[R1,#296]!   ; Pos 3    ; #-27+320*(5-4)+3
+; 5 is in 8b let s plot 5 at the beginning of line #5
+strb R8,[R1,#296]!   ; Pos 3
 
 ; Plot 5 also at pos 24 on line #2
-		strb R8,[R1,#-939]    ; #-3+320*(2-5)+6*4
-; can be used for the missed opportunity above by changing offset value
+strb R8,[R1,#-939]
 
 ; lines #-939
-		ldmia R14!,{R2-R7,R8-R11}        ; 6 + 4 = 10 registers, exits QWA + 8
+ldmia R14!,{R2-R7,R8-R11}        ; 6 + 4 = 10 registers, exits QWA + 8
 ; line #5
-		stmib R1,{R2-R7}              ; Note use of ib to increment 1st
+stmib R1,{R2-R7}              ; Note use of ib to increment 1st
 ; Exits pos R3, unchanged
 ; 5 was alreay plotted
 
 ; line #2
-		strb R10,[R1,#-956]! ; Pos 7  ; #-3+320*(2-5)+1*4+3
+strb R10,[R1,#-956]! ; Pos 7
 ; r10b = 164
-		stmib R1,{R8-R11}             ; Note use of ib to increment 1st
+stmib R1,{R8-R11}             ; Note use of ib to increment 1st
 ; 5 was alreay plotted
 
-		adr		R14,VioletteSphere7
-		
+adr R14,VioletteSpherePos0Line7
 ; Data must be QWA, checked by BASIC
 ; line #7
-		ldmia R14!,{R2-R9}            ; 8 registers, exits QWA
-		ldr R0,[R1,#1595]! ; Pos 2    #-7+(7-2)*320+2
-		add R0,R2,R0,lsr#16
-		ldr R13,[R1,#28]             ; #-2+7*4+2
-		add R13,R9,R13,lsl#16
-		stmia R1,{R0,R3-R8,R13}         ; missed opportunity
+ldmia R14!,{R2-R9}            ; 8 registers, exits QWA
+ldr R0,[R1,#1595]! ; Pos 2
+add R0,R2,R0,lsr#16
+ldr R13,[R1,#28]
+add R13,R9,R13,lsl#16
+stmia R1,{R0,R3-R8,R13}
 
 ; line #8
-		ldmia R14!,{R2-R9}
-		ldrb R0,[R1,#318]! ; Pos 0   #-2+(8-7)*320
-		add R0,R2,R0
-		ldr R13,[R1,#30]          ; #7*4+2
-		add R13,R9,R13,lsl#16
-		stmia R1,{R0,R3-R8,R13}
+ldmia R14!,{R2-R9}
+ldrb R0,[R1,#318]! ; Pos 0
+add R0,R2,R0
+ldr R13,[R1,#30]
+add R13,R9,R13,lsl#16
+stmia R1,{R0,R3-R8,R13}
 
 ; line #11
-		ldmia R14!,{R2-R9}
-		ldrb R13,[R1,#991]! ; Pos 31   #(11-8)*320+7*4+3
-		add R13,R9,R13,lsl#24
-		stmda R1,{R2-R8,R13}
+ldmia R14!,{R2-R9}
+ldrb R13,[R1,#991]! ; Pos 31
+add R13,R9,R13,lsl#24
+stmda R1,{R2-R8,R13}
 
 ; line #12
-		ldmia R14!,{R2-R9}
-		add R1,R1,#320; Pos 31   #320*1  missed opportunity
-		stmda R1,{R2-R9}
+ldmia R14!,{R2-R9}
+add R1,R1,#320; Pos 31
+stmda R1,{R2-R9}
 
 ; line #13
-		ldmia R14!,{R2-R9}
-		add R1,R1,#320; Pos 31     #320*1
-		stmda R1,{R2-R9}        ; missed opportunity
+ldmia R14!,{R2-R9}
+add R1,R1,#320; Pos 31
+stmda R1,{R2-R9}
 
 ; line #14
-		ldmia R14!,{R0,R2,R3,R4-R7,R8-R10,R12-R13}    ; 11 registers, exits QWA +12
-		add R1,R1,#320; Pos 31   #320*1
-		stmda R1,{R0,R2,R4-R7,R12-R13}  ; Pos 31, unchanged
+ldmia R14!,{R0,R2,R3,R4-R7,R8-R10,R12-R13}    ; 11 registers, exits QWA +12
+add R1,R1,#320; Pos 31
+stmda R1,{R0,R2,R4-R7,R12-R13}  ; Pos 31, unchanged
 
 ; line #15
-		add R1,R1,#320; Pos 31      #320*1
-		stmda R1,{R0,R2,R3,R8-R9,R10,R12-R13} ; Pos 31, unchanged
+add R1,R1,#320; Pos 31
+stmda R1,{R0,R2,R3,R8-R9,R10,R12-R13} ; Pos 31, unchanged
 
 ; line #25
-		strb R12,[R1,#3172]!   ; #-31+(25-15)*320+3 Pos 3
-		strb R12,[R1,#25]               ; #-3+7*4 can be used for missed opportunity above with recomputed offset
+strb R12,[R1,#3172]!   ; Pos 3
+strb R12,[R1,#-3]
 ; r12b = 2
-		ldmia R14!,{R0,R2-R6,R7-R9,R10-R13}       ; 13 registers, exits QWA missed opportunity
-		stmib R1,{R0,R2-R6}
+ldmia R14!,{R0,R2-R6,R7-R9,R10-R13}       ; 13 registers, exits QWA
+stmib R1,{R0,R2-R6}
 
 ; line #31
-		ldr R0,[R1,#1927]!       ; Pos 10 missed opportunity  #-3+(31-25)*320+2*4+2
-		add R0,R7,R0,lsr#16
-		strb R10,[R1,#10]        ; #-10+5*4
+ldr R0,[R1,#1927]! ; Pos 10
+add R0,R7,R0,lsr#16
+stmia R1,{R0,R8-R9}
+strb R10,[R1,#10]
 ; r10b = 1
-		stmia R1,{R0,R8-R9}
 
 ; line #30
-		ldrb R0,[R1,#-307]!      ; Pos 23       #-10+(30-31)*320+5*4+3
-		add R13,R13,R0,lsl#24
-		stmda R1,{R10-R13}        ; missed opportunity
+ldrb R0,[R1,#-307]! ; Pos 23
+add R13,R13,R0,lsl#24
+stmda R1,{R10-R13}
 
-; line #29
-		strb R10,[R1,#-336]!     ; Pos 7      #-23+(29-30)*320+1*4+3
+strb R10,[R1,#-336]! ; Pos 7
 ; r10b = 1
-		ldmia R14!,{R0,R2-R4,R5-R12}
-		stmib R1,{R0,R2-R4}
-		strb R0,[R1,#17]
+; line #29
+ldmia R14!,{R0,R2-R4,R5-R12}
+stmib R1,{R0,R2-R4}
+strb R0,[R1,#17]
 ; r0b = 2
 
 ; line #24
-		ldr R0,[R1,#-1605]!      ; Pos 2    #-7+(24-29)*320+2
-		add R0,R5,R0,lsr#16
-		ldr R13,[R1,#28]         ; #-2+7*4+2
-		add R13,R12,R13,lsl#16; missed opportunity
-		stmia R1,{R0,R6-R11,R13}
+ldr R0,[R1,#-1605]! ; Pos 2
+add R0,R5,R0,lsr#16
+ldr R13,[R1,#28]
+add R13,R12,R13,lsl#16
+stmia R1,{R0,R6-R11,R13}
 
-		ldmia R14!,{R0,R2-R8}
+ldmia R14!,{R0,R2-R8}
 ; line #16
-		sub R1,R1,#2560; Pos 2
-		stmia R1,{R0,R2-R8}        ; missed opportunity
+sub R1,R1,#2560; Pos 2
+stmia R1,{R0,R2-R8}
 
-		ldmia R14!,{R0,R2-R8}
+ldmia R14!,{R0,R2-R8}
 ; line #17
-		add R1,R1,#320; Pos 2
-		stmia R1,{R0,R2-R8}
+add R1,R1,#320; Pos 2
+stmia R1,{R0,R2-R8}
 
-		ldmia R14!,{R0,R2-R8}      ; missed opportunity
+ldmia R14!,{R0,R2-R8}
 ; line #18
-		add R1,R1,#320; Pos 2
-		stmia R1,{R0,R2-R8}
+add R1,R1,#320; Pos 2
+stmia R1,{R0,R2-R8}
 
-		ldmia R14!,{R0,R2-R8}
+ldmia R14!,{R0,R2-R8}
 ; line #19
-		add R1,R1,#320; Pos 2  missed opportunity
-		stmia R1,{R0,R2-R8}
+add R1,R1,#320; Pos 2
+stmia R1,{R0,R2-R8}
 
 ldmia R14!,{R0,R2-R8}
 ; line #20
-		add R1,R1,#320; Pos 2
-		stmia R1,{R0,R2-R8}
+add R1,R1,#320; Pos 2
+stmia R1,{R0,R2-R8}
 
+ldmia R14!,{R0,R2-R8}
 ; line #21
-		ldrb R13,[R1,#349]!      ; Pos 31     #-2+(21-20)*320+7*4+3
-		ldmia R14!,{R0,R2-R8}
-		add R13,R8,R13,lsl#24
-		stmda R1,{R0,R2-R7,R13}
+ldrb R13,[R1,#349]! ; Pos 31
+add R13,R8,R13,lsl#24
+stmda R1,{R0,R2-R7,R13}
 
+ldmia R14!,{R2,R3-R9}
 ; line #22
-		ldrb R0,[R1,#289]!       ; Pos 0    #-31+(22-21)*320
-		ldmia R14!,{R2,R3-R9}
-		add R0,R2,R0
-		ldrb R13,[R1,#31]        ; #7*4+3
-		add R13,R9,R13,lsl#24; missed opportunity
-		stmia R1,{R0,R3-R8,R13}     
+ldrb R0,[R1,#289]! ; Pos 0
+add R0,R2,R0
+ldrb R13,[R1,#31]
+add R13,R9,R13,lsl#24
+stmia R1,{R0,R3-R8,R13}
 
-		ldmia R14!,{R2,R3-R9}
+ldmia R14!,{R2,R3-R9}
 ; line #23
-		ldr R0,[R1,#322]!        ; Pos 2 #(23-22)*320+2
-		ldr R13,[R1,#28]         ;  #-2+7*4+2
-		add R0,R2,R0,lsr#16
-		add R13,R9,R13,lsl#16
-		stmia R1,{R0,R3-R8,R13}
+ldr R0,[R1,#322]! ; Pos 2
+add R0,R2,R0,lsr#16
+ldrb R13,[R1,#28]
+add R13,R9,R13,lsl#16
+stmia R1,{R0,R3-R8,R13}
 
-		ldmia R14!,{R0,R2-R6,R7-R12} ; 12 registers  missed opportunity
+ldmia R14!,{R0,R2-R6,R7-R12}    ; 12 registers
 ; line #26
-		add R1,R1,#960; Pos 2
-		stmib R1,{R0,R2-R6}
+add R1,R1,#960; Pos 2
+stmib R1,{R0,R2-R6}
 
 ; line #27
-		ldrb R0,[R1,#322]!       ; Pos 4   #(27-26)*320-2+1*4
-		ldrb R13,[R1,#23]        ; #-4+6*4+3
-		add R0,R7,R0
-		add R13,R12,R13,lsl#24
-		stmia R1,{R0,R8-R11,R13}    
+ldrb R0,[R1,#322]! ; Pos 4
+add R0,R7,R0
+ldrb R13,[R1,#23]
+add R13,R12,R13,lsl#24
+stmia R1,{R0,R8-R11,R13}
 
+ldmia R14!,{R2-R7}
 ; line #28
-		ldr R0,[R1,#322]!        ; #(28-27)*320-4+1*4+2 Pos 6
-		ldmia R14!,{R2-R7}        
-		add R0,R2,R0,lsr#16
-		ldr R13,[R1,#20]
-		add R13,R7,R13,lsl#16; missed opportunity
-		stmia R1,{R0,R3-R6,R13}
-; sortie
-		ldr R13,SavedR13
-		ldr pc,SavedR14
+ldr R0,[R1,#322]! ; Pos 6
+add R0,R2,R0,lsr#16
+ldr R13,[R1,#20]
+add R13,R7,R13,lsl#16
+stmia R1,{R0,R3-R6,R13}
 
-		.p2align 4
+mov R0,#pile_Xavier
+ldr R13,[R0,#-4]
+ldr pc,[R0,#-8]
 
-VioletteSphereDataPos0:   ; Data must be at QWA address +4, checked by BASIC
+.p2align	8
+
+VioletteSpehereDataPos0:   ; Data must be at QWA address +4, checked by BASIC
 ; 3 registers for line #0
-        .byte    0, 0, 1, 2             ; r2
-        .byte    131, 164, 164, 164     ; r3
-        .byte    164, 131, 2, 5         ; r4
+.byte 0, 0, 1, 2             ; r2
+.byte 131, 164, 164, 164     ; r3
+.byte 164, 131, 2, 5         ; r4
 
 ; 8 registers for line #10
-        .byte    1, 164, 215, 219       ; r5
-        .byte    219, 253, 254, 254     ; r6
-        .byte    255, 255, 254, 254     ; r7
-        .byte    253, 219, 253, 215     ; r8
-        .byte    216, 215, 186, 182     ; r9
-        .byte    169, 182, 169, 131     ; r10
-        .byte    164, 164, 131, 2       ; r11
-        .byte    5, 5, 1, 0             ; r12
+.byte 1, 164, 215, 219       ; r5
+.byte 219, 253, 254, 254     ; r6
+.byte 255, 255, 254, 254     ; r7
+.byte 253, 219, 253, 215     ; r8
+.byte 216, 215, 186, 182     ; r9
+.byte 169, 182, 169, 131     ; r10
+.byte 164, 164, 131, 2       ; r11
+.byte 5, 5, 1, 0             ; r12
 
 ; 5 registers for line #10
-        .byte    0, 2, 182, 219      ; r2
-        .byte    253, 219, 219, 215  ; r8
-        .byte    186, 215, 182, 169  ; r9
-        .byte    182, 169, 164, 164  ; r10
-        .byte    169, 164, 131, 12   ; r11
+.byte 0, 2, 182, 219      ; r2
+.byte 253, 219, 219, 215  ; r8
+.byte 186, 215, 182, 169  ; r9
+.byte 182, 169, 164, 164  ; r10
+.byte 169, 164, 131, 12   ; r11
 
 ; 7 registers for line #6
-        .byte    0, 0, 1, 164        ; r2
-        .byte    216, 219, 219, 253  ; r3
-        .byte    253, 253, 253, 219  ; r4
-        .byte    216, 215, 186, 182  ; r5
-        .byte    182, 169, 169, 164  ; r6
-        .byte    164, 131, 131, 164  ; r7
-        .byte    131, 131, 12, 5     ; r8
+.byte 0, 0, 1, 164        ; r2
+.byte 216, 219, 219, 253  ; r3
+.byte 253, 253, 253, 219  ; r4
+.byte 216, 215, 186, 182  ; r5
+.byte 182, 169, 169, 164  ; r6
+.byte 164, 131, 131, 164  ; r7
+.byte 131, 131, 12, 5     ; r8
 
 ; 4 registers for line #1
-        .byte    0, 164, 182, 215    ; r9
-        .byte    216, 216, 215, 182  ; r10
-        .byte    169, 169, 164, 131  ; r11
-        .byte    2, 5, 5, 1          ; r12
+.byte 0, 164, 182, 215    ; r9
+.byte 216, 216, 215, 182  ; r10
+.byte 169, 169, 164, 131  ; r11
+.byte 2, 5, 5, 1          ; r12
 
 ; lines #1
 ; 2-R7, 8-13 12 registers
 ; 6 registers for line #3
-        .byte    0, 5, 169, 216       ; r2
-        .byte    219, 216, 215, 182   ; r3
-        .byte    182, 182, 169, 169   ; r4
-        .byte    164, 164, 164, 131   ; r5
-        .byte    12, 2, 2, 5          ; r6
-        .byte    5, 5, 0, 0           ; r7
+.byte 0, 5, 169, 216       ; r2
+.byte 219, 216, 215, 182   ; r3
+.byte 182, 182, 169, 169   ; r4
+.byte 164, 164, 164, 131   ; r5
+.byte 12, 2, 2, 5          ; r6
+.byte 5, 5, 0, 0           ; r7
 
 ; 6 registers for line #4
-        .byte    5, 169, 216, 219     ; r8
-        .byte    216, 215, 215, 215   ; r9
-        .byte    186, 182, 182, 169   ; r10
-        .byte    169, 164, 164, 164   ; r11
-        .byte    131, 12, 2, 12       ; r12
-        .byte    12, 5, 5, 0          ; r13
+.byte 5, 169, 216, 219    ; r8
+.byte 216, 215, 215, 215   ; r9
+.byte 186, 182, 182, 169   ; r10
+.byte 169, 164, 164, 164   ; r11
+.byte 131, 12, 2, 12       ; r12
+.byte 12, 5, 5, 0          ; r13
 
 ; 6 registers for line #5
-        .byte    169, 216, 219, 219  ; r2
-        .byte    219, 219, 219, 216  ; r3
-        .byte    215, 186, 182, 182  ; r4
-        .byte    169, 169, 164, 164  ; r5
-        .byte    164, 131, 12, 131   ; r6
-        .byte    131, 12, 5, 5       ; r7
+.byte 169, 216, 219, 219  ; r2
+.byte 219, 219, 219, 216  ; r3
+.byte 215, 186, 182, 182  ; r4
+.byte 169, 169, 164, 164  ; r5
+.byte 164, 131, 12, 131   ; r6
+.byte 131, 12, 5, 5       ; r7
 
 ; 4 registers for line #2
-        .byte    186, 219, 216, 216  ; r8
-        .byte    215, 182, 169, 164  ; r9
-        .byte    164, 164, 131, 131  ; r10
-        .byte    2, 2, 5, 5          ; r11
+.byte 186, 219, 216, 216  ; r8
+.byte 215, 182, 169, 164  ; r9
+.byte 164, 164, 131, 131  ; r10
+.byte 2, 2, 5, 5          ; r11
 
-	.p2align 4
-VioletteSphere7:	       ; Must be QWA, checked by BASIC
+VioletteSpherePos0Line7:       ; Must be QWA, checked by BASIC
 ; 8 registers for line #7
-        .byte    0, 0, 2, 186        ; r2
-        .byte    219, 219, 253, 253  ; r3
-        .byte    254, 254, 253, 253  ; r4
-        .byte    219, 216, 215, 186  ; r5
-        .byte    182, 182, 169, 169  ; r6
-        .byte    164, 164, 131, 169  ; r7
-        .byte    164, 131, 131, 2    ; r8
-        .byte    5, 1, 0, 0          ; r9
+.byte 0, 0, 2, 186        ; r2
+.byte 219, 219, 253, 253  ; r3
+.byte 254, 254, 253, 253  ; r4
+.byte 219, 216, 215, 186  ; r5
+.byte 182, 182, 169, 169  ; r6
+.byte 164, 164, 131, 169  ; r7
+.byte 164, 131, 131, 2    ; r8
+.byte 5, 1, 0, 0          ; r9
 
 ; line #8
 ; 8 registers for line #8
-        .byte    0, 1, 164, 219      ; r2
-        .byte    219, 253, 253, 254  ; r3
-        .byte    254, 254, 254, 253  ; r4
-        .byte    253, 219, 216, 215  ; r5
-        .byte    182, 186, 182, 182  ; r6
-        .byte    164, 169, 131, 169  ; r7
-        .byte    164, 164, 131, 12   ; r8
-        .byte    5, 5, 0, 0          ; r9
+.byte 0, 1, 164, 219      ; r2
+.byte 219, 253, 253, 254  ; r3
+.byte 254, 254, 254, 253  ; r4
+.byte 253, 219, 216, 215  ; r5
+.byte 182, 186, 182, 182  ; r6
+.byte 164, 169, 131, 169  ; r7
+.byte 164, 164, 131, 12   ; r8
+.byte 5, 5, 0, 0          ; r9
 
 ; line #11
 ; 8 registers for line #11
-        .byte    5, 169, 215, 219       ; r2
-        .byte    219, 253, 253, 254     ; r3
-        .byte    254, 254, 254, 253     ; r4
-        .byte    253, 219, 253, 215     ; r5
-        .byte    216, 215, 186, 182     ; r6
-        .byte    169, 169, 169, 164     ; r7
-        .byte    131, 131, 2, 2         ; r8
-        .byte    5, 2, 5, 0             ; r9
+.byte 5, 169, 215, 219       ; r2
+.byte 219, 253, 253, 254     ; r3
+.byte 254, 254, 254, 253     ; r4
+.byte 253, 219, 253, 215     ; r5
+.byte 216, 215, 186, 182     ; r6
+.byte 169, 169, 169, 164     ; r7
+.byte 131, 131, 2, 2         ; r8
+.byte 5, 2, 5, 0             ; r9
 
 ; line #12
 ; 8 registers for line #12
-        .byte    2, 182, 215, 219       ; r2
-        .byte    219, 219, 253, 253     ; r3
-        .byte    254, 254, 253, 253     ; r4
-        .byte    219, 253, 219, 216     ; r5
-        .byte    215, 215, 186, 182     ; r6
-        .byte    169, 169, 164, 131     ; r7
-        .byte    131, 12, 5, 2          ; r8
-        .byte    5, 2, 2, 1             ; r9
+.byte 2, 182, 215, 219       ; r2
+.byte 219, 219, 253, 253     ; r3
+.byte 254, 254, 253, 253     ; r4
+.byte 219, 253, 219, 216     ; r5
+.byte 215, 215, 186, 182     ; r6
+.byte 169, 169, 164, 131     ; r7
+.byte 131, 12, 5, 2          ; r8
+.byte 5, 2, 2, 1             ; r9
 
 ; line #13
 ; 8 registers for line #13
-        .byte    131, 186, 215, 219     ; r2
-        .byte    219, 219, 219, 253     ; r3
-        .byte    253, 253, 253, 219     ; r4
-        .byte    253, 219, 216, 215     ; r5
-        .byte    215, 186, 182, 169     ; r6
-        .byte    169, 164, 131, 131     ; r7
-        .byte    12, 2, 5, 5            ; r8
-        .byte    5, 2, 131, 5           ; r9
+.byte 131, 186, 215, 219     ; r2
+.byte 219, 219, 219, 253     ; r3
+.byte 253, 253, 253, 219     ; r4
+.byte 253, 219, 216, 215     ; r5
+.byte 215, 186, 182, 169     ; r6
+.byte 169, 164, 131, 131     ; r7
+.byte 12, 2, 5, 5            ; r8
+.byte 5, 2, 131, 5           ; r9
 
 ; line #14
 ; 8 registers for line #14
-        .byte    164, 186, 215, 219     ; r0
-        .byte    219, 216, 219, 219     ; r2
+.byte 164, 186, 215, 219     ; r0
+.byte 219, 216, 219, 219     ; r2
 
-        .byte    219, 219, 219, 219     ; r3 for line #15
+.byte 219, 219, 219, 219     ; r3 for line #15
 
-        .byte    253, 253, 253, 253     ; r4
-        .byte    219, 216, 215, 219     ; r5
-        .byte    186, 182, 169, 164     ; r6
-        .byte    164, 131, 131, 12      ; r7
+.byte 253, 253, 253, 253     ; r4
+.byte 219, 216, 215, 219     ; r5
+.byte 186, 182, 169, 164     ; r6
+.byte 164, 131, 131, 12      ; r7
 
-        .byte    216, 215, 219, 186     ; r8 for line #15
-        .byte    182, 169, 164, 131     ; r9 for line #15
+.byte 216, 215, 219, 186     ; r8 for line #15
+.byte 182, 169, 164, 131     ; r9 for line #15
 
-        .byte    131, 131, 12, 2        ; r10 for line #15
+.byte 131, 131, 12, 2        ; r10 for line #15
 
-        .byte    2, 5, 5, 5             ; r12
-        .byte    5, 2, 164, 2           ; r13
+.byte 2, 5, 5, 5             ; r12
+.byte 5, 2, 164, 2           ; r13
 
 ; line #15
 ; see above
 
 ; line #15
-        .byte    169, 182, 164, 164     ; r0
-        .byte    164, 164, 131, 12      ; r2
-        .byte    164, 131, 12, 12       ; r3
-        .byte    131, 131, 12, 2        ; r4
-        .byte    12, 131, 164, 169      ; r5
-        .byte    182, 215, 253, 215     ; r6
+.byte 169, 182, 164, 164     ; r0
+.byte 164, 164, 131, 12      ; r2
+.byte 164, 131, 12, 12       ; r3
+.byte 131, 131, 12, 2        ; r4
+.byte 12, 131, 164, 169      ; r5
+.byte 182, 215, 253, 215     ; r6
 
 ; line #15
-        .byte    0, 0, 1, 1             ; r7
-        .byte    5, 5, 2, 2             ; r8
-        .byte    2, 2, 5, 5             ; r9
+.byte 0, 0, 1, 1             ; r7
+.byte 5, 5, 2, 2             ; r8
+.byte 2, 2, 5, 5             ; r9
 
 ; line #15
-        .byte    1, 5, 2, 2             ; r10
-        .byte    2, 2, 2, 12            ; r11
-        .byte    131, 131, 164, 164     ; r12
-        .byte    164, 131, 2, 0         ; r13
+.byte 1, 5, 2, 2             ; r10
+.byte 2, 2, 2, 12            ; r11
+.byte 131, 131, 164, 164     ; r12
+.byte 164, 131, 2, 0         ; r13
 
 ; line #15
-        .byte    2, 164, 164, 131       ; r0
-        .byte    12, 2, 5, 5            ; r2
-        .byte    2, 2, 131, 164         ; r3
-        .byte    169, 169, 169, 164     ; r4
+.byte 2, 164, 164, 131       ; r0
+.byte 12, 2, 5, 5            ; r2
+.byte 2, 2, 131, 164         ; r3
+.byte 169, 169, 169, 164     ; r4
 
 ; line #15
-        .byte    0, 0, 5, 164           ; r5
-        .byte    182, 169, 164, 164     ; r6
-        .byte    164, 164, 131, 131     ; r7
-        .byte    169, 164, 131, 131     ; r8
-        .byte    12, 2, 131, 12         ; r9
-        .byte    2, 2, 131, 131         ; r10
-        .byte    164, 169, 215, 219     ; r11
-        .byte    169, 1, 0, 0           ; r12
+.byte 0, 0, 5, 164           ; r5
+.byte 182, 169, 164, 164     ; r6
+.byte 164, 164, 131, 131     ; r7
+.byte 169, 164, 131, 131     ; r8
+.byte 12, 2, 131, 12         ; r9
+.byte 2, 2, 131, 131         ; r10
+.byte 164, 169, 215, 219     ; r11
+.byte 169, 1, 0, 0           ; r12
 
 ; line #15
-        .byte    164, 186, 215, 216     ; r0
-        .byte    219, 216, 186, 215     ; r2
-        .byte    215, 215, 215, 215     ; r3
-        .byte    215, 186, 182, 182     ; r4
-        .byte    169, 164, 131, 131     ; r5
-        .byte    164, 169, 169, 131     ; r6
-        .byte    12, 2, 5, 5            ; r7
-        .byte    2, 2, 169, 2           ; r8
+.byte 164, 186, 215, 216     ; r0
+.byte 219, 216, 186, 215     ; r2
+.byte 215, 215, 215, 215     ; r3
+.byte 215, 186, 182, 182     ; r4
+.byte 169, 164, 131, 131     ; r5
+.byte 164, 169, 169, 131     ; r6
+.byte 12, 2, 5, 5            ; r7
+.byte 2, 2, 169, 2           ; r8
 
 ; line #15
-        .byte    164, 186, 215, 215     ; r0
-        .byte    219, 216, 186, 182     ; r2
-        .byte    186, 215, 215, 186     ; r3
-        .byte    182, 182, 182, 169     ; r4
-        .byte    164, 131, 131, 164     ; r5
-        .byte    169, 164, 164, 164     ; r6
-        .byte    131, 12, 2, 5          ; r7
-        .byte    2, 131, 169, 2         ; r8
+.byte 164, 186, 215, 215     ; r0
+.byte 219, 216, 186, 182     ; r2
+.byte 186, 215, 215, 186     ; r3
+.byte 182, 182, 182, 169     ; r4
+.byte 164, 131, 131, 164     ; r5
+.byte 169, 164, 164, 164     ; r6
+.byte 131, 12, 2, 5          ; r7
+.byte 2, 131, 169, 2         ; r8
 
 ; line #15
-        .byte    131, 182, 215, 215     ; r0
-        .byte    216, 219, 215, 186     ; r2
-        .byte    182, 182, 182, 182     ; r3
-        .byte    186, 169, 182, 169     ; r4
-        .byte    164, 131, 164, 169     ; r5
-        .byte    164, 131, 2, 5         ; r6
-        .byte    5, 5, 5, 5             ; r7
-        .byte    2, 164, 169, 2         ; r8
+.byte 131, 182, 215, 215     ; r0
+.byte 216, 219, 215, 186     ; r2
+.byte 182, 182, 182, 182     ; r3
+.byte 186, 169, 182, 169     ; r4
+.byte 164, 131, 164, 169     ; r5
+.byte 164, 131, 2, 5         ; r6
+.byte 5, 5, 5, 5             ; r7
+.byte 2, 164, 169, 2         ; r8
 
 ; line #15
-        .byte    2, 169, 215, 215       ; r0
-        .byte    215, 216, 219, 215     ; r2
-        .byte    186, 182, 182, 186     ; r3
-        .byte    182, 169, 169, 182     ; r4
-        .byte    182, 169, 169, 164     ; r5
-        .byte    131, 2, 5, 5           ; r6
-        .byte    5, 5, 5, 2             ; r7
-        .byte    131, 169, 169, 5       ; r8
+.byte 2, 169, 215, 215       ; r0
+.byte 215, 216, 219, 215     ; r2
+.byte 186, 182, 182, 186     ; r3
+.byte 182, 169, 169, 182     ; r4
+.byte 182, 169, 169, 164     ; r5
+.byte 131, 2, 5, 5           ; r6
+.byte 5, 5, 5, 2             ; r7
+.byte 131, 169, 169, 5       ; r8
 
 ; line #15
-        .byte    5, 164, 215, 215       ; r0
-        .byte    215, 215, 216, 216     ; r2
-        .byte    216, 215, 186, 182     ; r3
-        .byte    169, 169, 164, 164     ; r4
-        .byte    164, 164, 131, 164     ; r5
-        .byte    2, 5, 5, 5             ; r6
-        .byte    5, 5, 5, 2             ; r7
-        .byte    164, 182, 164, 1       ; r8
+.byte 5, 164, 215, 215       ; r0
+.byte 215, 215, 216, 216     ; r2
+.byte 216, 215, 186, 182     ; r3
+.byte 169, 169, 164, 164     ; r4
+.byte 164, 164, 131, 164     ; r5
+.byte 2, 5, 5, 5             ; r6
+.byte 5, 5, 5, 2             ; r7
+.byte 164, 182, 164, 1       ; r8
 
 ; line #15
-        .byte    1, 131, 182, 215       ; r0
-        .byte    215, 215, 215, 182     ; r2
-        .byte    169, 169, 169, 169     ; r3
-        .byte    182, 164, 164, 164     ; r4
-        .byte    164, 131, 12, 164      ; r5
-        .byte    2, 5, 5, 5             ; r6
-        .byte    5, 2, 2, 131           ; r7
-        .byte    169, 182, 2, 0         ; r8
+.byte 1, 131, 182, 215       ; r0
+.byte 215, 215, 215, 182     ; r2
+.byte 169, 169, 169, 169     ; r3
+.byte 182, 164, 164, 164     ; r4
+.byte 164, 131, 12, 164      ; r5
+.byte 2, 5, 5, 5             ; r6
+.byte 5, 2, 2, 131           ; r7
+.byte 169, 182, 2, 0         ; r8
 
 ; line #15
-        .byte    0, 5, 169, 215         ; r2
-        .byte    215, 182, 182, 169     ; r3
-        .byte    164, 164, 164, 164     ; r4
-        .byte    169, 182, 164, 131     ; r5
-        .byte    131, 12, 2, 131        ; r6
-        .byte    2, 2, 5, 5             ; r7
-        .byte    2, 12, 131, 169        ; r8
-        .byte    215, 182, 1, 0         ; r9
+.byte 0, 5, 169, 215         ; r2
+.byte 215, 182, 182, 169     ; r3
+.byte 164, 164, 164, 164     ; r4
+.byte 169, 182, 164, 131     ; r5
+.byte 131, 12, 2, 131        ; r6
+.byte 2, 2, 5, 5             ; r7
+.byte 2, 12, 131, 169        ; r8
+.byte 215, 182, 1, 0         ; r9
 
 ; line #15
-        .byte    0, 0, 131, 182         ; r2
-        .byte    215, 169, 169, 164     ; r3
-        .byte    164, 131, 131, 164     ; r4
-        .byte    164, 169, 169, 164     ; r5
-        .byte    12, 2, 2, 2            ; r6
-        .byte    12, 2, 2, 2            ; r7
-        .byte    131, 164, 169, 215     ; r8
-        .byte    216, 131, 0, 0         ; r9
+.byte 0, 0, 131, 182         ; r2
+.byte 215, 169, 169, 164     ; r3
+.byte 164, 131, 131, 164     ; r4
+.byte 164, 169, 169, 164     ; r5
+.byte 12, 2, 2, 2            ; r6
+.byte 12, 2, 2, 2            ; r7
+.byte 131, 164, 169, 215     ; r8
+.byte 216, 131, 0, 0         ; r9
 
 ; line #15
-        .byte    2, 169, 169, 164       ; r0
-        .byte    164, 131, 12, 2        ; r2
-        .byte    131, 12, 2, 2          ; r3
-        .byte    12, 12, 2, 12          ; r4
-        .byte    131, 164, 169, 182     ; r5
-        .byte    215, 219, 215, 164     ; r6
+.byte 2, 169, 169, 164       ; r0
+.byte 164, 131, 12, 2        ; r2
+.byte 131, 12, 2, 2          ; r3
+.byte 12, 12, 2, 12          ; r4
+.byte 131, 164, 169, 182     ; r5
+.byte 215, 219, 215, 164     ; r6
 
 ; line #15
-        .byte    0, 2, 169, 169         ; r7
-        .byte    164, 131, 2, 2         ; r8
-        .byte    12, 2, 5, 2            ; r9
-        .byte    5, 5, 2, 131           ; r10
-        .byte    164, 169, 182, 215     ; r11
-        .byte    215, 215, 164, 0       ; r12
+.byte 0, 2, 169, 169         ; r7
+.byte 164, 131, 2, 2         ; r8
+.byte 12, 2, 5, 2            ; r9
+.byte 5, 5, 2, 131           ; r10
+.byte 164, 169, 182, 215     ; r11
+.byte 215, 215, 164, 0       ; r12
 
 ; line #15
-        .byte    0, 0, 2, 164           ; r2
-        .byte    169, 164, 131, 12      ; r3
-        .byte    2, 5, 2, 5             ; r4
-        .byte    5, 5, 2, 131           ; r5
-        .byte    164, 169, 182, 182     ; r6
-        .byte    169, 2, 0, 0           ; r7
+.byte 0, 0, 2, 164           ; r2
+.byte 169, 164, 131, 12      ; r3
+.byte 2, 5, 2, 5             ; r4
+.byte 5, 5, 2, 131           ; r5
+.byte 164, 169, 182, 182     ; r6
+.byte 169, 2, 0, 0           ; r7
 
 
 
-.p2align	3
+.p2align	8
 
 
 
@@ -2803,11 +2236,6 @@ anim1:
 		.long		0				;     - pointeur vers data animation, 0 = pas d'anim
 		.long		0				;	  - nombre de points à animer
 		.long		0				;     - nombre d'étapes en frame, 0 = pas d'anim
-; mouvement de l'objet
-		.long		-1	; table_de_mouvement, -1 = pas de mouvement
-		.long		0	; nombre étapes du mouvement
-		.long		-1	; pointeur vers table de mouvement pour repetition, -1 = pas de repetition, mouvement terminé
-		.long		0	; nombre étapes de repetition du mouvement
 
 		.long		-1				;	  - zoom / position observateur en Z
 
@@ -2824,11 +2252,6 @@ anim1:
 		.long		0				;     - pointeur vers data animation, 0 = pas d'anim
 		.long		0				;	  - nombre de points à animer
 		.long		0				;     - nombre d'étapes en frame, 0 = pas d'anim
-; mouvement de l'objet
-		.long		-1	; table_de_mouvement, -1 = pas de mouvement
-		.long		0	; nombre étapes du mouvement
-		.long		-1	; pointeur vers table de mouvement pour repetition, -1 = pas de repetition, mouvement terminé
-		.long		0	; nombre étapes de repetition du mouvement
 
 		.long		-1				;	  - zoom / position observateur en Z
 
@@ -2845,11 +2268,6 @@ anim1:
 		.long		0				;     - pointeur vers data animation, 0 = pas d'anim
 		.long		0				;	  - nombre de points à animer
 		.long		0				;     - nombre d'étapes en frame, 0 = pas d'anim
-; mouvement de l'objet
-		.long		-1	; table_de_mouvement, -1 = pas de mouvement
-		.long		0	; nombre étapes du mouvement
-		.long		-1	; pointeur vers table de mouvement pour repetition, -1 = pas de repetition, mouvement terminé
-		.long		0	; nombre étapes de repetition du mouvement
 
 		.long		-1				;	  - zoom / position observateur en Z
 
@@ -2871,12 +2289,6 @@ anim2:
 		.long		0				;     - pointeur vers data animation, 0 = pas d'anim
 		.long		0				;	  - nombre de points à animer
 		.long		0				;     - nombre d'étapes en frame, 0 = pas d'anim
-; mouvement de l'objet
-		.long		-1	; table_de_mouvement, -1 = pas de mouvement
-		.long		0	; nombre étapes du mouvement
-		.long		-1	; pointeur vers table de mouvement pour repetition, -1 = pas de repetition, mouvement terminé
-		.long		0	; nombre étapes de repetition du mouvement
-
 		
 		.long		0x500			;	  - zoom / position observateur en Z
 
@@ -2893,11 +2305,6 @@ anim2:
 		.long		0				;     - pointeur vers data animation, 0 = pas d'anim
 		.long		0				;	  - nombre de points à animer
 		.long		0				;     - nombre d'étapes en frame, 0 = pas d'anim
-; mouvement de l'objet
-		.long		-1	; table_de_mouvement, -1 = pas de mouvement
-		.long		0	; nombre étapes du mouvement
-		.long		-1	; pointeur vers table de mouvement pour repetition, -1 = pas de repetition, mouvement terminé
-		.long		0	; nombre étapes de repetition du mouvement
 
 		.long		-1				;	  - zoom / position observateur en Z
 
@@ -2914,11 +2321,6 @@ anim2:
 		.long		0				;     - pointeur vers data animation, 0 = pas d'anim
 		.long		0				;	  - nombre de points à animer
 		.long		0				;     - nombre d'étapes en frame, 0 = pas d'anim
-; mouvement de l'objet
-		.long		-1	; table_de_mouvement, -1 = pas de mouvement
-		.long		0	; nombre étapes du mouvement
-		.long		-1	; pointeur vers table de mouvement pour repetition, -1 = pas de repetition, mouvement terminé
-		.long		0	; nombre étapes de repetition du mouvement
 
 		.long		-1				;	  - zoom / position observateur en Z
 
@@ -2935,11 +2337,6 @@ anim2:
 		.long		0				;     - pointeur vers data animation, 0 = pas d'anim
 		.long		0				;	  - nombre de points à animer
 		.long		0				;     - nombre d'étapes en frame, 0 = pas d'anim
-; mouvement de l'objet
-		.long		-1	; table_de_mouvement, -1 = pas de mouvement
-		.long		0	; nombre étapes du mouvement
-		.long		-1	; pointeur vers table de mouvement pour repetition, -1 = pas de repetition, mouvement terminé
-		.long		0	; nombre étapes de repetition du mouvement
 
 		.long		-1				;	  - zoom / position observateur en Z
 
@@ -2948,10 +2345,10 @@ anim2:
 
 anim3:
 		.long		dummy			;     - pointeur vers objet
-		.long		200,0,50			;     - X,Y,Z objet
+		.long		0,0,0			;     - X,Y,Z objet
 		;.long		0,0,0			;     - increment X, increment Y , increment Z
-		.long		3,3,2			;     - increment angle X, increment angle Y , increment angle Z
-		.long		0,0,0			; 	  - angles depart X,Y,Z, non modifié si =-1
+		.long		1,2,2			;     - increment angle X, increment angle Y , increment angle Z
+		.long		128,0,0			; 	  - angles depart X,Y,Z, non modifié si =-1
 		.long		240				; 	  - nb frames rotation classique, 0 = pas de rotation classique
 ; transformation
 		.long		0				;	  - coordonnees objet de destination d'une transformation, 0 = pas de transformation
@@ -2960,18 +2357,12 @@ anim3:
 		.long		coordonnees_points_carre				;     - pointeur vers data animation, 0 = pas d'anim
 		.long		64				;	  - nombre de points à animer
 		.long		40				;     - nombre d'étapes en frame, 0 = pas d'anim
-; mouvement de l'objet
-		.long		-1	; table_de_mouvement, -1 = pas de mouvement
-		.long		0	; nombre étapes du mouvement
-		.long		-1	; pointeur vers table de mouvement pour repetition, -1 = pas de repetition, mouvement terminé
-		.long		0	; nombre étapes de repetition du mouvement
-
-		.long		0x200			;	  - zoom / position observateur en Z
+		.long		0x300			;	  - zoom / position observateur en Z
 		
 		.long		dummy			;     - pointeur vers objet
-		.long		200,0,50			;     - X,Y,Z objet
+		.long		0,0,0			;     - X,Y,Z objet
 		;.long		0,0,0			;     - increment X, increment Y , increment Z
-		.long		-3,-3,-2			;     - increment angle X, increment angle Y , increment angle Z
+		.long		-1,-2,-2			;     - increment angle X, increment angle Y , increment angle Z
 		.long		-1,-1,-1		; 	  - angles depart X,Y,Z, non modifié si =-1
 		.long		240				; 	  - nb frames rotation classique, 0 = pas de rotation classique
 ; transformation
@@ -2981,38 +2372,7 @@ anim3:
 		.long		coordonnees_points_carre				;     - pointeur vers data animation, 0 = pas d'anim
 		.long		64				;	  - nombre de points à animer
 		.long		40				;     - nombre d'étapes en frame, 0 = pas d'anim
-; mouvement de l'objet
-		.long		-1	; table_de_mouvement, -1 = pas de mouvement
-		.long		0	; nombre étapes du mouvement
-		.long		-1	; pointeur vers table de mouvement pour repetition, -1 = pas de repetition, mouvement terminé
-		.long		0	; nombre étapes de repetition du mouvement
-
-		.long		-1			;	  - zoom / position observateur en Z
-
-; ----------------fin de l'anim
-		.long		0
-
-anim4:
-		.long		cube1			;     - pointeur vers objet
-		.long		0,0,0			;     - X,Y,Z objet
-		;.long		0,0,0			;     - increment X, increment Y , increment Z
-		.long		2,2,2			;     - increment angle X, increment angle Y , increment angle Z
-		.long		0,0,0			; 	  - angles depart X,Y,Z, non modifié si =-1
-		.long		256				; 	  - nb frames rotation classique, 0 = pas de rotation classique
-; transformation
-		.long		0				;	  - coordonnees objet de destination d'une transformation, 0 = pas de transformation
-		.long		0				;	  - nombre étapes transformation, 0 = pas de transformation
-; animation
-		.long		0				;     - pointeur vers data animation, 0 = pas d'anim
-		.long		0				;	  - nombre de points à animer
-		.long		0				;     - nombre d'étapes en frame, 0 = pas d'anim
-; mouvement de l'objet
-		.long		table_mouvement_vertical_vers_le_bas	; table_de_mouvement, -1 = pas de mouvement
-		.long		260	; nombre étapes du mouvement
-		.long		-1	; pointeur vers table de mouvement pour repetition, -1 = pas de repetition, mouvement terminé
-		.long		0	; nombre étapes de repetition du mouvement
-
-		.long		0x630			;	  - zoom / position observateur en Z
+		.long		0x300			;	  - zoom / position observateur en Z
 
 ; fin de l'anim
 		.long		0
@@ -3186,56 +2546,32 @@ SINCOS:
         .long   -6392, 32138,-5997, 32214,-5602, 32285,-5205, 32351,-4808, 32413,-4409, 32469,-4011, 32521,-3611, 32568
         .long   -3211, 32610,-2811, 32647,-2410, 32679,-2009, 32706,-1607, 32728,-1206, 32745,-804, 32758,-402, 32765
 
-; tables des mouvements
-; N * X , Y , Z
-
-		.p2align 2
-table_mouvement_vertical_vers_le_bas:
-		.incbin		"descente_verticaleXY100.bin"			; 50 étapes		X,Y,Z
-		.p2align 2
-
-table_mouvement_vertical_vers_le_haut:
-		.incbin		"montee_verticaleXY.bin"				; 50 étapes		X,Y
-		.p2align 2
-
 sprite_boule_violette:
 		.incbin		"sphere16x16pourArchi.bin"
-		.p2align 2
 
 ; structure d'une animation:
 ; X,Y,Z, N° sprite
 ; 64 points, 20 étapes
 coordonnees_points_carre:
 		.include	"RIPPLEDZ_A.DAT"
-
-		.p2align 3
+		.p2align 8
 		
 		
 nom_Rasterman:			.byte		"rm24",0
 nom_QT:					.byte		"qt",0
 nom_module_Rasterman:	.byte		"Rasterman",0
 nom_module_QT:			.byte		"QTMTracker",0
-		.p2align 4
-module97:		.incbin	"97,ffa"
-				.p2align 3
-
+				.balign		8
 ;.section bss,"u"
-table416negatif:
-			.skip		32*4
-table416:	.skip		260*4
-
 coordonnees_transformees:	.space 1024
 coordonnees_projetees:	.space 1024
 index_et_Z_pour_tri:	.space	4*256
-	.p2align 4
 table_increments_pas_transformations:		.space			64*7*4
 ; X,Y,Z,increment pas , tout multiplié par 2^15
-		.p2align 4
+		
 buffer_coordonnees_objet_transformees:		.space			64*4*4
-	.p2align 4
-buffer_calculs_intermediaire:			.skip		300*4*4
+	.p2align 8
 buffer_calcul1:
-		.skip		512*nombre_de_boules_maxi*4
-	.p2align 4
+		.skip		512*64*16
 buffer_calcul2:		
-		.skip		512*nombre_de_boules_maxi*4
+		.skip		512*64*16

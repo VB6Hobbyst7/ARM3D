@@ -1,4 +1,11 @@
 @echo off
-vasmarm_std_win32.exe -L compile.txt -linedebug -m250 -Fbin -opt-adr -o build\test.bin test.asm
+del build\test.bin
+copy vectorball1.asm C:\Users\Eric\projects\ARM3D\ARM3D /Y
+
+rem vasmarm_std_win32.exe -L compile.txt -linedebug -m250 -Fbin -opt-adr -o build\test.bin vectorball1.asm
+vasmarm_std_win32.exe -L compile.txt -linedebug -m250 -Fbin -o build\test.bin vectorball1.asm
+vasmarm_std_win32.exe -L compile.txt -linedebug -m250 -Fbin -o build\320x200.bin 320x200.asm
+
 rem vasmarm_std_win32.exe -L compileelf.txt -m250 -Felf -opt-adr -o build\test.elf test.asm
-if %ERRORLEVEL%==0 copy build\test.bin "C:\Archi\Arculator_V2.0_Windows\hostfs\test,ff8"
+copy build\test.bin "C:\Archi\Arculator_V2.0_Windows\hostfs\test,ff8"
+copy build\320x200.bin "C:\Archi\Arculator_V2.0_Windows\hostfs\320x200,ff8"
