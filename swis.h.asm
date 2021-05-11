@@ -64,4 +64,8 @@
 .equ	RasterMan_ClearKeyBuffer, 	0x47e8a
 .equ	RasterMan_ReadScanAddr,		0x47e8b
 
+; QDebug_Break
 .equ	BKP, 0x44B85
+
+; XOS
+.equ	XOS_ServiceCall,		0x20030
