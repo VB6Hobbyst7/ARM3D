@@ -1,12 +1,16 @@
+; TO DO
 ; !!! faire des sequences d'elements d'animation pour repeter certains mouvements
-
 ; !!!!!   ==============>    faire un scrolling completement dynamique en 3D
-
 ; idées objets : transformation décompte de chiffres, 
-; 
-
 ; reprendre la version du 10/05 des spheres violettes
+; ---> scene avec plusieurs objets
+; partie fixe + partie animée, même objet
 
+
+; DONE
+; ------
+; OK : faire un quick sort
+; OK - faire une table de centrage en fonction de la taille, du n° de sprite
 ; OK :table pour les positions de boules
 ; - OK :  compresser les données : position dans mémoire vidéo <<4 + n° sprite
 ; - OK : Gérer clipping Y<-16 Y>258, X<0 X>416 
@@ -21,6 +25,12 @@
 ; si fin de buffer ET nouveau_buffer pret => on swap
 ; 
 ; 
+
+; 34 secondes 320 spheres avec tri
+; 3 secondes sans le tri
+
+
+
 ; point : X,Y,Z, n° sprite
 ;
 ; objet: 
@@ -64,8 +74,8 @@
 ;	- nb frame animation, une fois à zéro => retour au début des coordonnées des points d'animation
 
 
-.equ	nombre_de_boules_maxi, 64
-.equ	taille_buffer_calculs, 1024*nombre_de_boules_maxi*4
+.equ	nombre_de_boules_maxi, 320
+.equ	taille_buffer_calculs, 256*nombre_de_boules_maxi*4
 
 .equ Screen_Mode, 97
 .equ	IKey_Escape, 0x9d
@@ -100,19 +110,56 @@ main:
 	SWI		0x1E
 
 
-	SWI		0x01
-.byte	"         Please wait, overclocking CPU",0
+;	SWI		0x01
+;.byte	"         Please wait, overclocking CPU",0
 	.p2align 2
 
+; ---------------------------------
 ; gestion de la RAM
-; lecture des infos actuelles
-	mov		R0,#-1
-	mov		R1,#-1
-	SWI		0x400EC			; Wimp_SlotSize 
+; ---------------------------------
 
-	mov		R0,#taille_buffer_calculs*4
+	; essai d'ecriture sans allocation
+;	ldr		R1,fond_de_la_memoire
+;	mov		R0,#0x1234
+;	str		R0,[R1]
+
+
+; lecture des infos actuelles
+
+
+
+	mov		R0,#-1				; New size of current slot
+	mov		R1,#-1				;  	New size of next slot
+	SWI		0x400EC			; Wimp_SlotSize 
+	str		R0,ancienne_taille_alloc_memoire_current_slot
+	
+	;R2 = taille mémoire dispo
+
+	mov		R3,R2
+	ldr		R2,valeur_taille_memoire
+	cmp		R3,R2
+	bge		ok_assez_de_ram
+
+	SWI		0x01
+	.byte	"Not enough memory.",0
+	.p2align 2
+
+
+	MOV R0,#0
+	SWI OS_Exit
+
+
+ok_assez_de_ram:
+	add		R0,R0,R2
 	mov		R1,#-1
 	SWI 	0x400EC			; Wimp_SlotSize 
+
+	ldr		R1,fond_de_la_memoire
+	mov		R0,#0x1234
+	str		R0,[R1]
+
+; ---------------------------------
+
 
 	mov		R1,#0			; stop color flashing
 	mov		R0,#9
@@ -130,6 +177,7 @@ main:
 
 ; --------------- début init des  calculs --------------------------
 boucle_lecture_animations:
+
 
 ; tracage1
 	mov		R12,#etape_en_cours
@@ -362,6 +410,10 @@ pas_de_transformation:
 
 
 boucle_calcul_frames_classiques:
+	SWI		0x01
+	.byte	".  ",0
+	.p2align 2
+
 
 ; gestion du mouvement de l'objet en entier
 ; 
@@ -540,7 +592,9 @@ boucle_calcul_frames_classiques:
 	mov		R13,#11
 	str		R13,[R12]
 	
-	bl		bubblesort_XYZ
+;	bl		bubblesort_XYZ
+;	bl		quick_sort
+	bl		quick_sort2
 
 ; tracage	
 	mov		R12,#etape_en_cours
@@ -840,7 +894,7 @@ boucle:
 exit:
 
 ;-----------------------
-;sortie
+;sortie finale
 ;-----------------------
 
 
@@ -860,19 +914,25 @@ exit:
 
 	MOV r0,#22	;Set MODE
 	SWI OS_WriteC
-	MOV r0,#Screen_Mode
+	MOV r0,#12
 	SWI OS_WriteC
 
 
-; rmkill RM24
-;	mov		R1,#nom_module_Rasterman
-;	mov		R0,#04
-;	swi		OS_Module
+; rmkill module mode97
+	mov		R1,#nom_mode97
+	mov		R0,#04
+	swi		OS_Module
 
 ; rmkill QT
 ;	mov		R1,#nom_module_QT
 ;	mov		R0,#04
 ;	swi		OS_Module
+
+	ldr		R0,ancienne_taille_alloc_memoire_current_slot 	; New size of current slot
+	mov		R1,#-1											;  	New size of next slot
+	SWI		0x400EC											; Wimp_SlotSize 
+	str		R0,ancienne_taille_alloc_memoire_current_slot
+
 
 	
 	MOV R0,#0
@@ -886,6 +946,15 @@ valeur_ecran_forcee1:			.long	((416*160)+129) * 16
 valeur_ecran_forcee2:			.long	((416*180)+130) * 16
 valeur_ecran_forcee3:			.long	((416*200)+131) * 16
 
+valeur_taille_memoire:		.long ((taille_buffer_calculs*2))
+ancienne_taille_alloc_memoire_current_slot:			.long 0
+
+nom_mode97:				.byte		"mode97",0		
+;nom_Rasterman:			.byte		"rm24",0
+;nom_QT:					.byte		"qt",0
+;nom_module_Rasterman:	.byte		"Rasterman",0
+;nom_module_QT:			.byte		"QTMTracker",0
+		.p2align 4
 
 ;--------------------------------------------------------------------
 ;    VBL
@@ -1151,7 +1220,7 @@ set_palette:
 
 	mov		r11,#0x00000000
 	mov   	r0,#0x3400000 
-	mov		R2,#16			; 16 couleurs
+	mov		R2,#15			; 16 couleurs
 	
 .boucle_palette:
 
@@ -1418,7 +1487,7 @@ nb_points_objet_en_cours_objet_classique:		.long	8
 nb_points_objet_en_cours_objet_anime:		.long	8
 
 ; animedz
-pointeur_position_dans_les_animations:		.long	anim3
+pointeur_position_dans_les_animations:		.long	anim1
 
 nb_frames_rotation_classique:				.long 0
 nb_frames_total_calcul:						.long 0
@@ -1706,20 +1775,23 @@ boucle_calc_points:
 ; calculs des divisons X/Z et Y/Z
 ;----------------------------------------------------------
 
-	ldr r9,pointeur_coordonnees_transformees
-	ldr r8,nb_points_objet_en_cours			; r8=nb points
-	ldr r10,pointeur_coordonnees_projetees_actuel
+	ldr 	r9,pointeur_coordonnees_transformees
+	ldr 	r8,nb_points_objet_en_cours			; r8=nb points
+	ldr 	r10,pointeur_coordonnees_projetees_actuel
 
 	ldr		R2,position_objet_sur_ecran_X
 	ldr		R4,position_objet_sur_ecran_Y
 	
-; unsued : R7 R10 R14
+	ldr		R7,pointeur_table_centrage_sprites
+	
+; unsued :   R14
 boucle_divisions_calcpoints:
 	
 	ldr 	r11,[r9],#4			; X point
 	ldr 	r12,[r9],#4			; Y point
 	ldr 	r13,[r9],#4			; Z point
 	ldr		R1,[r9],#4			; n° sprite
+	mov		R14,R1,asl #3					; numero de sprite * 8 
 	;str		R0,save_numero_sprite
 
 ; si r11 négatif , 
@@ -1796,7 +1868,14 @@ boucle_divisions_calcpoints:
 .contplus:
 ; stock X projeté
 
-	adds	R0,R0,#208						; centrage horizontal
+
+	adds	R0,R0,#208						; centrage horizontal par rapport à l'écran
+	
+
+	
+	ldr		R3,[R7,R14]				; centrage horizontal en fonction de la taille du sprite
+	adds	R0,R0,R3
+	
 	adds	R0,R0,R2						; + deplacement objet X
 	cmp		R0,#0
 	bge	.clipping_ok_pas_X_negatif
@@ -1869,6 +1948,12 @@ boucle_divisions_calcpoints:
 ; stock Y projeté
 
 	adds	R0,R0,#129						; centrage vertical
+	
+	add		R7,R7,#4					; on passe à Y
+	ldr		R3,[R7,R14]				; centrage vertical Y en fonction de la taille du sprite
+	sub		R7,R7,#4					; on rebascule sur X
+	adds	R0,R0,R3	
+	
 	adds	R0,R0,R4						; + deplacement objet Y
 
 	cmp		R0,#-32
@@ -1920,7 +2005,7 @@ matrice:
 numero_objet:
 	.long 0
 
-
+pointeur_table_centrage_sprites:		.long		table_centrage_sprites
 
 
 
@@ -1932,7 +2017,7 @@ pointeur_SINCOS:		.long SINCOS
 
 
 bubblesort_XYZ:
-; X Y Z => 3 * 4 = 12 octets
+; X Y Z n0 sprite=> 4 * 4 = 16 octets
 	ldr		R11,pointeur_coordonnees_projetees			; R11 = X
 	add		R10,R11,#4							; R10 = Y
 	add		R0,R10,#4							; R0 = Z
@@ -2006,12 +2091,13 @@ copie_dans_buffer_calcul_final:
 ;		swi		BKP
 .boucle_copie_avec_reduction:
 
+	ldmia	R11!,{R1-R4}
 	
 	
-	ldr		R1,[R11],#4				; X projeté écran
-	ldr		R2,[R11],#4				; Y projeté écran
-	add		R11,R11,#4				; on saute le Z
-	ldr		R3,[R11],#4				; n° sprite
+;	ldr		R1,[R11],#4				; X projeté écran
+;	ldr		R2,[R11],#4				; Y projeté écran
+;	add		R11,R11,#4				; on saute le Z
+;	ldr		R4,[R11],#4				; n° sprite
 
 ; on calcule le position ecran
 	ldr		R2,[r13,R2,asl #2]		; R2=Y * 416
@@ -2023,7 +2109,7 @@ copie_dans_buffer_calcul_final:
 ;	and		R1,R1,#0b11				; on garde la position X sur 4
 ;	adds	R2,R2,R1				; on ajoute à la position mémoire
 	mov		R2,R2,asl #4			; + 4 bits pour le n° sprite 
-	adds	R2,R2,R3				; + n° sprite		
+	adds	R2,R2,R4				; + n° sprite		
 	
 	str		R2,[R12],#4
 ; décodage
@@ -2041,6 +2127,296 @@ copie_dans_buffer_calcul_final:
 	
 
 	mov		pc,lr
+
+pointeur_pile_quick_sort:		.long	pile_quick_sort
+
+; ------------------------------------------------------------
+;
+; QUICK SORT
+;
+; ------------------------------------------------------------
+
+
+quick_sort:
+
+
+; X Y Z n0 sprite=> 4 * 4 = 16 octets
+	ldr		R10,pointeur_coordonnees_projetees			; R10 = X
+	add		R11,R10,#4							; R11 = Y
+	add		R12,R11,#4							; R12	= Z
+	;add		R13,R12,#4							; R13 = n° sprite
+	
+	ldr		R1,nb_points_objet_en_cours
+	
+	ldr		R13,pointeur_pile_quick_sort
+
+qsort:
+; push de tous les registres
+	;SWI		BKP
+	stmdb	R13!,{R0-R12,LR}
+	
+	MOV     R4,R12               ;// R4 = Array Location ( Z )
+	MOV     R5,R1               ;// R5 - Array Size
+	CMP     R5,#1               ;// Check for an array of size <= 1
+    BLE     qsort_done          ;// If array size <= 1, return
+	
+	CMP     R5,#2               ;// Check for an array of size == 2
+	BEQ     qsort_check         ;// If array size == 2, check values
+	
+qsort_partition:
+	mov		R2,R5,lsr #1		 ;// R2 = The middle element index , R1 / 2
+	LDR     R6,[R4]             ;// R6 = Beginning of array value
+	LDR     R7,[R4,R2,LSL #4]   ;// R7 = Middle of array value, *16 car X Y Z N°sprite = 16 octets
+	SUB     R8,R5,#1             ;// R8 = Upper array bound index (len -1 1)
+	LDR     R8,[R4,R8,LSL #4]   ;// R8 = End of the array value , *16 car X Y Z N°sprite = 16 octets
+	
+	CMP     R6,R7                ;// Sort the values
+	MOVGT   R9,R6				 ;// echange R6 et R7
+    MOVGT   R6,R7
+    MOVGT   R7,R9
+	
+	CMP     R7,R8
+    MOVGT   R9,R7				 ;// echange R7 et R8
+    MOVGT   R7,R8
+    MOVGT   R8,R9
+	
+	CMP     R6,R7
+    MOVGT   R9,R6				 ;// echange R6 et R7 
+    MOVGT   R6,R7
+    MOVGT   R7,R9
+	
+	MOV     R6,R7                ;// R6 = Pivot
+	MOV     R7,#0                ;// R7 = Lower array bounds index
+	SUB     R8,R5,#1             ;// R8 = Upper array bounds index (len - 1)
+
+qsort_loop:
+	LDR     R0,[R4,R7,LSL #4]   ;// R0 = Lower value, Z, *16 car X Y Z N°sprite = 16 octets
+	LDR     R1,[R4,R8,LSL #4]   ;// R1 = Upper value , Z
+	CMP     R0,R6               ;// Compare lower value to pivot
+	BEQ     qsort_loop_u        ;// If == pivot, do nothing
+	ADDLT   R7,R7,#1            ;// If < pivot, increment lower index
+	STRGE   R0,[R4,R8,LSL #4]  ; // If > pivot, swap values
+	STRGE   R1,[R4,R7,LSL #4]
+; X
+	sub		R10,R4,#8			; position Z - 8 = X
+	LDRGE	R0,[R10,R7,LSL #4]	; X1
+	LDRGE	R1,[R10,R8,LSL #4]	; X2
+	STRGE   R0,[R10,R8,LSL #4]	; X1
+	STRGE   R1,[R10,R7,LSL #4]	; X2
+; Y
+	add		R10,R10,#4			; passe à position Y
+	LDRGE	R0,[R10,R7,LSL #4]	; Y1
+	LDRGE	R1,[R10,R8,LSL #4]	; Y2
+	STRGE   R0,[R10,R8,LSL #4]	; Y1
+	STRGE   R1,[R10,R7,LSL #4]	; Y2
+; n° sprite
+	add		R10,R10,#8			; passe à position n°sprite
+	LDRGE	R0,[R10,R7,LSL #4]	; n° 1
+	LDRGE	R1,[R10,R8,LSL #4]	; n°2
+	STRGE   R0,[R10,R8,LSL #4]	; n°1
+	STRGE   R1,[R10,R7,LSL #4]	; n°2
+
+	SUBGE   R8,R8,#1            ; // if > pivot, decrement upper index
+	CMP     R7,R8               ; // if indexes are the same, recurse
+	BEQ     qsort_recurse
+	LDR     R0,[R4,R7,LSL #4]  ; // R0 = Lower value
+	LDR     R1,[R4,R8,LSL #4]  ; // R1 = Upper value
+
+qsort_loop_u:
+	CMP     R1,R6               ; // Compare upper value to pivot
+	SUBGT   R8,R8,#1            ; // if > pivot, decrement upper index
+	STRLE   R0,[R4,R8,LSL #4]  ; // If < pivot, swap values
+	STRLE   R1,[R4,R7,LSL #4]
+
+; X
+	sub		R10,R4,#8			; position Z - 8 = X
+	LDRLE	R0,[R10,R7,LSL #4]	; X1
+	LDRLE	R1,[R10,R8,LSL #4]	; X2
+	STRLE   R0,[R10,R8,LSL #4]	; X1
+	STRLE   R1,[R10,R7,LSL #4]	; X2
+; Y
+	add		R10,R10,#4			; passe à position Y
+	LDRLE	R0,[R10,R7,LSL #4]	; Y1
+	LDRLE	R1,[R10,R8,LSL #4]	; Y2
+	STRLE   R0,[R10,R8,LSL #4]	; Y1
+	STRLE   R1,[R10,R7,LSL #4]	; Y2
+; n° sprite
+	add		R10,R10,#8			; passe à position n°sprite
+	LDRLE	R0,[R10,R7,LSL #4]	; n° 1
+	LDRLE	R1,[R10,R8,LSL #4]	; n°2
+	STRLE   R0,[R10,R8,LSL #4]	; n°1
+	STRLE   R1,[R10,R7,LSL #4]	; n°2	
+	
+	
+	ADDLE   R7,R7,#1			; // if < pivot, increment lower index
+	CMP     R7,R8               ; // if indexes are the same, recurse
+	BEQ     qsort_recurse
+	B       qsort_loop          ; // Continue loop
+	
+qsort_recurse:
+	MOV     R12,R4              ; // R0 = Location of the first bucket
+	MOV     R1,R7               ; // R1 = Length of the first bucket
+	BL      qsort               ; // Sort first bucket
+	ADD     R8,R8,#1            ; // R8 = 1 index past final index
+	CMP     R8,R5               ; // Compare final index to original length
+	BGE     qsort_done          ; // If equal, return
+	ADD     R12,R4,R8,LSL #4    ; // R0 = Location of the second bucket , *16 car X Y Z N°sprite = 16 octets
+	SUB     R1,R5,R8            ; // R1 = Length of the second bucket
+	BL      qsort               ; // Sort second bucket
+	B       qsort_done          ; // return
+	
+qsort_check:
+	LDR     R0,[R4]             ; // Load first value into R0
+	LDR     R1,[R4,#16]          ; // Load second value into R1
+	CMP     R0,R1               ; // Compare R0 and R1
+	BLE     qsort_done          ; // If R1 <= R0, then we are done
+	
+	STR     R1,[R4]             ; // Otherwise, swap values
+	STR     R0,[R4,#16]          ; //  *16 car X Y Z N°sprite = 16 octets
+; X
+	sub		R10,R4,#8			; position Z - 8 = X
+	LDR		R0,[R10]			; X1
+	LDR		R1,[R10,#16]		; X2
+	STR	    R1,[R10]	; X1
+	STR	    R0,[R10, #16]	; X2
+; Y
+	add		R10,R10,#4			; passe à position Y
+	LDR		R0,[R10]			; X1
+	LDR		R1,[R10,#16]		; X2
+	STR	    R1,[R10]	; X1
+	STR	    R0,[R10, #16]	; X2
+; n° sprite
+	add		R10,R10,#8			; passe à position n°sprite
+	LDR		R0,[R10]			; X1
+	LDR		R1,[R10,#16]		; X2
+	STR	    R1,[R10]	; X1
+	STR	    R0,[R10, #16]	; X2
+
+
+
+qsort_done:
+
+; pop de tous les registres
+	ldmia	R13!,{R0-R12,PC}
+
+; ------------------------------------------------------------
+;
+; QUICK SORT 2eme version
+;
+; ------------------------------------------------------------
+
+
+	
+
+quick_sort2:
+
+;  qsort:  @ Takes three parameters:
+
+; R0 = pointeur vers le tableau de valeurs
+; R1 = 0
+; R2 = nb elements
+
+		ldr		sp,pointeur_pile_quick_sort
+
+		ldr		R0,pointeur_coordonnees_projetees
+		add		R0,R0,#8			; pointe sur Z
+
+		mov		R1,#0				; on commence à 0
+		ldr		R2,nb_points_objet_en_cours
+
+; dispos : R8 R9 R10 R11 R12 
+
+qsort2_qsort:
+;        @   a:     Pointer to base of array a to be sorted (arrives in r0)
+;        @   left:  First of the range of indexes to sort (arrives in r1)
+;        @   right: One past last of range of indexes to sort (arrives in r2)
+;        @ This function destroys: r1, r2, r3, r5, r7
+
+        stmfd   sp!, {r4, r6, lr}     ; @ Save r4 and r6 for caller
+        mov     r6, r2                ; @ r6 <- right
+
+qsort2_qsort_tailcall_entry:
+        sub     r7, r6, r1            ; @ If right - left <= 1 (already sorted),
+        cmp     r7, #1
+        ldmlefd sp!, {r4, r6, pc}     ; @ Return, restoring r4 and r6
+
+        ldr     r7, [r0, r1, asl #4]  ; @ r7 <- a[left], gets pivot element   	Z
+		
+        add     r2, r1, #1            ; @ l <- left + 1
+        mov     r4, r6                ; @ r <- right
+		
+		
+qsort2_partition_loop:
+        ldr     r3, [r0, r2, asl #4]  ; @ r3 <- a[l]							Z
+
+        cmp     r3, r7                ; @ If a[l] <= pivot_element,
+        addge   r2, r2, #1            ; @ ... increment l, and
+        bge     qsort2_partition_test        ; @ ... continue to next iteration.
+
+        sub     r4, r4, #1            ; @ Otherwise, decrement r,
+        ldr     r5, [r0, r4, asl #4]  ; @ ... and swap a[l] and a[r].
+        str     r5, [r0, r2, asl #4]
+        str     r3, [r0, r4, asl #4]
+		
+; X
+		sub		R12,R0,#8				; position en X
+		ldr     r3, [r12, r2, asl #4]		; X1
+		ldr     r5, [r12, r4, asl #4]		; X2
+		str     r5, [r12, r2, asl #4]
+		str     r3, [r12, r4, asl #4]
+; Y
+		add		R12,R12,#4				; position en Y
+		ldr     r3, [r12, r2, asl #4]		; Y1
+		ldr     r5, [r12, r4, asl #4]		; Y2
+		str     r5, [r12, r2, asl #4]
+		str     r3, [r12, r4, asl #4]
+; n° sprite
+		add		R12,R12,#8				; position en n° sprite
+		ldr     r3, [r12, r2, asl #4]		; 1
+		ldr     r5, [r12, r4, asl #4]		; 2
+		str     r5, [r12, r2, asl #4]
+		str     r3, [r12, r4, asl #4]
+		
+		
+
+qsort2_partition_test:
+        cmp     r2, r4                ; @ If l < r,
+        blt     qsort2_partition_loop        ; @ ... continue iterating.
+
+qsort2_partition_finish:
+        sub     r2, r2, #1            ; @ Decrement l
+        ldr     r3, [r0, r2, asl #4]  ; @ Swap a[l] and pivot
+        str     r3, [r0, r1, asl #4]
+        str     r7, [r0, r2, asl #4]
+
+; X
+		sub		R12,R0,#8				; position en X		
+		ldr     r3, [r12, r2, asl #4]		; X1
+		ldr     r5, [r12, r1, asl #4]		; X2
+		str     r5, [r12, r2, asl #4]
+		str     r3, [r12, r1, asl #4]
+; Y
+		add		R12,R12,#4				; position en Y
+		ldr     r3, [r12, r2, asl #4]		; Y1
+		ldr     r5, [r12, r1, asl #4]		; Y2
+		str     r5, [r12, r2, asl #4]
+		str     r3, [r12, r1, asl #4]
+; n° sprite
+		add		R12,R12,#8				; position en n° sprite
+		ldr     r3, [r12, r2, asl #4]		; 1
+		ldr     r5, [r12, r1, asl #4]		; 2
+		str     r5, [r12, r2, asl #4]
+		str     r3, [r12, r1, asl #4]		
+		
+		
+        bl      qsort2_qsort                ;@ Call self recursively on left part,
+                                      ;@  with args a (r0), left (r1), r (r2),
+                                      ;@  also preserves r4 and r6
+        mov     r1, r4
+        b       qsort2_qsort_tailcall_entry  ; @ Tail-call self on right part,
+                                      ; @  with args a (r0), l (r1), right (r6)
+
+
 
 masque_decodage_X:			.long 0b11111111111111111110000000000000
 
@@ -3088,12 +3464,12 @@ data_pos3v2:				   ; Eric Data must be quadword aligned ( checked by BASIC )
 ;	  - zoom / position observateur en Z
 
 anim1:
-		.long		cube			;     - pointeur vers objet
-		.long		0,0,0			;     - X,Y,Z objet
+		.long		objet128	;     - pointeur vers objet
+		.long		0,-150,0			;     - X,Y,Z objet
 		;.long		0,0,0			;     - increment X, increment Y , increment Z
-		.long		0,2,2			;     - increment angle X, increment angle Y , increment angle Z
-		.long		0,0,0			; 	  - angles depart X,Y,Z, non modifié si =-1
-		.long		256				; 	  - nb frames rotation classique, 0 = pas de rotation classique
+		.long		0,4,4			;     - increment angle X, increment angle Y , increment angle Z
+		.long		40,0,0			; 	  - angles depart X,Y,Z, non modifié si =-1
+		.long		128				; 	  - nb frames rotation classique, 0 = pas de rotation classique
 ; transformation
 		.long		0				;	  - coordonnees objet de destination d'une transformation, 0 = pas de transformation
 		.long		0				;	  - nombre étapes transformation, 0 = pas de transformation
@@ -3107,8 +3483,8 @@ anim1:
 		.long		-1	; pointeur vers table de mouvement pour repetition, -1 = pas de repetition, mouvement terminé
 		.long		0	; nombre étapes de repetition du mouvement
 
-		.long		-1				;	  - zoom / position observateur en Z
-		
+		.long		0x200				;	  - zoom / position observateur en Z
+		.long		0
 		
 		
 		.long		cube			;     - pointeur vers objet
@@ -3252,10 +3628,10 @@ anim3:
 		;.long		0,0,0			;     - increment X, increment Y , increment Z
 		.long		3,3,2			;     - increment angle X, increment angle Y , increment angle Z
 		.long		0,0,0			; 	  - angles depart X,Y,Z, non modifié si =-1
-		.long		256				; 	  - nb frames rotation classique, 0 = pas de rotation classique
+		.long		128				; 	  - nb frames rotation classique, 0 = pas de rotation classique
 ; transformation
-		.long		coordonnees_points_carre				;	  - coordonnees objet de destination d'une transformation, 0 = pas de transformation
-		.long		256				;	  - nombre étapes transformation, 0 = pas de transformation
+		.long		coordonnees_tube64				;	  - coordonnees objet de destination d'une transformation, 0 = pas de transformation
+		.long		128				;	  - nombre étapes transformation, 0 = pas de transformation
 ; animation
 		.long		0				;     - pointeur vers data animation, 0 = pas d'anim
 		.long		0				;	  - nombre de points à animer
@@ -3267,7 +3643,7 @@ anim3:
 		.long		0	; nombre étapes de repetition du mouvement
 
 		.long		0x200			;	  - zoom / position observateur en Z
-
+		.long 		0
 
 ; etape 2
 		.long		dummy			;     - pointeur vers objet
@@ -3354,6 +3730,13 @@ dummy:
 	.long	0
 	.long	0
 
+objet128:
+	.long	coords_128
+	.long	320
+	.long	0
+	.long	0
+	
+
 cube:
 	.long	coords_cube				; pointeur coordonnées points
 	.long	32						; nb points			
@@ -3379,7 +3762,7 @@ objet_64points_unique:
 	.long	0
 objet_sphere:
 	.long	coordonnees_sphere
-	.long	64
+	.long	128+64
 	.long	0
 	.long	0
 
@@ -3434,6 +3817,21 @@ coords_cube:
 	.long	500,-500,300,0	;7
 	.long	500,500,300,0	;8
 
+coords_128:
+
+	.set y,-240
+	.rept	16
+	.set x,-300
+		.rept	20
+			.long	x
+			.long   0
+			.long   y
+			.long   0
+			.set x,x+30
+		.endr
+		.set y,y+30
+	.endr
+
 coordonnees_cube1:
 	.long	-500,500,-300,0	;1
 	.long	-500,-500,-300,0	;2
@@ -3460,9 +3858,17 @@ coordonnes_objet_64points_unique:
 	.long	0,00,-800,0			;1
 	.endr
 
-coordonnees_points_carre:		.include	"RIPPLEDZ_A.s"
-coordonnees_sphere:		.include	"sphere.s"
-coordonnees_tube64:		.include	"tube.s"
+coordonnees_points_carre:		
+		.include	"RIPPLEDZ_A.s"
+		.include	"RIPPLEDZ_A.s"
+coordonnees_sphere:		
+		.include	"sphere.s"
+		.include	"tube.s"
+		.include	"RIPPLEDZ_A.s"
+
+coordonnees_tube64:		
+		.include	"tube.s"
+		.include	"sphere.s"
 
 
 save_regs:			.space	4*14
@@ -3559,12 +3965,6 @@ sprite_boule_violette:
 
 		.p2align 3
 		
-		
-nom_Rasterman:			.byte		"rm24",0
-nom_QT:					.byte		"qt",0
-nom_module_Rasterman:	.byte		"Rasterman",0
-nom_module_QT:			.byte		"QTMTracker",0
-		.p2align 4
 module97:		.incbin	"97,ffa"
 				.p2align 3
 
@@ -3573,18 +3973,36 @@ table416negatif:
 			.skip		32*4
 table416:	.skip		260*4
 
-coordonnees_transformees:	.space 1024
-coordonnees_projetees:	.space 1024
-index_et_Z_pour_tri:	.space	4*256
+coordonnees_transformees:	.space nombre_de_boules_maxi*4*4
+coordonnees_projetees:		.space nombre_de_boules_maxi*4*4
+
+
+table_centrage_sprites:
+; 8 octets par taille de sprite, centrage en X , centrage en Y
+; * nombre de sprites
+			
+		.long			-8,-8
+		.rept	15
+		.long			-8,-8
+		.endr
+		
+
+;index_et_Z_pour_tri:	.space	4*256
 	.p2align 4
-table_increments_pas_transformations:		.space			128*7*4
+table_increments_pas_transformations:		.space			nombre_de_boules_maxi*4*4
 ; X,Y,Z,increment pas , tout multiplié par 2^15
 		.p2align 4
-buffer_coordonnees_objet_transformees:		.space			128*4*4
+buffer_coordonnees_objet_transformees:		.space			nombre_de_boules_maxi*4*4
 	.p2align 4
-buffer_calculs_intermediaire:			.skip		300*4*4
+buffer_calculs_intermediaire:			.skip		nombre_de_boules_maxi*4*4
+	.p2align 4
+
+	.skip		14*4*400
+pile_quick_sort:
+
+
 buffer_calcul1:
-		.skip		512*nombre_de_boules_maxi*4
-	.p2align 4
-buffer_calcul2:		
-		.skip		512*nombre_de_boules_maxi*4
+		;.skip		taille_buffer_calculs
+	;.p2align 4
+;buffer_calcul2:		
+;		.skip		taille_buffer_calculs
