@@ -1,0 +1,66 @@
+- lire l'animation
+- 1ere valeur = nombre d'objets de la scene
+->
+ - lire les données d'animation pour remplir/initialiser  les variables pour 1 objet
+ - les copier dans une structure de 40 mots de 4 octets
+<-boucler pour N objets
+
+
+
+
+- lire les données d'animation pour remplir/initialiser  un exemplaire de la structure ci dessous
+- 
+
+
+; structure dynamique d'objet pour effectuer les calculs dessus
+
+;au début : 
+;	- nb_frames_total_calcul=0
+
+; 1 - flag rotation classique objet normal en cours 										: flag_classique_en_cours
+: 1 - pointeur vers objet classique												: pointeur_objet_source_transformation, pointeur_objet_en_cours
+; 1 - pointeur vers les coordonnées de l'objet											: pointeur_points_objet_classique, pointeur_coordonnees_objet_source_transformation										
+; 1 - nb points objet classique													: nb_points_objet_en_cours_objet_classique, nb_points_objet_en_cours, - nb_sprites_en_cours_calcul -
+; 3 - X, Y , Z de l'objet													: position_objet_en_cours_X, position_objet_en_cours_Y , position_objet_en_cours_Z
+; 3 - increments X , Y et Z de l'objet en 3D											: increment_position_X, increment_position_Y, increment_position_Z
+; 3 - angles actuels X , Y , Z de l'objet											: increment_angle_X, increment_angle_Y, increment_angle_Z
+; 3 - increments angles sur axes X, Y , Z											: angleX, angleY, angleZ
+; 1 - nombre frames de rotation classique, initial										: nb_frames_rotation_classique, - nb_frame_en_cours -
+; 1 - nombre frames de rotation classique, en cours
+18
+; -- transformation : se fait de pointeur_table_increments_pas_transformations vers pointeur_buffer_coordonnees_objet_transformees
+; 1 - pointeur vers objet de destination de la transformation									: pointeur_coordonnees_objet_destination_transformation
+; 1 - flag transformation en cours ?												: flag_transformation_en_cours
+; 1 - pointeur vers tableau points actuels ( transformation donc points dynamiques)						: pointeur_buffer_coordonnees_objet_transformees => pointeur_points_objet_en_cours
+; 1 - nb étapes actuel de transformation											: nb_etapes_transformation
+; 1 - numero de l'etape en cours de la transformation										: numero_etape_en_cours_transformation
+5
+; -- animation d'une partie de l'objet
+; 1 - flag animation en cours 													: flag_animation_en_cours
+; 1 - pointeur vers coordonnées actuel animé, initial										: pointeur_vers_coordonnees_points_animation_original
+; 1 - pointeur vers coordonnées actuel animé, actuel										: pointeur_vers_coordonnees_points_animation_en_cours
+; 1 - nombre de points à animer													: nb_points_animation_en_cours_objet_anime, nb_points_objet_en_cours_objet_anime, - nb_sprites_en_cours_calcul -
+; 1 - nb étapes de l'animation, initial												: nb_frame_animation
+; 1 - nb étapes de l'animation, actuel												: nb_frame_animation_en_cours
+6
+; -- mouvement de l'objet en 2D
+; 1 - flag mouvement en cours ?													: flag_mouvement_en_cours
+; 1 - pointeur table de mouvement, initial											: pointeur_debut_mouvement
+; 1 - pointeur table de mouvement, actuel											: pointeur_index_actuel_mouvement
+; 1 - nombre étapes du mouvement, initial											: nombre_etapes_du_mouvement_initial
+; 1 - nombre étapes du mouvement, actuel											: nombre_etapes_du_mouvement_en_cours
+; 1 - flag si repetition du mouvement												: flag_repetition_mouvement_en_cours
+; 1 - pointeur vers table de mouvement pour repetition, initial, -1 = pas de repetition du mouvement				: pointeur_initial_repetition_mouvement
+; 1 - pointeur vers table de mouvement pour repetition, actuel									: pointeur_actuel_repetition_mouvement
+; 1 - nombre étapes du mouvement de répétition, initial										: nombre_etapes_repetition_du_mouvement_initial
+; 1 - nombre étapes du mouvement de répétition, actuel										: nombre_etapes_repetition_du_mouvement_en_cours
+10
+; ---
+; 1 - zoom / position observateur en Z												: distance_z
+1
+
+= 40
+
+
+; nb_frames_total_calcul = nb_frames_rotation_classique + 
+

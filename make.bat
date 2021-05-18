@@ -1,9 +1,9 @@
 @echo off
 del build\test.bin
-copy vectorball1.asm C:\Users\Eric\projects\ARM3D\ARM3D /Y
+copy vectorball2.asm C:\Users\Eric\projects\ARM3D\ARM3D /Y
 
 rem vasmarm_std_win32.exe -L compile.txt -linedebug -m250 -Fbin -opt-adr -o build\test.bin vectorball1.asm
-vasmarm_std_win32.exe -L compile.txt -linedebug -m250 -Fbin -o build\test.bin vectorball1.asm
+vasmarm_std_win32.exe -L compile.txt -linedebug -m250 -Fbin -o build\test.bin vectorball2.asm
 rem vasmarm_std_win32.exe -L compile.txt -linedebug -m250 -Fbin -o build\320x200.bin 320x200.asm
 
 vasmarm_std_win32.exe -L compile.txt -linedebug -m250 -Fbin -o build\fiqrmi.bin fiqRM.asm
