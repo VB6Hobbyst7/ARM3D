@@ -111,6 +111,9 @@ main:
 	subs	r0,r0,#1
 ;	bne		.clsall2
 
+	SWI		22
+	MOVNV R0,R0            
+
 
 	bl		RM_init
 
@@ -152,7 +155,7 @@ exit:
 	MOV r0,#12
 	SWI OS_WriteC
 
-	SWI BKP
+	
 	
 	MOV R0,#0
 	SWI OS_Exit
@@ -160,7 +163,7 @@ toucheclavier:		.long 0
 
 RM_init:
 ; ne fait que verifier la version de Risc OS...
-
+	str		lr,save_lr
 ; get OS version
 	MOV     R0,#129
 	MOV     R1,#0
@@ -172,9 +175,10 @@ RM_init:
 ; Risc os 3.5 ? => sortie
 	CMP     R1,#0xA5
 	beq		exit
-
+	
+	ldr		lr,save_lr
 	mov		pc,lr
-
+save_lr:		.long		0
 
 ; SH decoded IRQ and FIQ masks
 ;
@@ -245,6 +249,7 @@ RM_init:
 ;	
 
 RM_start:
+	str		lr,save_lr
 ; appel XOS car si appel OS_SWI si erreur, ça sort directement
 	MOV		R0,#0x0C           ;claim FIQ
 	SWI		XOS_ServiceCall
@@ -254,7 +259,7 @@ RM_start:
 ; we own FIQs
 
 
-	TEQP	PC,#0x0C000001
+	TEQP	PC,#0xC000001
 ;	TEQP	PC,#0b11<<26 OR 0b01			;disable IRQs and FIQs, change to FIQ mode
 	MOV		R0,R0
 
@@ -331,14 +336,15 @@ RM_start:
 	STR       R1,newIRQfirstinst
 
 ; sortie
-	TEQP      PC,#0b11				; %00<<26 OR %11;enable IRQs and FIQs, change to SVC mode
+	TEQP      PC,#0b11				; %00<<26 OR %11;enable IRQs and FIQs, change to user mode
 	MOV       R0,R0
 	
+	ldr		lr,save_lr
 	mov		pc,lr					;exit in USER mode and with IRQs and FIQs on
 
 
 RM_release:
-
+	str		lr,save_lr
 
 ; we own FIQs
 				  
@@ -365,6 +371,7 @@ RM_release:
 	MOV       R0,#0x0B             ;release FIQ
 	SWI       XOS_ServiceCall
 
+	ldr		lr,save_lr
 	mov		pc,lr					; return USER mode, leave IRQs and FIQs on
 
 RM_wait_VBL:

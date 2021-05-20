@@ -4,10 +4,12 @@
 ; idées objets : transformation décompte de chiffres, avion, ballon dirigeable
 ; reprendre la version du 10/05 des spheres violettes
 ; Interaction entre les objets, Passage hélico ou avion sous arche, Tirs entre hélicos, Explosion par transformation
-; ---> scene avec plusieurs objets : creer structure temporaire objet pour calculs, 
+; rotation autour du point ZERO de l'objet hors observateur
 
 ; DONE
 ; ------
+; OK : utiliser incrementations positions X Y Z de l'objet
+; OK : ---> scene avec plusieurs objets : creer structure temporaire objet pour calculs, 
 ; OK : faire 4 tables de mouvement en code
 ; OK : partie fixe + partie animée, même objet
 ; OK :  faire des sequences d'elements d'animation pour repeter certains mouvements
@@ -169,6 +171,10 @@ ok_assez_de_ram:
 
 	bl 		creer_table_416
 
+
+	SWI		0x01
+	.byte	"---",0
+	.p2align 2
 ; ---------------------------------
 
 	mov		R0,#0
@@ -210,12 +216,7 @@ boucle_lecture_animations:
 	ldr		R1,pointeur_buffer_calculs_intermediaire
 	str		R1,pointeur_buffer_calculs_intermediaire_actuel
 	
-	mov		R1,#0
-	str		R1,flag_transformation_en_cours			; pas de transformation
-	str		R1,flag_animation_en_cours				; pas d'animation
-	str		R1,flag_classique_en_cours				; pas d'objet classique
-	str		R1,flag_mouvement_en_cours
-	str		R1,flag_repetition_mouvement_en_cours
+
 
 	;mov		R0,#debut_data
 	;mov		R3,#pointeur_position_dans_les_animations-debut_data	
@@ -230,6 +231,16 @@ boucle_lecture_animations:
 	beq		sortie_boucle_animations
 	str		R2,nombre_d_objets_de_la_scene_initial					; nombre d'objets de la scene
 	str		R2,nombre_d_objets_de_la_scene_en_cours
+
+
+boucle_preparation_objet_par_objet:
+
+	mov		R2,#0
+	str		R2,flag_transformation_en_cours			; pas de transformation
+	str		R2,flag_animation_en_cours				; pas d'animation
+	str		R2,flag_classique_en_cours				; pas d'objet classique
+	str		R2,flag_mouvement_en_cours
+	str		R2,flag_repetition_mouvement_en_cours
 
 ; sortie si pointeur vers objet = 0
 	ldr		R2,[R1],#4			; R2 = pointeur vers objet
@@ -261,7 +272,7 @@ boucle_lecture_animations:
 .ok_objet_rotation_classique:
 	str		R4,nb_points_objet_en_cours_objet_classique
 ; PB
-	str		R4,nb_sprites_en_cours_calcul
+;	str		R4,nb_sprites_en_cours_calcul
 	str		R4,nb_points_objet_en_cours
 	
 	
@@ -373,7 +384,7 @@ pas_de_transformation:
 	str		R4,nb_points_animation_en_cours_objet_anime
 	str		R4,nb_points_objet_en_cours_objet_anime
 ; PB
-	str		R4,nb_sprites_en_cours_calcul
+;	str		R4,nb_sprites_en_cours_calcul
 	
 	
 	ldr		R4,[R1,#4]			;  - nombre d'étapes en frame, 0 = pas d'anim, on anime pendant N frames
@@ -447,14 +458,27 @@ pas_de_transformation:
 	ldr		R0,nb_frames_rotation_classique
 	str		R0,nb_frame_en_cours
 
+
+	str		R1,saveR1
+	bl		push_sauvegarde_variables_de_l_objet_full
+	ldr		R1,saveR1
+
+
+; ici on boucle sur les objets
+	ldr		R0,nombre_d_objets_de_la_scene_en_cours
+	subs	R0,R0,#1
+	str		R0,nombre_d_objets_de_la_scene_en_cours
+	bgt		boucle_preparation_objet_par_objet
+
+	ldr		R0,nb_frame_en_cours
+
 ; sauvegarde dans les sequences le nombre de frames du calcul
 	ldr		R12,pointeur_actuel_buffer_sequences_calcul
 	str		R0,[R12],#4
 	str		R12,pointeur_actuel_buffer_sequences_calcul
 
 
-	bl		push_sauvegarde_variables_de_l_objet_full
-	
+
 	
 ;-----------------------------------------------------------
 ;
@@ -462,6 +486,9 @@ pas_de_transformation:
 ;
 ;-----------------------------------------------------------
 ; calcul frames rotation classique
+
+
+
 
 
 ; tracage4	
@@ -472,13 +499,44 @@ pas_de_transformation:
 
 boucle_calcul_frames_classiques:
 	SWI		0x01
-	.byte	".  ",0
+	.byte	"/  ",0
 	.p2align 2
 
+; apres la boucle sur les objets, on revient au début de la pile de structures
+; le pointeur vers les variables pour calculer 1 objet	
+
+	ldr		R5,pointeur_buffers_variables_objets_initial
+	str		R5,pointeur_buffers_variables_objets_en_cours
+	
+	ldr		R5,nombre_d_objets_de_la_scene_initial
+	str		R5,nombre_d_objets_de_la_scene_en_cours
+	
+	mov		R4,#0
+	str		R4,nb_points_objet_en_cours_au_total
+
+; on initialize le buffer de destination
+	ldr		R2,pointeur_coordonnees_projetees
+	str		R2,pointeur_coordonnees_projetees_actuel
+
+		
+boucle_execution_objet_par_objet:
+
+	SWI		0x01
+	.byte	"o  ",0
+	.p2align 2
+
+; on charge les variables de l'objet en cours, le pointeur n'est pas avancé
+	bl		pop_sauvegarde_variables_de_l_objet_full
+	
+	
 ; ++++++++++++++++++++++++++++++++++++++++++++++
 ; gestion du mouvement de l'objet en entier
 ; 
 	bl		incrementation_des_angles
+
+	mov		R0,#0
+	str		R0,position_objet_sur_ecran_X
+	str		R0,position_objet_sur_ecran_Y
 
 	ldr		R0,flag_mouvement_en_cours
 	cmp		r0,#0
@@ -561,9 +619,6 @@ boucle_calcul_frames_classiques:
 	ldr		R5,pointeur_buffer_calculs_intermediaire
 	str		R5,pointeur_coordonnees_projetees
 
-; on initialize le buffer de destination
-	ldr		R2,pointeur_coordonnees_projetees
-	str		R2,pointeur_coordonnees_projetees_actuel
 
 
 	; on appelle calc3D pour calculer une frame
@@ -664,12 +719,29 @@ ok_points_objet_classique_ou_transforme:
 
 
 .pas_d_animation_dans_la_boucle_de_calcul_principale:
-	
+
+	ldr		R4,nb_points_objet_en_cours_au_total
+
 	ldr		R2,nb_points_objet_en_cours_objet_classique
 	ldr		R3,nb_points_objet_en_cours_objet_anime
 	add		R2,R2,R3										; nombre total de points
-	str		R2,nb_points_objet_en_cours_au_total
+	add		R4,R4,R2
+	str		R4,nb_points_objet_en_cours_au_total
+	str		R4,nb_sprites_en_cours_calcul
+	str		R2,nb_points_un_seul_objet
 	
+
+
+; on met à jour les variables dans la structure des objets, le pointeur sur les structures est incrémenté
+	bl		push_sauvegarde_variables_de_l_objet_full
+	
+
+	ldr		R0,nombre_d_objets_de_la_scene_en_cours
+	subs	R0,R0,#1
+	str		R0,nombre_d_objets_de_la_scene_en_cours
+	bgt		boucle_execution_objet_par_objet
+
+; il faut trier après calcul de tous les points
 ; tracage	
 	mov		R12,#etape_en_cours
 	mov		R13,#11
@@ -678,7 +750,7 @@ ok_points_objet_classique_ou_transforme:
 ;	bl		bubblesort_XYZ
 ;	bl		quick_sort
 	bl		quick_sort2
-
+	
 ; tracage	
 	mov		R12,#etape_en_cours
 	mov		R13,#12
@@ -698,7 +770,7 @@ ok_points_objet_classique_ou_transforme:
 	ldr		R1,nb_points_objet_en_cours_au_total
 ;	add		R2,R2,R1,asl #4			; + nb points * 16
 	add		R2,R2,R1,asl #2			; + nb points * 4
-	str		R2,pointeur_actuel_buffer_en_cours_de_calcul
+	str		R2,pointeur_actuel_buffer_en_cours_de_calcul	
 
 
 	
@@ -707,13 +779,12 @@ ok_points_objet_classique_ou_transforme:
 	str		R0,nb_frame_en_cours
 	cmp		R0,#0
 	bgt		boucle_calcul_frames_classiques
-; fin de la boucle de calcul
+; fin de la boucle de calcul de N frames
 
 ; tracage	
 	mov		R12,#etape_en_cours
 	mov		R13,#14
 	str		R13,[R12]
-
 
 	ldr		R2,nb_points_objet_en_cours_au_total
 	ldr		R12,pointeur_actuel_buffer_sequences_calcul
@@ -732,7 +803,9 @@ sortie_boucle_animations:
 ;------------------------------------------------------------------------------------------------------------
 ;------------------------------------------------------------------------------------------------------------
 ;------------------------------------------------------------------------------------------------------------
-
+	SWI		0x01
+	.byte	"+++",0
+	.p2align 2
 	
 ; on swappe calcul et affichage
 	ldr		R1,pointeur_buffer_en_cours_d_affichage
@@ -1127,7 +1200,7 @@ pop_sauvegarde_variables_de_l_objet_partiel:
 	str		R5,flag_mouvement_en_cours
 	str		R6,nb_frame_animation_en_cours
 	str		R7,pointeur_vers_coordonnees_points_animation_en_cours
-	str		R8,nb_frame_en_cours
+;	str		R8,nb_frame_en_cours
 	
 	mov		pc,lr
 
@@ -1234,7 +1307,7 @@ pop_sauvegarde_variables_de_l_objet_full:
 	str		R0,angleX
 	str		R1,angleY
 	str		R2,angleZ
-	str		R3,nb_frame_en_cours
+;	str		R3,nb_frame_en_cours
 	str		R4,pointeur_coordonnees_objet_destination_transformation
 	str		R5,flag_transformation_en_cours
 	str		R6,pointeur_buffer_coordonnees_objet_transformees
@@ -1260,7 +1333,7 @@ pop_sauvegarde_variables_de_l_objet_full:
 	str		R11,nombre_etapes_repetition_du_mouvement_en_cours
 	str		R12,distance_z
 	
-	str		R13,pointeur_buffers_variables_objets_en_cours
+;	str		R13,pointeur_buffers_variables_objets_en_cours
 	
 	mov		pc,lr
 
@@ -1789,6 +1862,7 @@ pointeur_coordonnees_projetees_actuel:					.long coordonnees_projetees
 pointeur_points_objet_en_cours:		.long	coords_cube
 nb_points_objet_en_cours:			.long	16
 nb_points_objet_en_cours_au_total:			.long	16
+nb_points_un_seul_objet:					.long	0
 nb_points_objet_en_cours_objet_classique:		.long	8
 nb_points_objet_en_cours_objet_anime:		.long	8
 
@@ -1913,6 +1987,23 @@ incrementation_des_angles:
 	add	r1,r1,r12
 	and	r1,r1,r11
 	str	r1,angleZ
+
+	ldr		R1,position_objet_en_cours_X
+	ldr		R12,increment_position_X
+	adds	R1,R1,R12
+	str		R1,position_objet_en_cours_X
+
+	ldr		R1,position_objet_en_cours_Y
+	ldr		R12,increment_position_Y
+	adds	R1,R1,R12
+	str		R1,position_objet_en_cours_Y
+
+	ldr		R1,position_objet_en_cours_Z
+	ldr		R12,increment_position_Z
+	adds	R1,R1,R12
+	str		R1,position_objet_en_cours_Z
+
+
 
 	mov	pc,lr
 
@@ -2292,7 +2383,7 @@ boucle_divisions_calcpoints:
 	mov		R5,#258							; 258 lignes de hauteur d'ecran
 	cmp		R0,R5
 	blt		.clipping_ok_pas_Y_sup_258
-	;swi		BKP
+
 	mov		R0,R5
 	
 
@@ -2416,7 +2507,6 @@ copie_dans_buffer_calcul_final:
 	
 	ldr		r13,pointeur_table416
 	
-;		swi		BKP
 .boucle_copie_avec_reduction:
 
 	ldmia	R11!,{R1-R4}
@@ -2480,7 +2570,6 @@ quick_sort:
 
 qsort:
 ; push de tous les registres
-	;SWI		BKP
 	stmdb	R13!,{R0-R12,LR}
 	
 	MOV     R4,R12               ;// R4 = Array Location ( Z )
@@ -4040,13 +4129,13 @@ anim3:
 		.long		0
 
 anim4:
-		.long		1				; nombre d'objets de la scene
+		.long		2				; nombre d'objets de la scene
 		.long		objet_corps_heli			;     - pointeur vers objet
-		.long		0,0,0			;     - X,Y,Z objet
-		.long		0,0,0			;     - increment X, increment Y , increment Z
-		.long		0,2,0			;     - increment angle X, increment angle Y , increment angle Z
-		.long		0,0,256			; 	  - angles depart X,Y,Z, non modifié si =-1
-		.long		320				; 	  - nb frames rotation classique, 0 = pas de rotation classique
+		.long		-100,100,-2200			;     - X,Y,Z objet
+		.long		0,2,20			;     - increment X, increment Y , increment Z
+		.long		0,1,0			;     - increment angle X, increment angle Y , increment angle Z
+		.long		0,256+128,256			; 	  - angles depart X,Y,Z, non modifié si =-1
+		.long		300				; 	  - nb frames rotation classique, 0 = pas de rotation classique
 ; transformation
 		.long		0				;	  - coordonnees objet de destination d'une transformation, 0 = pas de transformation
 		.long		0				;	  - nombre étapes transformation, 0 = pas de transformation
@@ -4055,12 +4144,33 @@ anim4:
 		.long		8				;	  - nombre de points à animer
 		.long		8				;     - nombre d'étapes en frame, 0 = pas d'anim
 ; mouvement de l'objet
-		.long		table_mouvement_XY_centre_de_haut_en_bas	; table_de_mouvement, -1 = pas de mouvement
+		.long		0  ;table_mouvement_XY_centre_de_haut_en_bas	; table_de_mouvement, -1 = pas de mouvement
 		.long		320	; nombre étapes du mouvement
 		.long		-1	; pointeur vers table de mouvement pour repetition, -1 = pas de repetition, mouvement terminé
 		.long		0	; nombre étapes de repetition du mouvement
 
 		.long		0x330			;	  - zoom / position observateur en Z
+; 2eme objet
+		.long		objet_corps_heli			;     - pointeur vers objet
+		.long		0,500,-2000			;     - X,Y,Z objet
+		.long		0,0,20			;     - increment X, increment Y , increment Z
+		.long		0,0,0			;     - increment angle X, increment angle Y , increment angle Z
+		.long		256,128,0			; 	  - angles depart X,Y,Z, non modifié si =-1
+		.long		300				; 	  - nb frames rotation classique, 0 = pas de rotation classique
+; transformation
+		.long		0				;	  - coordonnees objet de destination d'une transformation, 0 = pas de transformation
+		.long		0				;	  - nombre étapes transformation, 0 = pas de transformation
+; animation
+		.long		coordonnees_animation_helice_HELI				;     - pointeur vers data animation, 0 = pas d'anim
+		.long		8				;	  - nombre de points à animer
+		.long		8				;     - nombre d'étapes en frame, 0 = pas d'anim
+; mouvement de l'objet
+		.long		0	; table_de_mouvement, -1 = pas de mouvement
+		.long		320	; nombre étapes du mouvement
+		.long		-1	; pointeur vers table de mouvement pour repetition, -1 = pas de repetition, mouvement terminé
+		.long		0	; nombre étapes de repetition du mouvement
+
+		.long		0x530			;	  - zoom / position observateur en Z
 
 ; fin de l'anim
 		.long		0
