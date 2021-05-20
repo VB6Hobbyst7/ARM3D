@@ -94,7 +94,7 @@
 main:
 				
 
-	
+		
 
 
 ; rmload RM24
@@ -437,9 +437,9 @@ pas_de_transformation:
 	
 	str		R1,pointeur_position_dans_les_animations
 
+	
+	
 
-
-; calcul frames rotation classique
 
 
 
@@ -452,11 +452,16 @@ pas_de_transformation:
 	str		R0,[R12],#4
 	str		R12,pointeur_actuel_buffer_sequences_calcul
 
+
+	bl		push_sauvegarde_variables_de_l_objet_full
+	
+	
 ;-----------------------------------------------------------
 ;
 ;-------------------- boucle principale précalcul des points
 ;
 ;-----------------------------------------------------------
+; calcul frames rotation classique
 
 
 ; tracage4	
@@ -923,7 +928,6 @@ sortie_boucle_animations:
 .boucle_couleurs_OS:
 
 	ldr		R4,[R12],#4					; 0302 0000 / B=3 , G=0 , R=2
-	str		R4,couleurforce
 	bl		palette_set_colour
 	
 	add		R3,R3,#1
@@ -1098,6 +1102,170 @@ pointeur_actuel_buffer_sequences_affichage:		.long buffer_sequences_affichage
 sequence_infinie:								.long 0
 
 pointeur_lecture_sequences:			.long		anim1_sequences
+
+;-----------------------
+; routines de sauvegardes et restaurations des variables dans la structure d'objet
+;-----------------------
+pop_sauvegarde_variables_de_l_objet_partiel:
+; mise à jour  des variables de l'objet en cours à partir de la structure d'objet
+	ldr		R13,pointeur_buffers_variables_objets_en_cours
+	ldr		R0,[R13,#52]						; angleX : ok	+52	
+	ldr		R1,[R13,#56]						; angleY : ok	+56
+	ldr		R2,[R13,#60]						; angleZ : ok	+60
+	ldr		R3,[R13,#132]						; nombre_etapes_du_mouvement_en_cours : ok	+132
+	ldr		R4,[R13,#124]						; pointeur_index_actuel_mouvement : ok		+124
+	ldr		R5,[R13,#116]						; flag_mouvement_en_cours		: ok		+116
+	ldr		R6,[R13,#112]						; nb_frame_animation_en_cours : ok			+112
+	ldr		R7,[R13,#100]						; pointeur_vers_coordonnees_points_animation_en_cours : ok		+100
+	ldr		R8,[R13,#64]						; nb_frames_rotation_classique, - nb_frame_en_cours -				: ok 				+64
+
+	str		R0,angleX
+	str		R1,angleY
+	str		R2,angleZ
+	str		R3,nombre_etapes_du_mouvement_en_cours
+	str		R4,pointeur_index_actuel_mouvement
+	str		R5,flag_mouvement_en_cours
+	str		R6,nb_frame_animation_en_cours
+	str		R7,pointeur_vers_coordonnees_points_animation_en_cours
+	str		R8,nb_frame_en_cours
+	
+	mov		pc,lr
+
+push_sauvegarde_variables_de_l_objet_partiel:
+; mise à jour de la structure d'objet à partir des variables de l'objet en cours
+	ldr		R13,pointeur_buffers_variables_objets_en_cours
+
+	ldr		R0,angleX
+	ldr		R1,angleY
+	ldr		R2,angleZ
+	ldr		R3,nombre_etapes_du_mouvement_en_cours
+	ldr		R4,pointeur_index_actuel_mouvement
+	ldr		R5,flag_mouvement_en_cours
+	ldr		R6,nb_frame_animation_en_cours
+	ldr		R7,pointeur_vers_coordonnees_points_animation_en_cours
+	ldr		R8,nb_frame_en_cours
+
+	ldr		R0,[R13,#52]						; angleX : ok	+52	
+	ldr		R1,[R13,#56]						; angleY : ok	+56
+	ldr		R2,[R13,#60]						; angleZ : ok	+60
+	ldr		R3,[R13,#132]						; nombre_etapes_du_mouvement_en_cours : ok	+132
+	ldr		R4,[R13,#124]						; pointeur_index_actuel_mouvement : ok		+124
+	ldr		R5,[R13,#116]						; flag_mouvement_en_cours		: ok		+116
+	ldr		R6,[R13,#112]						; nb_frame_animation_en_cours : ok			+112
+	ldr		R7,[R13,#100]						; pointeur_vers_coordonnees_points_animation_en_cours : ok		+100
+	ldr		R8,[R13,#64]						; nb_frames_rotation_classique, - nb_frame_en_cours -				: ok 				+64
+
+	
+	mov		pc,lr
+
+push_sauvegarde_variables_de_l_objet_full:
+; sauvegardes des variables de l'objet en cours + on avance le pointeur de sauvegarde des structures dynamiques d'objet
+	ldr		R13,pointeur_buffers_variables_objets_en_cours
+	
+	ldr		R0,flag_classique_en_cours
+	ldr		R1,pointeur_objet_source_transformation
+	ldr		R2,pointeur_points_objet_classique
+	ldr		R3,nb_points_objet_en_cours_objet_classique
+	ldr		R4,position_objet_en_cours_X
+	ldr		R5,position_objet_en_cours_Y
+	ldr		R6,position_objet_en_cours_Z
+	ldr		R7,increment_position_X
+	ldr		R8,increment_position_Y
+	ldr		R9,increment_position_Z
+	ldr		R10,increment_angle_X
+	ldr		R11,increment_angle_Y
+	ldr		R12,increment_angle_Z
+	stmia	R13!,{R0-R12}
+	
+	ldr		R0,angleX
+	ldr		R1,angleY
+	ldr		R2,angleZ
+	ldr		R3,nb_frame_en_cours
+	ldr		R4,pointeur_coordonnees_objet_destination_transformation
+	ldr		R5,flag_transformation_en_cours
+	ldr		R6,pointeur_buffer_coordonnees_objet_transformees
+	ldr		R7,nb_etapes_transformation
+	ldr		R8,numero_etape_en_cours_transformation
+	ldr		R9,flag_animation_en_cours
+	ldr		R10,pointeur_vers_coordonnees_points_animation_original
+	ldr		R11,pointeur_vers_coordonnees_points_animation_en_cours
+	ldr		R12,nb_points_animation_en_cours_objet_anime
+	stmia	R13!,{R0-R12}
+	
+	ldr		R0,nb_frame_animation
+	ldr		R1,nb_frame_animation_en_cours
+	ldr		R2,flag_mouvement_en_cours
+	ldr		R3,pointeur_debut_mouvement
+	ldr		R4,pointeur_index_actuel_mouvement
+	ldr		R5,nombre_etapes_du_mouvement_initial
+	ldr		R6,nombre_etapes_du_mouvement_en_cours
+	ldr		R7,flag_repetition_mouvement_en_cours
+	ldr		R8,pointeur_initial_repetition_mouvement
+	ldr		R9,pointeur_actuel_repetition_mouvement
+	ldr		R10,nombre_etapes_repetition_du_mouvement_initial
+	ldr		R11,nombre_etapes_repetition_du_mouvement_en_cours
+	ldr		R12,distance_z
+	stmia	R13!,{R0-R12}
+	
+	str		R13,pointeur_buffers_variables_objets_en_cours
+	
+	mov		pc,lr
+
+pop_sauvegarde_variables_de_l_objet_full:
+; restauration des variables de l'objet en cours + on avance le pointeur de sauvegarde des structures dynamiques d'objet
+	ldr		R13,pointeur_buffers_variables_objets_en_cours
+	
+	ldmia	R13!,{R0-R12}
+	str		R0,flag_classique_en_cours
+	str		R1,pointeur_objet_source_transformation
+	str		R2,pointeur_points_objet_classique
+	str		R3,nb_points_objet_en_cours_objet_classique
+	str		R4,position_objet_en_cours_X
+	str		R5,position_objet_en_cours_Y
+	str		R6,position_objet_en_cours_Z
+	str		R7,increment_position_X
+	str		R8,increment_position_Y
+	str		R9,increment_position_Z
+	str		R10,increment_angle_X
+	str		R11,increment_angle_Y
+	str		R12,increment_angle_Z
+
+	ldmia	R13!,{R0-R12}
+	str		R0,angleX
+	str		R1,angleY
+	str		R2,angleZ
+	str		R3,nb_frame_en_cours
+	str		R4,pointeur_coordonnees_objet_destination_transformation
+	str		R5,flag_transformation_en_cours
+	str		R6,pointeur_buffer_coordonnees_objet_transformees
+	str		R7,nb_etapes_transformation
+	str		R8,numero_etape_en_cours_transformation
+	str		R9,flag_animation_en_cours
+	str		R10,pointeur_vers_coordonnees_points_animation_original
+	str		R11,pointeur_vers_coordonnees_points_animation_en_cours
+	str		R12,nb_points_animation_en_cours_objet_anime
+	
+	ldmia	R13!,{R0-R12}
+	str		R0,nb_frame_animation
+	str		R1,nb_frame_animation_en_cours
+	str		R2,flag_mouvement_en_cours
+	str		R3,pointeur_debut_mouvement
+	str		R4,pointeur_index_actuel_mouvement
+	str		R5,nombre_etapes_du_mouvement_initial
+	str		R6,nombre_etapes_du_mouvement_en_cours
+	str		R7,flag_repetition_mouvement_en_cours
+	str		R8,pointeur_initial_repetition_mouvement
+	str		R9,pointeur_actuel_repetition_mouvement
+	str		R10,nombre_etapes_repetition_du_mouvement_initial
+	str		R11,nombre_etapes_repetition_du_mouvement_en_cours
+	str		R12,distance_z
+	
+	str		R13,pointeur_buffers_variables_objets_en_cours
+	
+	mov		pc,lr
+
+
+
 
 ;--------------------------------------------------------------------
 ;    VBL
@@ -1685,6 +1853,7 @@ increment_angle_Z:		.long 2
 increment_position_X:		.long 0
 increment_position_Y:		.long 0
 increment_position_Z:		.long 2
+distance_z:				.long 0x400
 
 
 position_objet_en_cours_X:		.long 0
@@ -2152,7 +2321,6 @@ boucle_divisions_calcpoints:
 
 pointeur_en_cours_liste_points:		.long 0	
 nb_points_en_cours:		.long 0
-distance_z:				.long 0x400
 
 save_numero_sprite:		.long 0
 save_R14:	
@@ -2598,7 +2766,6 @@ saver5:		.long 0
 saver0:		.long 0
 
 
-couleurforce:		.long		0x0F000000
 
 
 
