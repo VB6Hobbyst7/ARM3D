@@ -7,13 +7,11 @@
 ; ------------------------------------------------------------------
 
 ; valeurs fixes RMA
+.equ	ylines,			256
 .equ	vsyncreturn,	7142						; 7142 vsyncreturn=7168+16-1-48   +   vsyncreturn+=7
 .equ	vsyncreturn_low,		(vsyncreturn & 0x00FF)>>0
 .equ	vsyncreturn_high,		((vsyncreturn & 0xFF00)>>8)
 
-.equ	vsyncreturn_ligne199,			7142+(197*128)+127-64						; vsyncreturn=7168+16-1-48   +   vsyncreturn+=7
-.equ	vsyncreturn_low_ligne199,		(vsyncreturn_ligne199 & 0x00FF)>>0
-.equ	vsyncreturn_high_ligne199,		((vsyncreturn_ligne199 & 0xFF00)>>8)
 
 	.org	0x18
 
@@ -24,45 +22,35 @@ FIQ_startofcode:
 
 ; FIQ registers
 ;
-;R8 = tmp
-;R9 = tmp
-;R10 = tmp ( obligatoire pour routine keyboard )
-;R11 = 
-;R12 = destination couleur 0 = 0x3400000 
-;R13 = table_couleur0_vstart_vend : table source : couleur 0, vstart, vend, pour chaque ligne
-;R14 = 0x3200000	- utilisation permanente
+; R8_FIQ=temp reg 1
+; R9_FIQ=temp reg 2
+; R10_FIQ=
+; R11_FIQ=
+; R12_FIQ=
+; R13_FIQ=line count
+; R14_FIQ=temp reg 2/set to IOC addr on exit
+			;str		  R14,saveR14_firq			; 3 20
 			nop									; 3 20
-			LDRB      R8,[R14,#0x14+0]       	; 4 24 IOC : load irq_A triggers ***BUG to v0.13*** v0.14 read &14+0 was reading status at &10, which ignores IRQ mask!!!
-			TST       R8,#0b01000000        	; 5 28 bit 3 = Vsync, bit 6 = T1 trigger (HSync)			
+			nop									; 4 24
+			;MOV       R14,#FIQ_tempstack		; 4 24
+			;STMIA     R14,{R4-R7} 				; 5 28
+			nop									; 5 28
+			MOV       R14,#0x3200000         	; 6 2C set R14 to IOC address
+			LDRB      R8,[R14,#0x14+0]       	; 7 30 IOC : load irq_A triggers ***BUG to v0.13*** v0.14 read &14+0 was reading status at &10, which ignores IRQ mask!!!
+			TST       R8,#0b01000000        	; 8 34 bit 3 = Vsync, bit 6 = T1 trigger (HSync)			
 ; on saute en VSYNC
-			LDREQ     PC,FIQ_notHSync			; 6 2C			; FIQ_notHSync 	    ; 5 28 *v0.14 if not T1, then go to VSync/Keyboard code*
-
-			STRB      R8,[R14,#0x14+2]       	; 7 30  IOC :  (v0.14 moved past branch) clear all interrupt triggers
-
-; les modifs MEMC et VIDC vont ici	
-			ldr		R8,[R13],#4					; 8  34   couleur 0
-; R12 = destination couleur 0 = 0x3400000 
-			str		R8,[R12]					; 9  38   met la couleur 0
-
-			ldmia	R13!,{r8-r9}				; 10 3C
-; modif de vstart
-
-			str		R8,[R8]			; vstart	; 12 44
-			nop
-			
-; modif de vend
-			
-			;nop								
-			str		R9,[R9]			; vend		; 13 48
-			
-			
-			
+			LDREQ     PC,FIQ_notHSync			; 9 38			; FIQ_notHSync 	    ; 5 28 *v0.14 if not T1, then go to VSync/Keyboard code*
+			STRB      R8,[R14,#0x14+2]       	;10 3C  IOC :  (v0.14 moved past branch) clear all interrupt triggers
 			STRB      R14,[R14,#0x28+2]       	;11 40 *v0.14* set IRQB mask to %00000000 = no STx, SRx IRQs now
+; restaure R4-R7
+			
 			ldr		  R8,position_ligne_hsync 	;12 44  nb lignes restantes avant fin d ecran
+			
+			MOV       R9,#0x3400000				;13 48
+			str		  R8,[R9]                   ;14 4C
 
-			nop
-			nop
-
+			;nop								;28 48
+			;nop								;29 4C
 			
 			SUBS      R8,R8,#1				  	;13 50  -1
 			str		  R8,position_ligne_hsync	;14 54  
@@ -74,9 +62,9 @@ FIQ_startofcode:
 			MOV       R8,#0b00001000 	        ;16 5C
 			STRB      R8,[R14,#0x18+2]           ;17 60    set IRQA mask to %00001000 = VSync only n/r unless likely to do <256?
 
-			MOV       R8,#vsyncreturn_low_ligne199		;18 64 (vsyncreturn AND &00FF)>>0		;32 94   or ldr r8,vsyncvalue
+			MOV       R8,#vsyncreturn_low		;18 64 (vsyncreturn AND &00FF)>>0		;32 94   or ldr r8,vsyncvalue
 			STRB      R8,[R14,#0x50+2]           ;19 68 T1 low byte, +2 for write
-			MOV       R8,#vsyncreturn_high_ligne199		;20 6C				; (vsyncreturn AND &FF00)>>8;34 9C   or mov r8,r8,lsr#8
+			MOV       R8,#vsyncreturn_high		;20 6C				; (vsyncreturn AND &FF00)>>8;34 9C   or mov r8,r8,lsr#8
 			STRB      R8,[R14,#0x54+2]           ;21 70 T1 high byte, +2 for write
 			STRB      R8,[R14,#0x58+2]           ;22 74 T1_go = reset T1
 
@@ -94,6 +82,9 @@ fin_hsync:
 			
 			
 
+			nop								;30 8C
+			nop								;31 90
+			nop								;32 94
 			nop								;33 98
 			nop								;34 9C
 			nop								;35 A0
@@ -166,10 +157,8 @@ fin_hsync:
 FIQ_notHSync:                    ;*NEED TO ADJUST REF. IN swi_install IF THIS MOVES FROM &C0*
 .long      0x1234                      ;43 &C0 pointer to notHSync ***quad aligned***
 
-valeur_vstart:
-.long      0x3620000              ;44 &C4 n/r
-valeur_vend:
-.long      0x3640000              ;45 &C8 n/r
+.long      0                      ;44 &C4 n/r
+.long      0                      ;45 &C8 n/r
 .long      0                      ;46 &CC n/r
 
 

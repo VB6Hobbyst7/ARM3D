@@ -1,64 +1,3 @@
-; faire la table des 7 premieres lignes
-
-; démontrer : 
-; 	- vinit copié dans vstart : mettre vinit a 0, vstart à 50*104, vend à 199*104+100 : résultat ?
-;			- il commence à vinit, et une fois arrivé à vend il recommence à vstart ( sans recopier vinit dans vstart )
-
-;	- vstart modifiable après démarrage affichage : vinit à 0, vstart à 0, vend à 199*104+100, attendre affichage, pendant affichage : vstart à 50*104
-;		résultat : vstart à 0 : OK , vinit modifié à la fin de la vbl, avant affichage => pas de modif de vinit pendant l'affichage - inutile.
-
-;	- si vend < vptr ? => l'affichage continue jusqu'a la fin de la vbl  - FLBK
-;		vptr a dépassé vend
-
-; d'abord vstart, puis vend ? ou inverse ?
-; ligne -1 : vstart = vstart ligne suivante, vend = vend ligne courante 199
-
-
-; --------------> modification du vend prise en compte immédiatement !
-; ----------------------------------------------------------------------
-
-
-; corriger la position de la synchro, changements de couleur en plein milieu de l'écran visibles
-
-; pour la table
-; les 2 tiers du haut sur un cylindre : 133 lignes
-; le tiers du bas sur un autre cylindre : 67 lignes
-;
-; sur les 50 dernieres lignes : 25 lignes et 25 lignes
-; entre 0 et 179 degrés
-; 180 degrés / 133 lignes : projetés sur 25 lignes , donc 25 résultats
-; 0<angle<90, par pas de 90/25, sinus(angle) x 133
-; sinus : de 0 a 1
-
-
-
-;pour vsync et hsync
-
-;R8 = tmp
-;R9 = tmp
-;R10 = tmp ( obligatoire pour routine keyboard )
-;R11 = 
-;R12 = destination couleur 0 = 0x3400000 
-;R13 = table_couleur0_vstart_vend : table source : couleur 0, vstart, vend, pour chaque ligne
-;R14 = 0x3200000	- utilisation permanente
-
-; verifier hypothese que on peut avoir 2 vsync.
-;	- vsync 1 :
-;		- vsync 2 dans routine FIRQ
-;		- vstart = 0 vend =50*416
-;
-;	- vsync 2 :
-;		- vsync 1 dans routine FIRQ
-;		- vstart = 0 vend = 50*416
-
-; stratégie 1
-;	- la routine vsync met vstart à 0 et vend à 200*416, puis desactive vsync
-;	- la routine vsync lance un timer 1 de 199 lignes
-;	- le timer 1 modifie vstart à 0 et vend à 416
-;	- le timer 1 met le timer 1 à 1 ligne ( 127)
-;	- sur 56 lignes, ensuite le timer 1 remet la vsync en activité
-
-
 ;
 ; template avec rasterman integré
 ;
@@ -74,15 +13,10 @@
 .equ	IKey_Escape, 0x9d
 
 ; valeurs fixes RMA
-.equ	ylines,			58
+.equ	ylines,			256
 .equ	vsyncreturn,	7142						; vsyncreturn=7168+16-1-48   +   vsyncreturn+=7
 .equ	vsyncreturn_low,		(vsyncreturn & 0x00FF)>>0
 .equ	vsyncreturn_high,		((vsyncreturn & 0xFF00)>>8)
-
-.equ	vsyncreturn_ligne199,			7142+(197*128)+127-64					; vsyncreturn=7168+16-1-48   +   vsyncreturn+=7
-.equ	vsyncreturn_low_ligne199,		(vsyncreturn_ligne199 & 0x00FF)>>0
-.equ	vsyncreturn_high_ligne199,		((vsyncreturn_ligne199 & 0xFF00)>>8)
-
 
 .equ	hsyncline,		128-1			; 127
 .equ	hsyncline_low,			((hsyncline & 0x00FF)>>0)
@@ -96,32 +30,12 @@
 	
 main:
 
-
 ;"XOS_ServiceCall"
 
 ;OS_SWINumberFromString 
 ;	ldr		R1,pointeur_XOS_ServiceCall
 
 ;	SWI 0x39
-
-			mov			R13,#table_couleur0_vstart_vend
-
-; les modifs MEMC et VIDC vont ici	
-			ldr		R8,[R13],#4					; 8  34   couleur 0
-; R12 = destination couleur 0 = 0x3400000 
-			;str		R8,[R12]					; 9  38   met la couleur 0
-
-			ldmia	R13!,{r8-r9}				; 10 3C
-; modif de vstart
-
-			;nop
-			;str		R8,[R8]			; vstart	; 12 44
-			nop
-			
-; modif de vend
-			
-			;nop								
-			;str		R9,[R9]			; vend		; 13 48
 
 
 
@@ -169,124 +83,37 @@ main:
 	
 	; r0 = pointeur memoire ecrans
 	
-;	add		R0,R0,#416*32
+	add		R0,R0,#416*32
 	str		r0,screenaddr1
 	add		r0,r0,#416*290
 	str		r0,screenaddr2
 	
-
-	mov		R0,#0
+	mov		r0,#416*32
 	str		r0,screenaddr1_MEMC
 	add		r0,r0,#416*290
 	str		r0,screenaddr2_MEMC
-
-
-	SWI		0x01
-	.byte	"---+++++++++++++++++++L1",10,13,0
-	.p2align 2
-	.rept		5
-	SWI		0x01
-	.byte	"1234567890123456789123456789012345678912345L2",10,13,0
-	.p2align 2
-	.endr
-	SWI		0x01
-	.byte	"---+++++++++++++++++++L3",10,13,0
-	.p2align 2
-	SWI		0x01
-	.byte	"---+++++++++++++++++++L4",10,13,0
-	.p2align 2
-	SWI		0x01
-	.byte	"---+++++++++++++++++++L5",10,13,0
-	.p2align 2
-
 	
 	ldr		r1,screenaddr1
-	;add		R1,R1,#416*70
-
-	add		R4,R1,#32
-	add		R5,R4,#415-64
-; au milieu
-	add		R1,R1,#208
-	mov		R2,R1
-
+	ldr		r2,screenaddr2
 	ldr		r3,couleur
-	add		R6,R3,#25
+	mov		r0,#26832/2
+.clsall:
+	str		r3,[r1],#4
+	str		r3,[r2],#4
+	subs	r0,r0,#1
+;	bne		.clsall
 	
-; nombre de lignes
-	mov		R0,#150
-
-boucle_triangle_ligne:
-	strb	r3,[r1]
-	strb	r6,[r4]
-	strb	r3,[r5]
-
-	strb	r3,[r2]
-	subs	R1,R1,#1
-	adds	R2,R2,#1
-	
-	add		R1,R1,#416
-	add		R2,R2,#416
-	add		R4,R4,#416
-	add		R5,R5,#416
-	
-	subs	R0,R0,#1
-	bgt		boucle_triangle_ligne
-
-	ldr		r1,screenaddr1
-	add		R1,R1,#416*100
-
-	add		R4,R1,#32
-	add		R5,R4,#415-64
-; au milieu
-	add		R1,R1,#208
-	mov		R2,R1
-
-	ldr		r3,couleur
-	add		R6,R3,#25
-; nombre de lignes
-	mov		R0,#150
-
-boucle_triangle_ligne2:
-	strb	r3,[r1]
-	strb	r6,[r4]
-	strb	r3,[r5]
-
-	strb	r3,[r2]
-	subs	R1,R1,#1
-	adds	R2,R2,#1
-	
-	add		R1,R1,#416
-	add		R2,R2,#416
-	add		R4,R4,#416
-	add		R5,R5,#416
-	
-	subs	R0,R0,#1
-	bgt		boucle_triangle_ligne2
-
-; ligne horizontale a 200
-	ldr		r1,screenaddr1
-	add		R1,R1,#416*199
-	add		R3,R3,#5654
-
-	mov		R0,#350
-
-boucle_triangle_ligne3:
-	strb	r3,[r1],#1
-	subs	R0,R0,#1
-	bgt		boucle_triangle_ligne3
-
+	ldr		r3,couleur2
+	mov		r0,#26832/2
+.clsall2:
+	str		r3,[r1],#4
+	str		r3,[r2],#4
+	subs	r0,r0,#1
+;	bne		.clsall2
 
 	SWI		22
 	MOVNV R0,R0            
 
-
-; update pointeur video hardware vinit
-	ldr	r0,screenaddr1_MEMC
-	mov r0,r0,lsr #4
-	mov r0,r0,lsl #2
-	mov r1,#0x3600000
-	add r0,r0,r1
-	str r0,[r0]
 
 	bl		RM_init
 
@@ -466,9 +293,9 @@ RM_start:
 	STRB      R1,[R1,#0x58+2]    ;T1_go = reset T1					: remet le compteur a la valeur latch ( verrou)
 
 ; on prépare le compteur du Timer 1 qui tournera entre le Vsync et la 1ere ligne de hsync
-	MOV       R0,#vsyncreturn_low_ligne199			;or ldr r8,vsyncval  - will reload with this on VSync...			
+	MOV       R0,#vsyncreturn_low			;or ldr r8,vsyncval  - will reload with this on VSync...			
 	STRB      R0,[R1,#0x50+2]    				;T1 low byte, +2 for write									: verrou / compteur 
-	MOV       R0,#vsyncreturn_high_ligne199			;or mov r8,r8,lsr#8
+	MOV       R0,#vsyncreturn_high			;or mov r8,r8,lsr#8
 	STRB      R0,[R1,#0x54+2]   					;T1 high byte, +2 for write								: verrou / compteur 
 
 
@@ -498,9 +325,7 @@ RM_start:
 	LDMIA     R0!,{R2-R4}
 	STMIA     R1!,{R2-R4}       ;58 pokey codey (58 max)
 
-; init des registres permanents
-	MOV			R14,#0x3200000         	; 6 2C set R14 to IOC address
-	mov			R12,#0x3400000
+
 
 
 .equ 	FIQ_notHSync_valeur, 0xC0
@@ -683,7 +508,7 @@ kbd_stack:
 ;----------------------------------------------------------------------------------------------------------------------
 notHSync:
 	TST       R8,#0b00001000       ;retest R5 is it bit 3 = Vsync? (bit 6 = T1 trigger/HSync)				: R8 = 0x14 = IRQ Request A => bit 3=vsync, bit 6=Timer 1 / hsync
-	STRNEB    R14,[R14,#0x58+2]    ;if VSync, reset T1 (latch should already have the vsyncvalue...)		: si vsync, alors on refait un GO = on remet le compteur (latch) pour le timer 1 à la valeur vsyncreturn ( mise dans les registres dans le start et  après la derniere ligne )
+	STRNEB    R14,[R14,#0x58+2]    ;if VSync, reset T1 (latch should already have the vsyncvalue...)		: si vsync, alors on refait un GO = on remet le compteur (latch) pour le timer 1 à la valeur hsyncline
 ;
 ; that's the high-priority stuff done, now we can check keyboard too...
 ;
@@ -693,7 +518,7 @@ notHSync:
 
 ; remaskage IRQ A : Timer 1 + Vsync
 	MOV       R8,#0b01000000        ; Timer 1 only. **removed VSync trigger v0.05
-;	MOV       R8,#0b01001000		; EDZ : Vsync + Timer 1
+	MOV       R8,#0b01001000		; EDZ : Vsync + Timer 1
 ;	MOV       R8,#0b00001000		; EDZ : Vsync only
 
 	STRB      R8,[R14,#0x18+2]     ;set IRQA mask to %01000000 = T1 only									: mask IRQ A : bit 6 = Timer 1, plus de Vsync
@@ -722,111 +547,6 @@ notHSync:
 	mov			R9,#position_ligne_hsync
 	mov 		R8,#ylines                  ;reset yline counter
 	str			R8,[R9]
-	
-	mov			R13,#table_couleur0_vstart_vend
-	mov			R8,#0
-	str			R8,[R12]				; remise à noir du fond
-
-;--------------
-; test avec vstart 
-; vinit = 0x3600000
-; vstart = 0x3620000 = 0
-; vend = 0x3640000 = 26
-
-; vstart = 0
-	mov	R9,#0x3620000
-	mov	R8,#0
-	add	R8,R8,R9
-	str	R8,[R8]
-	
-; vend = ligne 200
-	mov	R9,#0x3640000
-	mov	R8,#104*200			; 199*104 + 104 -4 
-	sub	R8,R8,#4
-	add	R8,R8,R9
-	str	R8,[R8]
-; vinit
-	mov	R9,#0x3600000
-	mov		R8,#0
-	add	R8,R8,R9
-	str	R8,[R8]
-
-
-
-; ---------------attente debug affichage
-
-	mov   r9,#0x3400000               
-	mov   r8,#777
-; border	
-	orr   r8,r8,#0x00000000            
-	str   r8,[r9]  
-
-
-	mov		R8,#10000
-bouclewait:
-	mov	R8,R8
-	subs	R8,R8,#1
-	bgt	bouclewait
-
-	mov   r9,#0x3400000               
-	mov   r8,#000  
-; border	
-	orr   r8,r8,#0x00000000            
-	str   r8,[r9]  
-
-; ---------------attente debug affichage
-
-;	- vstart modifiable après démarrage affichage : vinit à 0, vstart à 0, vend à 199*104+100, attendre affichage, pendant affichage : vstart à 50*104
-
-; vinit à zéro
-; vinit
-;	mov	R9,#0x3600000
-	;mov	R8,#104*50			; 
-;	mov		R8,#0
-;	add	R8,R8,R9
-;	str	R8,[R8]
-
-; vstart à 0
-; vstart = 0
-;	mov	R9,#0x3620000
-;	mov	R8,#104*50			; 199*104 + 104 -4 
-;	mov	R8,#0
-;	add	R8,R8,R9
-;	str	R8,[R8]
-
-; vend = ligne 200
-;	mov	R9,#0x3640000
-;	mov	R8,#104*39			; 199*104 + 104 -4 
-;	sub	R8,R8,#4
-;	add	R8,R8,R9
-;	str	R8,[R8]
-
-
-
-
-
-	; update pointeur video hardware vinit
-;	ldr	r0,screenaddr1_MEMC
-;	mov r0,r0,lsr #4
-;	mov r0,r0,lsl #2
-;	mov r1,#0x3600000
-;	add r0,r0,r1
-;	str r0,[r0]
-
-; vinit à la ligne 199
-	;mov	R8,#0x3600000
-	;add	R8,R8,#(199*104)
-	;ldr	R8,valeur_vinit_premiere_ligne
-	;str	R8,[R8]
-
-	;ldr	R8,valeur_vend_premiere_ligne
-	;str	R8,[R8]
-
-
-;	ldr	R8,valeur_vstart_premiere_ligne
-;	str	R8,[R8]
-
-
 	
 	;MOV       R13,#ylines                  ;reset yline counter
 
@@ -874,9 +594,8 @@ exitVScode:
 	SUBS      PC,R14,#4              ;38 AC return to foreground
 ;----------------------------------------------------------------------------------------------------------------------
 
-			
-			
-			
+
+
 
 saveR14_firq_local:	.long 0
 ; ---------------------
@@ -921,97 +640,7 @@ screenaddr2_MEMC:	.long 0
 module97:		.incbin	"97,ffa"
 
 
-valeur_vinit_premiere_ligne:		.long	0x3600000+(98*104)
-valeur_vstart_premiere_ligne:		.long	0x3620000+(98*104)
-valeur_vend_premiere_ligne:		.long		0x3640000+100+(98*104)
 
-; 58 lignes en tout
-;       .long   couleur0, vstart, vend
-table_couleur0_vstart_vend:
-	.set couleurt,0b1111
-	.set couleurt2,0b111000
-	.set couleurt3,0b111000000
-
-;1ere ligne : fin de l'écran du haut. : vend = 0x3640000+((200*104)-4)
-	.set	numero_ligne_reflet,199
-	.set 	couleur0,0
-	.long   couleur0, 0x3620000 + (numero_ligne_reflet*104), 0x3640000+((200*104)-4)
-	.set	couleur0, couleur0+0b100000000
-	.set	numero_ligne_reflet , numero_ligne_reflet - 1
-	
-	
-	
-	.rept	6
-		.rept	2
-			.long   couleur0, 0x3620000 + (numero_ligne_reflet*104), 0x3640000+(((numero_ligne_reflet+1)*104)+100)
-			.set	numero_ligne_reflet , numero_ligne_reflet - 1
-		.endr
-		.set	couleur0, couleur0+0b100000000
-	.endr
-; 12+1 = 13 lignes
-; ligne 186	à 62 sur 25 lignes
-;       .long   couleur0, vstart, vend
-		.long   couleur0, 0x3620000 + (186*104), 0x3640000+((187*104)+100)
-        .long   couleur0, 0x3620000 + (178*104), 0x3640000+(186*104)+100
-        .long   couleur0, 0x3620000 + (170*104), 0x3640000+(178*104)+100
-        .long   couleur0, 0x3620000 + (162*104), 0x3640000+(170*104)+100
-        .long   couleur0, 0x3620000 + (155*104), 0x3640000+(162*104)+100
-        .long   couleur0, 0x3620000 + (147*104), 0x3640000+(155*104)+100
-        .long   couleur0, 0x3620000 + (140*104), 0x3640000+(147*104)+100
-        .long   couleur0, 0x3620000 + (133*104), 0x3640000+(140*104)+100
-        .long   couleur0, 0x3620000 + (126*104), 0x3640000+(133*104)+100
-        .long   couleur0, 0x3620000 + (119*104), 0x3640000+(126*104)+100
-        .long   couleur0, 0x3620000 + (113*104), 0x3640000+(119*104)+100
-        .long   couleur0, 0x3620000 + (106*104), 0x3640000+(113*104)+100
-        .long   couleur0, 0x3620000 + (101*104), 0x3640000+(106*104)+100
-        .long   couleur0, 0x3620000 + (95*104), 0x3640000+(101*104)+100
-        .long   couleur0, 0x3620000 + (90*104), 0x3640000+(95*104)+100
-        .long   couleur0, 0x3620000 + (85*104), 0x3640000+(90*104)+100
-        .long   couleur0, 0x3620000 + (81*104), 0x3640000+(85*104)+100
-        .long   couleur0, 0x3620000 + (77*104), 0x3640000+(81*104)+100
-        .long   couleur0, 0x3620000 + (73*104), 0x3640000+(77*104)+100
-        .long   couleur0, 0x3620000 + (70*104), 0x3640000+(73*104)+100
-        .long   couleur0, 0x3620000 + (68*104), 0x3640000+(70*104)+100
-        .long   couleur0, 0x3620000 + (65*104), 0x3640000+(68*104)+100
-        .long   couleur0, 0x3620000 + (64*104), 0x3640000+(65*104)+100
-        .long   couleur0, 0x3620000 + (62*104), 0x3640000+(64*104)+100
-        .long   couleur0, 0x3620000 + (61*104), 0x3640000+(62*104)+100
-; 25+13 = 38 lignes affichées, reste 20 lignes
-;       .long   couleur0, vstart, vend
-       .long   couleur0, 0x3620000 + (60*104), 0x3640000+((61*104)+100)
-       .long   couleur0, 0x3620000 + (55*104), 0x3640000+(60*104)+100
-        .long   couleur0, 0x3620000 + (50*104), 0x3640000+(55*104)+100
-        .long   couleur0, 0x3620000 + (45*104), 0x3640000+(50*104)+100
-        .long   couleur0, 0x3620000 + (41*104), 0x3640000+(45*104)+100
-        .long   couleur0, 0x3620000 + (37*104), 0x3640000+(41*104)+100
-        .long   couleur0, 0x3620000 + (32*104), 0x3640000+(37*104)+100
-        .long   couleur0, 0x3620000 + (28*104), 0x3640000+(32*104)+100
-        .long   couleur0, 0x3620000 + (24*104), 0x3640000+(28*104)+100
-        .long   couleur0, 0x3620000 + (21*104), 0x3640000+(24*104)+100
-        .long   couleur0, 0x3620000 + (17*104), 0x3640000+(21*104)+100
-        .long   couleur0, 0x3620000 + (14*104), 0x3640000+(17*104)+100
-        .long   couleur0, 0x3620000 + (11*104), 0x3640000+(14*104)+100
-        .long   couleur0, 0x3620000 + (8*104), 0x3640000+(11*104)+100
-        .long   couleur0, 0x3620000 + (6*104), 0x3640000+(8*104)+100
-        .long   couleur0, 0x3620000 + (4*104), 0x3640000+(6*104)+100
-        .long   couleur0, 0x3620000 + (2*104), 0x3640000+(4*104)+100
-        .long   couleur0, 0x3620000 + (1*104), 0x3640000+(2*104)+100
-        .long   couleur0, 0x3620000 + (0*104), 0x3640000+(1*104)+100
-        .long   couleur0, 0x3620000 + (0*104), 0x3640000+(0*104)+100
-
-
-; ligne 199 : vstart = 0, vend=(200*104)-4
-;	.long	couleur0,0x3620000, 0x3640000+((200*104)-4)
-; ligne 200: vstart = 10*104, vend = 104-4
-;	.long	couleur0,0x3620000+(104*10), 0x3640000+((1*104)-4)
-
-
-
-
-; fin
-		.long	0x77					; couleur du fond
-		.long	0x3640000+104				; vend : 0x3620000	
-		.long	0x3600000					; vinit pour 1ere ligne
 
 ; ------------------------------------------------------------------
 ;

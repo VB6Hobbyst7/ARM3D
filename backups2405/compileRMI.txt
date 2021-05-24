@@ -1,0 +1,1874 @@
+F00:0001       ; faire la table des 7 premieres lignes
+F00:0002       
+F00:0003       ; démontrer : 
+F00:0004       ; 	- vinit copié dans vstart : mettre vinit a 0, vstart à 50*104, vend à 199*104+100 : résultat ?
+F00:0005       ;			- il commence à vinit, et une fois arrivé à vend il recommence à vstart ( sans recopier vinit dans vstart )
+F00:0006       
+F00:0007       ;	- vstart modifiable après démarrage affichage : vinit à 0, vstart à 0, vend à 199*104+100, attendre affichage, pe
+F00:0008       ;		résultat : vstart à 0 : OK , vinit modifié à la fin de la vbl, avant affichage => pas de modif de vinit pendant l
+F00:0009       
+F00:0010       ;	- si vend < vptr ? => l'affichage continue jusqu'a la fin de la vbl  - FLBK
+F00:0011       ;		vptr a dépassé vend
+F00:0012       
+F00:0013       ; d'abord vstart, puis vend ? ou inverse ?
+F00:0014       ; ligne -1 : vstart = vstart ligne suivante, vend = vend ligne courante 199
+F00:0015       
+F00:0016       
+F00:0017       ; --------------> modification du vend prise en compte immédiatement !
+F00:0018       ; ----------------------------------------------------------------------
+F00:0019       
+F00:0020       
+F00:0021       ; corriger la position de la synchro, changements de couleur en plein milieu de l'écran visibles
+F00:0022       
+F00:0023       ; pour la table
+F00:0024       ; les 2 tiers du haut sur un cylindre : 133 lignes
+F00:0025       ; le tiers du bas sur un autre cylindre : 67 lignes
+F00:0026       ;
+F00:0027       ; sur les 50 dernieres lignes : 25 lignes et 25 lignes
+F00:0028       ; entre 0 et 179 degrés
+F00:0029       ; 180 degrés / 133 lignes : projetés sur 25 lignes , donc 25 résultats
+F00:0030       ; 0<angle<90, par pas de 90/25, sinus(angle) x 133
+F00:0031       ; sinus : de 0 a 1
+F00:0032       
+F00:0033       
+F00:0034       
+F00:0035       ;pour vsync et hsync
+F00:0036       
+F00:0037       ;R8 = tmp
+F00:0038       ;R9 = tmp
+F00:0039       ;R10 = tmp ( obligatoire pour routine keyboard )
+F00:0040       ;R11 = 
+F00:0041       ;R12 = destination couleur 0 = 0x3400000 
+F00:0042       ;R13 = table_couleur0_vstart_vend : table source : couleur 0, vstart, vend, pour chaque ligne
+F00:0043       ;R14 = 0x3200000	- utilisation permanente
+F00:0044       
+F00:0045       ; verifier hypothese que on peut avoir 2 vsync.
+F00:0046       ;	- vsync 1 :
+F00:0047       ;		- vsync 2 dans routine FIRQ
+F00:0048       ;		- vstart = 0 vend =50*416
+F00:0049       ;
+F00:0050       ;	- vsync 2 :
+F00:0051       ;		- vsync 1 dans routine FIRQ
+F00:0052       ;		- vstart = 0 vend = 50*416
+F00:0053       
+F00:0054       ; stratégie 1
+F00:0055       ;	- la routine vsync met vstart à 0 et vend à 200*416, puis desactive vsync
+F00:0056       ;	- la routine vsync lance un timer 1 de 199 lignes
+F00:0057       ;	- le timer 1 modifie vstart à 0 et vend à 416
+F00:0058       ;	- le timer 1 met le timer 1 à 1 ligne ( 127)
+F00:0059       ;	- sur 56 lignes, ensuite le timer 1 remet la vsync en activité
+F00:0060       
+F00:0061       
+F00:0062       ;
+F00:0063       ; template avec rasterman integré
+F00:0064       ;
+F00:0065       ; - Vsync
+F00:0066       ; 128-1 avant première ligne
+F00:0067       ; 128-1 par ligne * 256 lignes
+F00:0068       ; 7142 avant Vsync
+F00:0069       
+F00:0070       ; - 200 lignes : 200*128 - 1
+F00:0071       
+F00:0072       
+F00:0073       .equ Screen_Mode, 97
+F00:0074       .equ	IKey_Escape, 0x9d
+F00:0075       
+F00:0076       ; valeurs fixes RMA
+F00:0077       .equ	ylines,			58
+F00:0078       .equ	vsyncreturn,	7142						; vsyncreturn=7168+16-1-48   +   vsyncreturn+=7
+F00:0079       .equ	vsyncreturn_low,		(vsyncreturn & 0x00FF)>>0
+F00:0080       .equ	vsyncreturn_high,		((vsyncreturn & 0xFF00)>>8)
+F00:0081       
+F00:0082       .equ	vsyncreturn_ligne199,			7142+(197*128)+127-64					; vsyncreturn=7168+16-1-48   +   vsyncreturn+=7
+F00:0083       .equ	vsyncreturn_low_ligne199,		(vsyncreturn_ligne199 & 0x00FF)>>0
+F00:0084       .equ	vsyncreturn_high_ligne199,		((vsyncreturn_ligne199 & 0xFF00)>>8)
+F00:0085       
+F00:0086       
+F00:0087       .equ	hsyncline,		128-1			; 127
+F00:0088       .equ	hsyncline_low,			((hsyncline & 0x00FF)>>0)
+F00:0089       .equ	hsyncline_high,			((hsyncline & 0xFF00)>>8)
+F00:0090       
+F00:0091       .equ	position_ligne_hsync,	 	0xE4
+F00:0092       .equ	saveR14_firq,				0xE0
+F00:0093       
+F00:0094       .include "swis.h.asm"
+F01:0001       .equ OS_WriteC, 0
+F01:0002       .equ OS_WriteO, 2
+F01:0003       .equ OS_NewLine, 3
+F01:0004       .equ OS_Byte, 6
+F01:0005       .equ XOS_Byte, OS_Byte | (1 << 17)
+F01:0006       .equ OS_Word, 7
+F01:0007       .equ OS_File, 8
+F01:0008       .equ OS_Exit, 0x11
+F01:0009       .equ OS_BreakPt, 0x17
+F01:0010       .equ OS_ChangeDynamicArea, 0x2a
+F01:0011       .equ OS_GenerateError, 0x2b
+F01:0012       .equ OS_ReadVduVariables, 0x31
+F01:0013       .equ OS_ReadMonotonicTime, 0x42
+F01:0014       .equ OS_ReadDynamicArea, 0x5c
+F01:0015       .equ OS_ConvertCardinal4, 0xd8	
+F01:0016       
+F01:0017       .equ OS_Module, 0x1E
+F01:0018       
+F01:0019       .equ OSByte_EventEnable, 14
+F01:0020       .equ OSByte_EventDisable, 13
+F01:0021       .equ OSByte_Vsync, 19
+F01:0022       .equ OSByte_WriteVDUBank, 112
+F01:0023       .equ OSByte_WriteDisplayBank, 113
+F01:0024       .equ OSByte_ReadKey, 129
+F01:0025       
+F01:0026       .equ OSWord_WritePalette, 12
+F01:0027       
+F01:0028       .equ IKey_LeftClick, 0xf6
+F01:0029       .equ IKey_RightClick, 0xf4
+F01:0030       .equ IKey_Space, 0x9d
+F01:0031       
+F01:0032       .equ DynArea_Screen, 2
+F01:0033       
+F01:0034       .equ VD_ScreenStart, 148 
+F01:0035       
+F01:0036       .equ OS_Claim, 0x1f
+F01:0037       .equ OS_Release, 0x20
+F01:0038       .equ OS_AddToVector, 0x47
+F01:0039       
+F01:0040       .equ ErrorV, 0x01
+F01:0041       .equ EventV, 0x10
+F01:0042       .equ Event_VSync, 4
+F01:0043       
+F01:0044       .equ OS_ConvertHex2, 0xd1
+F01:0045       .equ OS_ConvertHex4, 0xd2
+F01:0046       .equ OS_ConvertHex8, 0xd4
+F01:0047       
+F01:0048       .equ QTM_Load, 0x47E40
+F01:0049       .equ QTM_Start, 0x47E41
+F01:0050       .equ QTM_Stop, 0x47E42
+F01:0051       .equ QTM_SetSampleSpeed, 0x47E49
+F01:0052       
+F01:0053       ; Rasterman 
+F01:0054       .equ	RasterMan_Version,			0x47e84
+F01:0055       .equ	RasterMan_SetTables,		0x47e83
+F01:0056       .equ	RasterMan_Install,			0x47e80
+F01:0057       .equ	RasterMan_Release,			0x47e81
+F01:0058       .equ	RasterMan_Wait,				0x47e82
+F01:0059       .equ	RasterMan_ReadScanline,		0x47e85
+F01:0060       .equ	RasterMan_SetVIDCRegister,	0x47e86
+F01:0061       .equ	RasterMan_SetMEMCRegister,	0x47e87
+F01:0062       .equ	RasterMan_QTMParamAddr,		0x47e88
+F01:0063       .equ	RasterMan_ScanKeyboard,		0x47e89
+F01:0064       .equ	RasterMan_ClearKeyBuffer, 	0x47e8a
+F01:0065       .equ	RasterMan_ReadScanAddr,		0x47e8b
+F01:0066       
+F01:0067       ; QDebug_Break
+F01:0068       .equ	BKP, 0x44B85
+F01:0069       
+F01:0070       ; XOS
+F01:0071       .equ	XOS_ServiceCall,		0x20030
+F01:0072       
+F00:0095       	.org 0x8000
+F00:0096       	
+F00:0097       main:
+F00:0098       
+F00:0099       
+F00:0100       ;"XOS_ServiceCall"
+F00:0101       
+F00:0102       ;OS_SWINumberFromString 
+F00:0103       ;	ldr		R1,pointeur_XOS_ServiceCall
+F00:0104       
+F00:0105       ;	SWI 0x39
+F00:0106       
+F00:0107       			mov			R13,#table_couleur0_vstart_vend
+               S01:00008000:  22 DB A0 E3 E0 D0 8D E3
+F00:0108       
+F00:0109       ; les modifs MEMC et VIDC vont ici	
+F00:0110       			ldr		R8,[R13],#4					; 8  34   couleur 0
+               S01:00008008:  04 80 9D E4
+F00:0111       ; R12 = destination couleur 0 = 0x3400000 
+F00:0112       			;str		R8,[R12]					; 9  38   met la couleur 0
+F00:0113       
+F00:0114       			ldmia	R13!,{r8-r9}				; 10 3C
+               S01:0000800C:  00 03 BD E8
+F00:0115       ; modif de vstart
+F00:0116       
+F00:0117       			;nop
+F00:0118       			;str		R8,[R8]			; vstart	; 12 44
+F00:0119       			nop
+               S01:00008010:  00 00 A0 E1
+F00:0120       			
+F00:0121       ; modif de vend
+F00:0122       			
+F00:0123       			;nop								
+F00:0124       			;str		R9,[R9]			; vend		; 13 48
+F00:0125       
+F00:0126       
+F00:0127       
+F00:0128       	mov		R0,#11			; OS_Module 11 : Insert module from memory and move into RMA
+               S01:00008014:  0B 00 A0 E3
+F00:0129       	ldr		R1,pointeur_module97
+               S01:00008018:  50 16 9F E5
+F00:0130       	SWI		0x1E
+               S01:0000801C:  1E 00 00 EF
+F00:0131       	
+F00:0132       	MOV r0,#22	;Set MODE
+               S01:00008020:  16 00 A0 E3
+F00:0133       	SWI OS_WriteC
+               S01:00008024:  00 00 00 EF
+F00:0134       	MOV r0,#Screen_Mode
+               S01:00008028:  61 00 A0 E3
+F00:0135       	SWI OS_WriteC
+               S01:0000802C:  00 00 00 EF
+F00:0136       
+F00:0137       
+F00:0138       	MOV r0,#23	;Disable cursor
+               S01:00008030:  17 00 A0 E3
+F00:0139       	SWI OS_WriteC
+               S01:00008034:  00 00 00 EF
+F00:0140       	MOV r0,#1
+               S01:00008038:  01 00 A0 E3
+F00:0141       	SWI OS_WriteC
+               S01:0000803C:  00 00 00 EF
+F00:0142       	MOV r0,#0
+               S01:00008040:  00 00 A0 E3
+F00:0143       	SWI OS_WriteC
+               S01:00008044:  00 00 00 EF
+F00:0144       	SWI OS_WriteC
+               S01:00008048:  00 00 00 EF
+F00:0145       	SWI OS_WriteC
+               S01:0000804C:  00 00 00 EF
+F00:0146       	SWI OS_WriteC
+               S01:00008050:  00 00 00 EF
+F00:0147       	SWI OS_WriteC
+               S01:00008054:  00 00 00 EF
+F00:0148       	SWI OS_WriteC
+               S01:00008058:  00 00 00 EF
+F00:0149       	SWI OS_WriteC
+               S01:0000805C:  00 00 00 EF
+F00:0150       	SWI OS_WriteC
+               S01:00008060:  00 00 00 EF
+F00:0151       
+F00:0152       
+F00:0153       ; Set screen size for number of buffers
+F00:0154       	MOV r0, #DynArea_Screen
+               S01:00008064:  02 00 A0 E3
+F00:0155       	SWI OS_ReadDynamicArea
+               S01:00008068:  5C 00 00 EF
+F00:0156       	; r1=taille actuelle de la memoire ecran
+F00:0157       	MOV r0, #DynArea_Screen
+               S01:0000806C:  02 00 A0 E3
+F00:0158       ; 416 * ( 32+258+32+258+32)
+F00:0159       	MOV r2, #416*612
+               S01:00008070:  8A 2D A0 E3 0F 29 82 E3
+F00:0160       
+F00:0161       	; 416*258 * 2 ecrans
+F00:0162       	SUBS r1, r2, r1
+               S01:00008078:  01 10 52 E0
+F00:0163       	SWI OS_ChangeDynamicArea
+               S01:0000807C:  2A 00 00 EF
+F00:0164       	
+F00:0165       ; taille dynamic area screen = 416*258*2
+F00:0166       
+F00:0167       	MOV r0, #DynArea_Screen
+               S01:00008080:  02 00 A0 E3
+F00:0168       	SWI OS_ReadDynamicArea
+               S01:00008084:  5C 00 00 EF
+F00:0169       	
+F00:0170       	; r0 = pointeur memoire ecrans
+F00:0171       	
+F00:0172       ;	add		R0,R0,#416*32
+F00:0173       	str		r0,screenaddr1
+               S01:00008088:  EC 05 8F E5
+F00:0174       	add		r0,r0,#416*290
+               S01:0000808C:  5D 0D 80 E2 07 09 80 E2
+F00:0175       	str		r0,screenaddr2
+               S01:00008094:  E4 05 8F E5
+F00:0176       	
+F00:0177       
+F00:0178       	mov		R0,#0
+               S01:00008098:  00 00 A0 E3
+F00:0179       	str		r0,screenaddr1_MEMC
+               S01:0000809C:  E0 05 8F E5
+F00:0180       	add		r0,r0,#416*290
+               S01:000080A0:  5D 0D 80 E2 07 09 80 E2
+F00:0181       	str		r0,screenaddr2_MEMC
+               S01:000080A8:  D8 05 8F E5
+F00:0182       
+F00:0183       
+F00:0184       	SWI		0x01
+               S01:000080AC:  01 00 00 EF
+F00:0185       	.byte	"---+++++++++++++++++++L1",10,13,0
+               S01:000080B0:  2D 2D 2D 2B 2B 2B 2B 2B 2B 2B 2B 2B 2B 2B 2B 2B
+               S01:000080C0:  2B 2B 2B 2B 2B 2B 4C 31
+               S01:000080C8:  0A
+               S01:000080C9:  0D
+               S01:000080CA:  00
+F00:0186       	.p2align 2
+F00:0187       	.rept		5
+F00:0191       
+F02:0001       	SWI		0x01
+               S01:000080CC:  01 00 00 EF
+F02:0002       	.byte	"1234567890123456789123456789012345678912345L2",10,13,0
+               S01:000080D0:  31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36
+               S01:000080E0:  37 38 39 31 32 33 34 35 36 37 38 39 30 31 32 33
+               S01:000080F0:  0A
+               S01:000080F1:  0D
+               S01:000080F2:  00
+F02:0003       	.p2align 2
+F02:0004       	
+F02:0001       	SWI		0x01
+               S01:00008100:  01 00 00 EF
+F02:0002       	.byte	"1234567890123456789123456789012345678912345L2",10,13,0
+               S01:00008104:  31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36
+               S01:00008114:  37 38 39 31 32 33 34 35 36 37 38 39 30 31 32 33
+               S01:00008124:  0A
+               S01:00008125:  0D
+               S01:00008126:  00
+F02:0003       	.p2align 2
+F02:0004       	
+F02:0001       	SWI		0x01
+               S01:00008134:  01 00 00 EF
+F02:0002       	.byte	"1234567890123456789123456789012345678912345L2",10,13,0
+               S01:00008138:  31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36
+               S01:00008148:  37 38 39 31 32 33 34 35 36 37 38 39 30 31 32 33
+               S01:00008158:  0A
+               S01:00008159:  0D
+               S01:0000815A:  00
+F02:0003       	.p2align 2
+F02:0004       	
+F02:0001       	SWI		0x01
+               S01:00008168:  01 00 00 EF
+F02:0002       	.byte	"1234567890123456789123456789012345678912345L2",10,13,0
+               S01:0000816C:  31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36
+               S01:0000817C:  37 38 39 31 32 33 34 35 36 37 38 39 30 31 32 33
+               S01:0000818C:  0A
+               S01:0000818D:  0D
+               S01:0000818E:  00
+F02:0003       	.p2align 2
+F02:0004       	
+F02:0001       	SWI		0x01
+               S01:0000819C:  01 00 00 EF
+F02:0002       	.byte	"1234567890123456789123456789012345678912345L2",10,13,0
+               S01:000081A0:  31 32 33 34 35 36 37 38 39 30 31 32 33 34 35 36
+               S01:000081B0:  37 38 39 31 32 33 34 35 36 37 38 39 30 31 32 33
+               S01:000081C0:  0A
+               S01:000081C1:  0D
+               S01:000081C2:  00
+F02:0003       	.p2align 2
+F02:0004       	
+F00:0192       	SWI		0x01
+               S01:000081D0:  01 00 00 EF
+F00:0193       	.byte	"---+++++++++++++++++++L3",10,13,0
+               S01:000081D4:  2D 2D 2D 2B 2B 2B 2B 2B 2B 2B 2B 2B 2B 2B 2B 2B
+               S01:000081E4:  2B 2B 2B 2B 2B 2B 4C 33
+               S01:000081EC:  0A
+               S01:000081ED:  0D
+               S01:000081EE:  00
+F00:0194       	.p2align 2
+F00:0195       	SWI		0x01
+               S01:000081F0:  01 00 00 EF
+F00:0196       	.byte	"---+++++++++++++++++++L4",10,13,0
+               S01:000081F4:  2D 2D 2D 2B 2B 2B 2B 2B 2B 2B 2B 2B 2B 2B 2B 2B
+               S01:00008204:  2B 2B 2B 2B 2B 2B 4C 34
+               S01:0000820C:  0A
+               S01:0000820D:  0D
+               S01:0000820E:  00
+F00:0197       	.p2align 2
+F00:0198       	SWI		0x01
+               S01:00008210:  01 00 00 EF
+F00:0199       	.byte	"---+++++++++++++++++++L5",10,13,0
+               S01:00008214:  2D 2D 2D 2B 2B 2B 2B 2B 2B 2B 2B 2B 2B 2B 2B 2B
+               S01:00008224:  2B 2B 2B 2B 2B 2B 4C 35
+               S01:0000822C:  0A
+               S01:0000822D:  0D
+               S01:0000822E:  00
+F00:0200       	.p2align 2
+F00:0201       
+F00:0202       	
+F00:0203       	ldr		r1,screenaddr1
+               S01:00008230:  44 14 9F E5
+F00:0204       	;add		R1,R1,#416*70
+F00:0205       
+F00:0206       	add		R4,R1,#32
+               S01:00008234:  20 40 81 E2
+F00:0207       	add		R5,R4,#415-64
+               S01:00008238:  01 5C 84 E2 5F 50 85 E2
+F00:0208       ; au milieu
+F00:0209       	add		R1,R1,#208
+               S01:00008240:  D0 10 81 E2
+F00:0210       	mov		R2,R1
+               S01:00008244:  01 20 A0 E1
+F00:0211       
+F00:0212       	ldr		r3,couleur
+               S01:00008248:  24 34 9F E5
+F00:0213       	add		R6,R3,#25
+               S01:0000824C:  19 60 83 E2
+F00:0214       	
+F00:0215       ; nombre de lignes
+F00:0216       	mov		R0,#150
+               S01:00008250:  96 00 A0 E3
+F00:0217       
+F00:0218       boucle_triangle_ligne:
+F00:0219       	strb	r3,[r1]
+               S01:00008254:  00 30 C1 E5
+F00:0220       	strb	r6,[r4]
+               S01:00008258:  00 60 C4 E5
+F00:0221       	strb	r3,[r5]
+               S01:0000825C:  00 30 C5 E5
+F00:0222       
+F00:0223       	strb	r3,[r2]
+               S01:00008260:  00 30 C2 E5
+F00:0224       	subs	R1,R1,#1
+               S01:00008264:  01 10 51 E2
+F00:0225       	adds	R2,R2,#1
+               S01:00008268:  01 20 92 E2
+F00:0226       	
+F00:0227       	add		R1,R1,#416
+               S01:0000826C:  1A 1E 81 E2
+F00:0228       	add		R2,R2,#416
+               S01:00008270:  1A 2E 82 E2
+F00:0229       	add		R4,R4,#416
+               S01:00008274:  1A 4E 84 E2
+F00:0230       	add		R5,R5,#416
+               S01:00008278:  1A 5E 85 E2
+F00:0231       	
+F00:0232       	subs	R0,R0,#1
+               S01:0000827C:  01 00 50 E2
+F00:0233       	bgt		boucle_triangle_ligne
+               S01:00008280:  F3 FF FF CA
+F00:0234       
+F00:0235       	ldr		r1,screenaddr1
+               S01:00008284:  F0 13 9F E5
+F00:0236       	add		R1,R1,#416*100
+               S01:00008288:  A2 1C 81 E2 80 10 81 E2
+F00:0237       
+F00:0238       	add		R4,R1,#32
+               S01:00008290:  20 40 81 E2
+F00:0239       	add		R5,R4,#415-64
+               S01:00008294:  01 5C 84 E2 5F 50 85 E2
+F00:0240       ; au milieu
+F00:0241       	add		R1,R1,#208
+               S01:0000829C:  D0 10 81 E2
+F00:0242       	mov		R2,R1
+               S01:000082A0:  01 20 A0 E1
+F00:0243       
+F00:0244       	ldr		r3,couleur
+               S01:000082A4:  C8 33 9F E5
+F00:0245       	add		R6,R3,#25
+               S01:000082A8:  19 60 83 E2
+F00:0246       ; nombre de lignes
+F00:0247       	mov		R0,#150
+               S01:000082AC:  96 00 A0 E3
+F00:0248       
+F00:0249       boucle_triangle_ligne2:
+F00:0250       	strb	r3,[r1]
+               S01:000082B0:  00 30 C1 E5
+F00:0251       	strb	r6,[r4]
+               S01:000082B4:  00 60 C4 E5
+F00:0252       	strb	r3,[r5]
+               S01:000082B8:  00 30 C5 E5
+F00:0253       
+F00:0254       	strb	r3,[r2]
+               S01:000082BC:  00 30 C2 E5
+F00:0255       	subs	R1,R1,#1
+               S01:000082C0:  01 10 51 E2
+F00:0256       	adds	R2,R2,#1
+               S01:000082C4:  01 20 92 E2
+F00:0257       	
+F00:0258       	add		R1,R1,#416
+               S01:000082C8:  1A 1E 81 E2
+F00:0259       	add		R2,R2,#416
+               S01:000082CC:  1A 2E 82 E2
+F00:0260       	add		R4,R4,#416
+               S01:000082D0:  1A 4E 84 E2
+F00:0261       	add		R5,R5,#416
+               S01:000082D4:  1A 5E 85 E2
+F00:0262       	
+F00:0263       	subs	R0,R0,#1
+               S01:000082D8:  01 00 50 E2
+F00:0264       	bgt		boucle_triangle_ligne2
+               S01:000082DC:  F3 FF FF CA
+F00:0265       
+F00:0266       ; ligne horizontale a 200
+F00:0267       	ldr		r1,screenaddr1
+               S01:000082E0:  94 13 9F E5
+F00:0268       	add		R1,R1,#416*199
+               S01:000082E4:  36 1E 81 E2 05 19 81 E2
+F00:0269       	add		R3,R3,#5654
+               S01:000082EC:  16 3C 83 E2 16 30 83 E2
+F00:0270       
+F00:0271       	mov		R0,#350
+               S01:000082F4:  01 0C A0 E3 5E 00 80 E3
+F00:0272       
+F00:0273       boucle_triangle_ligne3:
+F00:0274       	strb	r3,[r1],#1
+               S01:000082FC:  01 30 C1 E4
+F00:0275       	subs	R0,R0,#1
+               S01:00008300:  01 00 50 E2
+F00:0276       	bgt		boucle_triangle_ligne3
+               S01:00008304:  FC FF FF CA
+F00:0277       
+F00:0278       
+F00:0279       	SWI		22
+               S01:00008308:  16 00 00 EF
+F00:0280       	MOVNV R0,R0            
+               S01:0000830C:  00 00 A0 F1
+F00:0281       
+F00:0282       
+F00:0283       ; update pointeur video hardware vinit
+F00:0284       	ldr	r0,screenaddr1_MEMC
+               S01:00008310:  6C 03 9F E5
+F00:0285       	mov r0,r0,lsr #4
+               S01:00008314:  20 02 A0 E1
+F00:0286       	mov r0,r0,lsl #2
+               S01:00008318:  00 01 A0 E1
+F00:0287       	mov r1,#0x3600000
+               S01:0000831C:  36 16 A0 E3
+F00:0288       	add r0,r0,r1
+               S01:00008320:  01 00 80 E0
+F00:0289       	str r0,[r0]
+               S01:00008324:  00 00 80 E5
+F00:0290       
+F00:0291       	bl		RM_init
+               S01:00008328:  10 00 00 EB
+F00:0292       
+F00:0293       	bl		RM_start
+               S01:0000832C:  1A 00 00 EB
+F00:0294       	
+F00:0295       	mov		R8,#0x1234
+               S01:00008330:  12 8C A0 E3 34 80 88 E3
+F00:0296       	
+F00:0297       boucle:
+F00:0298       
+F00:0299       	bl		RM_wait_VBL
+               S01:00008338:  62 00 00 EB
+F00:0300       
+F00:0301       ;	mov		R0,#56
+F00:0302       ;	mov		R1,#67
+F00:0303       ;	.rept	500	
+F00:0304       ;	muls	R0,R1,R0
+F00:0305       ;	.endr
+F00:0306       ; ici il faut tester une touche
+F00:0307       
+F00:0308       
+F00:0309       
+F00:0310       	bl      RM_scankeyboard
+               S01:0000833C:  66 00 00 EB
+F00:0311       	cmp		R0,#0x5F
+               S01:00008340:  5F 00 50 E3
+F00:0312       	bne		boucle
+               S01:00008344:  FB FF FF 1A
+F00:0313       
+F00:0314       	
+F00:0315       
+F00:0316       exit:
+F00:0317       	;bl		RM_wait_VBL
+F00:0318       	;bl      RM_scankeyboard
+F00:0319       	str		R8,toucheclavier
+               S01:00008348:  1C 80 8F E5
+F00:0320       
+F00:0321       	bl		RM_wait_VBL
+               S01:0000834C:  5D 00 00 EB
+F00:0322       ;-----------------------
+F00:0323       ;sortie
+F00:0324       ;-----------------------
+F00:0325       
+F00:0326       	bl	RM_release
+               S01:00008350:  49 00 00 EB
+F00:0327       
+F00:0328       
+F00:0329       	
+F00:0330       
+F00:0331       	MOV r0,#22	;Set MODE
+               S01:00008354:  16 00 A0 E3
+F00:0332       	SWI OS_WriteC
+               S01:00008358:  00 00 00 EF
+F00:0333       	MOV r0,#12
+               S01:0000835C:  0C 00 A0 E3
+F00:0334       	SWI OS_WriteC
+               S01:00008360:  00 00 00 EF
+F00:0335       
+F00:0336       	
+F00:0337       	
+F00:0338       	MOV R0,#0
+               S01:00008364:  00 00 A0 E3
+F00:0339       	SWI OS_Exit
+               S01:00008368:  11 00 00 EF
+F00:0340       toucheclavier:		.long 0
+               S01:0000836C:  00 00 00 00
+F00:0341       ;----------------------------------------------------------------------------------------------------------------------
+F00:0342       RM_init:
+F00:0343       ; ne fait que verifier la version de Risc OS...
+F00:0344       	str		lr,save_lr
+               S01:00008370:  20 E0 8F E5
+F00:0345       ; get OS version
+F00:0346       	MOV     R0,#129
+               S01:00008374:  81 00 A0 E3
+F00:0347       	MOV     R1,#0
+               S01:00008378:  00 10 A0 E3
+F00:0348       	MOV     R2,#0xFF
+               S01:0000837C:  FF 20 A0 E3
+F00:0349       	SWI     OS_Byte
+               S01:00008380:  06 00 00 EF
+F00:0350       
+F00:0351       	STRB    R1,os_version
+               S01:00008384:  A8 12 CF E5
+F00:0352       
+F00:0353       ; Risc os 3.5 ? => sortie
+F00:0354       	CMP     R1,#0xA5
+               S01:00008388:  A5 00 51 E3
+F00:0355       	beq		exit
+               S01:0000838C:  ED FF FF 0A
+F00:0356       	
+F00:0357       	ldr		lr,save_lr
+               S01:00008390:  00 E0 9F E5
+F00:0358       	mov		pc,lr
+               S01:00008394:  0E F0 A0 E1
+F00:0359       save_lr:		.long		0
+               S01:00008398:  00 00 00 00
+F00:0360       
+F00:0361       ; SH decoded IRQ and FIQ masks
+F00:0362       ;
+F00:0363       ; to load/set/store IRQ and FIQ masks use:
+F00:0364       ;
+F00:0365       ; Rx=mask
+F00:0366       ; Ry=&3200000 (IOC base)
+F00:0367       ;
+F00:0368       ;
+F00:0369       ; LDRB Rx,[Ry,#&18+0]      ;load irqa mask (+0)
+F00:0370       ; STRB Rx,oldirqa          ;store original mask
+F00:0371       ; MOV  Rx,#%00100000       ;only allow timer 0 interrupt
+F00:0372       ; STRB Rx,[Ry,#&18+2]      ;(note +2 on storing)
+F00:0373       ;
+F00:0374       ; LDRB Rx,[Ry,#&28+0]      ;load irqb mask (+0)
+F00:0375       ; STRB Rx,oldirqb          ;store original mask
+F00:0376       ; MOV  Rx,#%00000010       ;only allow sound interrupt
+F00:0377       ; STRB Rx,[Ry,#&28+2]      ;(note +2 on storing)
+F00:0378       ;
+F00:0379       ;
+F00:0380       
+F00:0381       ;irqa mask = IOC (&3200000) + &18
+F00:0382       ;
+F00:0383       ;bit 0   - il6 0 printer busy / printer irq
+F00:0384       ;    1   - il7 0 serial port ringing / low battery
+F00:0385       ;    2   - if  0 printer ack / floppy index
+F00:0386       ;    3s  - ir  1 vsync
+F00:0387       ;    4   - por 0 power on
+F00:0388       ;    5c  - tm0 0 timer 0
+F00:0389       ;    6   - tm1 1 timer 1
+F00:0390       ;    7   - 1   0 n/c      (fiq downgrade?)
+F00:0391       ;
+F00:0392       ;irqb mask = IOC (&3200000) + &28
+F00:0393       ;
+F00:0394       ;bit 0   - il0 0 expansion card fiq downgrade
+F00:0395       ;    1   - il1 0 sound system buffer change
+F00:0396       ;    2   - il2 0 serial port controller
+F00:0397       ;    3   - il3 0 hdd controller / ide controller
+F00:0398       ;    4   - il4 0 floppy changed / floppy interrupt
+F00:0399       ;    5   - il5 0 expansion card interrupt
+F00:0400       ;    6   - stx 1 keyboard transmit empty
+F00:0401       ;    7cs - str 1 keyboard recieve full
+F00:0402       ;
+F00:0403       ; c = cmdline critical
+F00:0404       ; s = desktop critical
+F00:0405       ;
+F00:0406       ;fiq mask (none are critical) = IOC (&3200000) + &38
+F00:0407       ;
+F00:0408       ;bit 0  - fh0 0 floppy data request / floppy dma
+F00:0409       ;    1  - fh1 0 fdc interrupt / fh1 pin on ioc
+F00:0410       ;    2  - fl  0 econet interrupt
+F00:0411       ;    3  - c3  0 c3 on ioc
+F00:0412       ;    4  - c4  0 c4 on ioc / serial interrupt (also IRQB bit2)
+F00:0413       ;    5  - c5  0 c5 on ioc
+F00:0414       ;    6  - il0 0 expansion card interrupt
+F00:0415       ;    7  - 1   0 force fiq (always 1)
+F00:0416       ;
+F00:0417       ;cr
+F00:0418       ;
+F00:0419       ;bit 0 - c0 IIC data
+F00:0420       ;    1 - c1 IIC clock
+F00:0421       ;    2 - c2 floppy ready / density
+F00:0422       ;    3 - c3 reset enable / unique id
+F00:0423       ;    4 - c4 aux i/o connector / serial fiq
+F00:0424       ;    5 - c5 speaker
+F00:0425       ;    6 - if printer ack or floppy index
+F00:0426       ;    7 - ir vsync
+F00:0427       ;	
+F00:0428       ;----------------------------------------------------------------------------------------------------------------------
+F00:0429       RM_start:
+F00:0430       	str		lr,save_lr
+               S01:0000839C:  0C E0 0F E5
+F00:0431       ; appel XOS car si appel OS_SWI si erreur, ça sort directement
+F00:0432       	MOV		R0,#0x0C           ;claim FIQ
+               S01:000083A0:  0C 00 A0 E3
+F00:0433       	SWI		XOS_ServiceCall
+               S01:000083A4:  30 00 02 EF
+F00:0434       	bvs		exit
+               S01:000083A8:  E6 FF FF 6A
+F00:0435       
+F00:0436       
+F00:0437       ; we own FIQs
+F00:0438       
+F00:0439       
+F00:0440       	TEQP	PC,#0xC000001					; bit 27 & 26 = 1, bit 0=1 : IRQ Disable+FIRQ Disable+FIRQ mode ( pour récupérer et sauvegarde
+               S01:000083AC:  43 F3 3F E3
+F00:0441       ;	TEQP	PC,#0b11<<26 OR 0b01			;disable IRQs and FIQs, change to FIQ mode
+F00:0442       	MOV		R0,R0
+               S01:000083B0:  00 00 A0 E1
+F00:0443       
+F00:0444       	ADR       R0,fiqoriginal				; sauvegarde de R8-R14
+               S01:000083B4:  9F 0F 8F E2
+F00:0445       	STMIA     R0,{R8-R14}
+               S01:000083B8:  00 7F 80 E8
+F00:0446       
+F00:0447       	MOV       R1,#0x3200000
+               S01:000083BC:  32 16 A0 E3
+F00:0448       	LDRB      R0,[R1,#0x18]					; lecture et sauvegarde mask IRQ A
+               S01:000083C0:  18 00 D1 E5
+F00:0449       	STR       R0,oldIRQa
+               S01:000083C4:  88 02 8F E5
+F00:0450       	LDRB      R0,[R1,#0x28]					; lecture et sauvegarde mask IRQ B
+               S01:000083C8:  28 00 D1 E5
+F00:0451       	STR       R0,oldIRQb
+               S01:000083CC:  84 02 8F E5
+F00:0452       
+F00:0453       ; When installing, we will start on the next VSync, so set IRQ for VSync only
+F00:0454       ; and set T1 to contain 'vsyncvalue', so everything in place for VSync int...
+F00:0455       
+F00:0456       	MOV       R0,#0b00001000
+               S01:000083D0:  08 00 A0 E3
+F00:0457       	STRB      R0,[R1,#0x18+2]    ;set IRQA mask to %00001000 = VSync only : bit 3 sur mask IRQ A = vsync
+               S01:000083D4:  1A 00 C1 E5
+F00:0458       	MOV       R0,#0
+               S01:000083D8:  00 00 A0 E3
+F00:0459       	STRB      R0,[R1,#0x28+2]    ;set IRQB mask to 0					:	IRQ B mask à 0 = disabled
+               S01:000083DC:  2A 00 C1 E5
+F00:0460       	STRB      R0,[R1,#0x38+2]    ;set FIQ mask to 0 (disable FIQs)		:	FIRQ  mask à 0 = disabled
+               S01:000083E0:  3A 00 C1 E5
+F00:0461       
+F00:0462       ; Timer 1 / IRQ A
+F00:0463       	MOV       R0,#0xFF           ;*v0.14* set max T1 - ensure T1 doesn't trigger before first VSync!
+               S01:000083E4:  FF 00 A0 E3
+F00:0464       	STRB      R0,[R1,#0x50+2]    ;T1 low byte, +2 for write			: verrou / compteur = 0xFFFF
+               S01:000083E8:  52 00 C1 E5
+F00:0465       	STRB      R0,[R1,#0x54+2]    ;T1 high byte, +2 for write
+               S01:000083EC:  56 00 C1 E5
+F00:0466       	STRB      R1,[R1,#0x58+2]    ;T1_go = reset T1					: remet le compteur a la valeur latch ( verrou)
+               S01:000083F0:  5A 10 C1 E5
+F00:0467       
+F00:0468       ; on prépare le compteur du Timer 1 qui tournera entre le Vsync et la 1ere ligne de hsync
+F00:0469       	MOV       R0,#vsyncreturn_low_ligne199			;or ldr r8,vsyncval  - will reload with this on VSync...			
+               S01:000083F4:  A5 00 A0 E3
+F00:0470       	STRB      R0,[R1,#0x50+2]    				;T1 low byte, +2 for write									: verrou / compteur 
+               S01:000083F8:  52 00 C1 E5
+F00:0471       	MOV       R0,#vsyncreturn_high_ligne199			;or mov r8,r8,lsr#8
+               S01:000083FC:  7E 00 A0 E3
+F00:0472       	STRB      R0,[R1,#0x54+2]   					;T1 high byte, +2 for write								: verrou / compteur 
+               S01:00008400:  56 00 C1 E5
+F00:0473       
+F00:0474       
+F00:0475       ; poke our IRQ/FIQ code into &1C-&FC : copie des routines IRQ/FIRQ dans la mémoire basse en 0x18
+F00:0476       	MOV       R0,#0
+               S01:00008404:  00 00 A0 E3
+F00:0477       	LDR       R1,[R0,#0x18]      ;load current IRQ vector
+               S01:00008408:  18 10 90 E5
+F00:0478       	STR       R1,oldIRQbranch
+               S01:0000840C:  4C 12 8F E5
+F00:0479       
+F00:0480       	BIC       R1,R1,#0xFF000000
+               S01:00008410:  FF 14 C1 E3
+F00:0481       	MOV       R1,R1,LSL#2
+               S01:00008414:  01 11 A0 E1
+F00:0482       	ADD       R1,R1,#0x18+8
+               S01:00008418:  20 10 81 E2
+F00:0483       	STR       R1,oldIRQaddress
+               S01:0000841C:  40 12 8F E5
+F00:0484       
+F00:0485       ;copy IRQ/FIQ code to &18 onwards
+F00:0486       	ldr			R0,pointeur_fiqbase
+               S01:00008420:  7C 07 9F E5
+F00:0487       	MOV       R1,#0x18	
+               S01:00008424:  18 10 A0 E3
+F00:0488       	LDMIA     R0!,{R2-R12}
+               S01:00008428:  FC 1F B0 E8
+F00:0489       	STMIA     R1!,{R2-R12}      ;11 pokey codey
+               S01:0000842C:  FC 1F A1 E8
+F00:0490       	LDMIA     R0!,{R2-R12}
+               S01:00008430:  FC 1F B0 E8
+F00:0491       	STMIA     R1!,{R2-R12}      ;22 pokey codey
+               S01:00008434:  FC 1F A1 E8
+F00:0492       	LDMIA     R0!,{R2-R12}
+               S01:00008438:  FC 1F B0 E8
+F00:0493       	STMIA     R1!,{R2-R12}      ;33 pokey codey
+               S01:0000843C:  FC 1F A1 E8
+F00:0494       	LDMIA     R0!,{R2-R12}
+               S01:00008440:  FC 1F B0 E8
+F00:0495       	STMIA     R1!,{R2-R12}      ;44 pokey codey
+               S01:00008444:  FC 1F A1 E8
+F00:0496       	LDMIA     R0!,{R2-R12}
+               S01:00008448:  FC 1F B0 E8
+F00:0497       	STMIA     R1!,{R2-R12}      ;55 pokey codey
+               S01:0000844C:  FC 1F A1 E8
+F00:0498       	LDMIA     R0!,{R2-R4}
+               S01:00008450:  1C 00 B0 E8
+F00:0499       	STMIA     R1!,{R2-R4}       ;58 pokey codey (58 max)
+               S01:00008454:  1C 00 A1 E8
+F00:0500       
+F00:0501       ; init des registres permanents
+F00:0502       	MOV			R14,#0x3200000         	; 6 2C set R14 to IOC address
+               S01:00008458:  32 E6 A0 E3
+F00:0503       	mov			R12,#0x3400000
+               S01:0000845C:  0D C5 A0 E3
+F00:0504       
+F00:0505       
+F00:0506       .equ 	FIQ_notHSync_valeur, 0xC0
+F00:0507       ; on écrit l'adresse de la routine Vsync dans le code IRQ/FIRQ en bas de mémoire  pour revenir si vsync ou keyboard
+F00:0508       	adr		R0,notHSync					;FNlong_adr("",0,notHSync)   ;set up VSync code after copying
+               S01:00008460:  F0 00 8F E2
+F00:0509       	MOV     R1,#FIQ_notHSync_valeur 	;ref. works if assembling on RO3, note 'FIQ_notHSync' is 0-relative!
+               S01:00008464:  C0 10 A0 E3
+F00:0510       	STR       R0,[R1]
+               S01:00008468:  00 00 81 E5
+F00:0511       
+F00:0512       ; sauvegarde de la première instruction pour vérifier la présence du code , pour ne pas lancer plusieurs fois RM, inu
+F00:0513       ;	MOV       R0,#0
+F00:0514       ;	LDR       R1,[R0,#0x18]      ;first IRQ instruction from our code
+F00:0515       ;	STR       R1,newIRQfirstinst
+F00:0516       
+F00:0517       ; sortie
+F00:0518       ;									mode SVC Supervisor
+F00:0519       	TEQP      PC,#0b11				; %00<<26 OR %11;enable IRQs and FIQs, change to user mode
+               S01:0000846C:  03 F0 3F E3
+F00:0520       	MOV       R0,R0
+               S01:00008470:  00 00 A0 E1
+F00:0521       	
+F00:0522       	ldr		lr,save_lr
+               S01:00008474:  E4 E0 1F E5
+F00:0523       	mov		pc,lr					;exit in USER mode and with IRQs and FIQs on
+               S01:00008478:  0E F0 A0 E1
+F00:0524       
+F00:0525       
+F00:0526       ;----------------------------------------------------------------------------------------------------------------------
+F00:0527       RM_release:
+F00:0528       	str		lr,save_lr
+               S01:0000847C:  EC E0 0F E5
+F00:0529       
+F00:0530       ; we own FIQs
+F00:0531       				  
+F00:0532       	TEQP      PC,#0x0C000001					; %11<<26 OR %01            ;disable IRQs and FIQs, switch FIQ mode
+               S01:00008480:  43 F3 3F E3
+F00:0533       	MOV       R0,R0
+               S01:00008484:  00 00 A0 E1
+F00:0534       
+F00:0535       	MOV       R0,#0
+               S01:00008488:  00 00 A0 E3
+F00:0536       	LDR       R1,oldIRQbranch
+               S01:0000848C:  CC 11 9F E5
+F00:0537       	STR       R1,[R0,#0x18]        ;restore original IRQ controller
+               S01:00008490:  18 10 80 E5
+F00:0538       	
+F00:0539       	MOV       R0,#0
+               S01:00008494:  00 00 A0 E3
+F00:0540       	MOV       R1,#0x3200000
+               S01:00008498:  32 16 A0 E3
+F00:0541       	STRB      R0,[R1,#0x38+2]      ;set FIQ mask to 0 (disable FIQs)
+               S01:0000849C:  3A 00 C1 E5
+F00:0542       
+F00:0543       	LDR       R0,oldIRQa
+               S01:000084A0:  AC 01 9F E5
+F00:0544       	STRB      R0,[R1,#0x18+2]
+               S01:000084A4:  1A 00 C1 E5
+F00:0545       	LDR       R0,oldIRQb
+               S01:000084A8:  A8 01 9F E5
+F00:0546       	STRB      R0,[R1,#0x28+2]      ;restore IRQ masks
+               S01:000084AC:  2A 00 C1 E5
+F00:0547       
+F00:0548       	TEQP      PC,#0b11  			; (%00<<26) OR %11          ;enable IRQs and FIQs, stay SVC mode
+               S01:000084B0:  03 F0 3F E3
+F00:0549       	MOV       R0,R0
+               S01:000084B4:  00 00 A0 E1
+F00:0550       
+F00:0551       
+F00:0552       	MOV       R0,#0x0B             ;release FIQ
+               S01:000084B8:  0B 00 A0 E3
+F00:0553       	SWI       XOS_ServiceCall
+               S01:000084BC:  30 00 02 EF
+F00:0554       
+F00:0555       	ldr		lr,save_lr
+               S01:000084C0:  30 E1 1F E5
+F00:0556       	mov		pc,lr					; return USER mode, leave IRQs and FIQs on
+               S01:000084C4:  0E F0 A0 E1
+F00:0557       
+F00:0558       ;----------------------------------------------------------------------------------------------------------------------
+F00:0559       RM_wait_VBL:
+F00:0560       	LDRB      R11,vsyncbyte   ;load our byte from FIQ address, if enabled
+               S01:000084C8:  98 B1 DF E5
+F00:0561       waitloop_vbl:
+F00:0562       	LDRB      R12,vsyncbyte
+               S01:000084CC:  94 C1 DF E5
+F00:0563       	TEQ       R12,R11
+               S01:000084D0:  0B 00 3C E1
+F00:0564       	BEQ       waitloop_vbl
+               S01:000084D4:  FC FF FF 0A
+F00:0565       	MOVS      PC,R14
+               S01:000084D8:  0E F0 B0 E1
+F00:0566       
+F00:0567       ;----------------------------------------------------------------------------------------------------------------------
+F00:0568       RM_scankeyboard:
+F00:0569       ; https://www.riscosopen.org/wiki/documentation/show/Low-Level%20Internal%20Key%20Numbers
+F00:0570       ; retour : R0 = touche sur 2 octets
+F00:0571       	;mov		R12,#0
+F00:0572       	;mov		R0,#0
+F00:0573       
+F00:0574       	LDRB      R12,keybyte2
+               S01:000084DC:  62 C0 DF E5
+F00:0575       	ands			R12,R12,#0b1111
+               S01:000084E0:  0F C0 1C E2
+F00:0576       	beq		  sortie_keycheck
+               S01:000084E4:  02 00 00 0A
+F00:0577       	LDRB      R0,keybyte1
+               S01:000084E8:  55 00 DF E5
+F00:0578       	ands			R0,R0,#0b1111
+               S01:000084EC:  0F 00 10 E2
+F00:0579       	ORR       R0,R12,R0,LSL#4
+               S01:000084F0:  00 02 8C E1
+F00:0580       
+F00:0581       sortie_keycheck:
+F00:0582       	mov		pc,lr				; retour 
+               S01:000084F4:  0E F0 A0 E1
+F00:0583       
+F00:0584       ;----------------------------------------------------------------------------------------------------------------------
+F00:0585       RM_clearkeybuffer:		   ;10 - temp SWI, probably not needed in future once full handler done
+F00:0586       	MOV       R12,#0
+               S01:000084F8:  00 C0 A0 E3
+F00:0587       	STRB      R12,keybyte1
+               S01:000084FC:  41 C0 CF E5
+F00:0588       	STRB      R12,keybyte2
+               S01:00008500:  3E C0 CF E5
+F00:0589       	MOV       PC,R14      ;flags not preserved
+               S01:00008504:  0E F0 A0 E1
+F00:0590       
+F00:0591       
+F00:0592       ;----------------------------------------------------------------------------------------------------------------------
+F00:0593       ; routine de verif du clavier executée pendant l'interruption.  lors de la lecture de 0x04, le bit d'interruption est r
+F00:0594       RM_check_keyboard:
+F00:0595       	;CMP       R13,#256            ;retrace? - this is a backup to disable STx SRx irqs, n/r
+F00:0596       	;MOVNE     R8,#%00000000       ;           n/r once everything is working
+F00:0597       	;STRNEB    R8,[R14,#&28+2]     ;set IRQB mask to %11000000 = STx or SRx
+F00:0598       	;BNE       exitVScode          ;back to IRQ mode and exit
+F00:0599       
+F00:0600       ; dans la vbl, registres sauvés en debut de VBL
+F00:0601       	;ADR       R8,kbd_stack
+F00:0602       	;STMIA     R8,{R4-R7}          ;some regs to play with
+F00:0603       
+F00:0604       ; R14 = IOC 
+F00:0605       	MOV       R9,#0x3200000       ; R14 to IOC address
+               S01:00008508:  32 96 A0 E3
+F00:0606       	LDRB      R8,[R9,#0x24+0]     ;load irq_B triggers								:IRQ B Status, bit 7 = buffer clavier vide
+               S01:0000850C:  24 80 D9 E5
+F00:0607       	TST       R8,#0b10000000       ;bit 7 = SRx, cleared by a read from 04
+               S01:00008510:  80 00 18 E3
+F00:0608       
+F00:0609       	; LDMEQIA     R8,{R4-R7}          ;restore regs
+F00:0610       	BEQ         exitVScode          ;back to IRQ mode and exit
+               S01:00008514:  42 00 00 0A
+F00:0611       ;BNE       kbd_received
+F00:0612       ;:
+F00:0613       ;.kbd_trans
+F00:0614       ;TST       R4,#%01000000       ;bit 6 = STx, cleared by a write to 04
+F00:0615       ;LDRNEB    R5,nextkeybyte
+F00:0616       ;STRNEB    R5,[R14,#&04+2]     ;clear STx
+F00:0617       ;MOVNE     R5,#%10000000       ;set mask to wait for ok-to-read
+F00:0618       ;STRNEB    R5,[R14,#&28+2]     ;set IRQB mask to %10000000 = SRx
+F00:0619       ;:
+F00:0620       ;LDMIA     R8,{R4-R7}          ;restore regs
+F00:0621       ;B         exitVScode          ;back to IRQ mode and exit
+F00:0622       ;
+F00:0623       ;
+F00:0624       kbd_received:
+F00:0625       
+F00:0626       ; process key byte, and put ack value in nextkeybyte
+F00:0627       
+F00:0628       	LDRB      R8,keycounter
+               S01:00008518:  24 80 DF E5
+F00:0629       	RSBS      R8,R8,#1            ;if =1 (NE), then this is the first byte, else (EQ)=second byte
+               S01:0000851C:  01 80 78 E2
+F00:0630       	STRB      R8,keycounter
+               S01:00008520:  1C 80 CF E5
+F00:0631       
+F00:0632       	LDRB      R10,[R9,#0x04+0]     ;load byte, clear SRx							: lors de la lecture de 0x04, le bit d'interruption est remi
+               S01:00008524:  04 A0 D9 E5
+F00:0633       	STRNEB    R10,keybyte1															; si pas R10 vide on stock l'octet clavier 1
+               S01:00008528:  15 A0 CF 15
+F00:0634       	STRNEB    R9,keybyte2			;clear byte 2!!! (was key-bug until v0.20)
+               S01:0000852C:  12 90 CF 15
+F00:0635       	
+F00:0636       	MOVNE     R8,#0b00111111       ;if first byte, reply with bACK					: pdf TRM A4 : BACK 0011 1111 ACK for first keyboard
+               S01:00008530:  3F 80 A0 13
+F00:0637       	STREQB    R10,keybyte2
+               S01:00008534:  0A A0 CF 05
+F00:0638       	
+F00:0639       	MOVEQ     R8,#0b00110001       ;if second byte, reply with sACK					: pdf TRM A4 : SACK 0011 0001 Last data byte ACK.
+               S01:00008538:  31 80 A0 03
+F00:0640       	STRB      R8,[R9,#0x04+2] 		;transmit response = sACK
+               S01:0000853C:  06 80 C9 E5
+F00:0641       	;STRB      R6,nextkeybyte
+F00:0642       
+F00:0643       	;MOV       R5,#%01000000       ;set mask to wait for ok-to-transmit
+F00:0644       	;STRB      R5,[R14,#&28+2]     ;set IRQB mask to %01000000 = STx
+F00:0645       	
+F00:0646       	;LDMIA     R8,{R4-R7}          ;restore regs
+F00:0647       	B         exitVScode          ;back to IRQ mode and exit
+               S01:00008540:  37 00 00 EA
+F00:0648       	;B         kbd_trans
+F00:0649       
+F00:0650       
+F00:0651       ; bACK=%00111111
+F00:0652       ; sACK=%00110001
+F00:0653       
+F00:0654       
+F00:0655       keycounter:  .byte 0 ;1 or 0
+               S01:00008544:  00
+F00:0656       keybyte1:    .byte 0
+               S01:00008545:  00
+F00:0657       keybyte2:    .byte 0
+               S01:00008546:  00
+F00:0658       nextkeybyte: .byte 0
+               S01:00008547:  00
+F00:0659       
+F00:0660       kbd_stack:
+F00:0661       .long      0 ;R4
+               S01:00008548:  00 00 00 00
+F00:0662       .long      0 ;R5
+               S01:0000854C:  00 00 00 00
+F00:0663       .long      0 ;R6
+               S01:00008550:  00 00 00 00
+F00:0664       .long      0 ;R7
+               S01:00008554:  00 00 00 00
+F00:0665       
+F00:0666       
+F00:0667       ;currently have rem'd the disable STx SRx irqs in hsync code and checkkeyboard code
+F00:0668       
+F00:0669       ;next try only enabling receive, assume transmit is ok...
+F00:0670       
+F00:0671       ;something wrong - &FFFF (HRST) seems to be only byte received
+F00:0672       ;v0.14 worked when trying only enabling receive, assume transmit is ok...
+F00:0673       
+F00:0674       ; on arrive avec:
+F00:0675       ; sauvegarde de R14 dans saveR14_firq en 0xE0
+F00:0676       ; sauvegarde de R4-R7 dans FIQ_tempstack en 0xD0
+F00:0677       ;  R14 = pointeur sur saveR14_firq
+F00:0678       ;  R8 = load irq_A triggers ( anciennement R8) R4 
+F00:0679       ;  R5 = 0x3200000 ( anciennement R14)  - IOC -
+F00:0680       ;  R6 = ...
+F00:0681       ;  R7 = ...
+F00:0682       
+F00:0683       ;----------------------------------------------------------------------------------------------------------------------
+F00:0684       notHSync:
+F00:0685       	TST       R8,#0b00001000       ;retest R5 is it bit 3 = Vsync? (bit 6 = T1 trigger/HSync)				: R8 = 0x14 = IRQ Request 
+               S01:00008558:  08 00 18 E3
+F00:0686       	STRNEB    R14,[R14,#0x58+2]    ;if VSync, reset T1 (latch should already have the vsyncvalue...)		: si vsync, alors on 
+               S01:0000855C:  5A E0 CE 15
+F00:0687       ;
+F00:0688       ; that's the high-priority stuff done, now we can check keyboard too...
+F00:0689       ;
+F00:0690       	BEQ       RM_check_keyboard       ;check IRQ_B for SRx/STx interrupts									: R8=0 / si 0, c'est qu'on a ni bit3=vsyn
+               S01:00008560:  E8 FF FF 0A
+F00:0691       
+F00:0692       	STRB      R8,[R14,#0x14+2]     ; ...and clear all IRQ_A interrupt triggers								: 1 = clear, donc ré-écrire la vale
+               S01:00008564:  16 80 CE E5
+F00:0693       
+F00:0694       ; remaskage IRQ A : Timer 1 + Vsync
+F00:0695       	MOV       R8,#0b01000000        ; Timer 1 only. **removed VSync trigger v0.05
+               S01:00008568:  40 80 A0 E3
+F00:0696       ;	MOV       R8,#0b01001000		; EDZ : Vsync + Timer 1
+F00:0697       ;	MOV       R8,#0b00001000		; EDZ : Vsync only
+F00:0698       
+F00:0699       	STRB      R8,[R14,#0x18+2]     ;set IRQA mask to %01000000 = T1 only									: mask IRQ A : bit 6 = Timer 1, plus de Vs
+               S01:0000856C:  1A 80 CE E5
+F00:0700       
+F00:0701       ; remaskage IRQ B : clavier/keyboard
+F00:0702       	MOV       R8,#0b10000000       ;R8,#%11000000
+               S01:00008570:  80 80 A0 E3
+F00:0703       	STRB      R8,[R14,#0x28+2]     ;set IRQB mask to %11000000 = STx or SRx									: mask IRQ B pour clavier
+               S01:00008574:  2A 80 CE E5
+F00:0704       
+F00:0705       ; remet le compteur inter ligne pour la frequence de Timer 1 = Hsync	
+F00:0706       	MOV       R8,#hsyncline_low			; (hsyncline AND &00FF)>>0
+               S01:00008578:  7F 80 A0 E3
+F00:0707       	STRB      R8,[R14,#0x50+2]              ;T1 low byte, +2 for write
+               S01:0000857C:  52 80 CE E5
+F00:0708       	MOV       R8,#hsyncline_high		; (hsyncline AND &FF00)>>8
+               S01:00008580:  00 80 A0 E3
+F00:0709       	STRB      R8,[R14,#0x54+2]              ;T1 high byte, +2 for write
+               S01:00008584:  56 80 CE E5
+F00:0710       
+F00:0711       ; vsyncbyte = 3 - vsyncbyte
+F00:0712       ; sert de flag de vsync, si modifié => vsync
+F00:0713       	LDRB      R8,vsyncbyte
+               S01:00008588:  D8 80 DF E5
+F00:0714       	RSB       R8,R8,#3
+               S01:0000858C:  03 80 68 E2
+F00:0715       	STRB      R8,vsyncbyte
+               S01:00008590:  D0 80 CF E5
+F00:0716       
+F00:0717       
+F00:0718       ;	ADR       R8,regtable
+F00:0719       ;	LDMIA     R8,{R9,R10,R11,R12}          ;reset table registers to defaults
+F00:0720       
+F00:0721       ; on remet le nombre de ligne a decrementer avant d'arriver à vsync
+F00:0722       	mov			R9,#position_ligne_hsync
+               S01:00008594:  E4 90 A0 E3
+F00:0723       	mov 		R8,#ylines                  ;reset yline counter
+               S01:00008598:  3A 80 A0 E3
+F00:0724       	str			R8,[R9]
+               S01:0000859C:  00 80 89 E5
+F00:0725       	
+F00:0726       	mov			R13,#table_couleur0_vstart_vend
+               S01:000085A0:  22 DB A0 E3 E0 D0 8D E3
+F00:0727       	mov			R8,#0
+               S01:000085A8:  00 80 A0 E3
+F00:0728       	str			R8,[R12]				; remise à noir du fond
+               S01:000085AC:  00 80 8C E5
+F00:0729       
+F00:0730       ;--------------
+F00:0731       ; test avec vstart 
+F00:0732       ; vinit = 0x3600000
+F00:0733       ; vstart = 0x3620000 = 0
+F00:0734       ; vend = 0x3640000 = 26
+F00:0735       
+F00:0736       ; vstart = 0
+F00:0737       	mov	R9,#0x3620000
+               S01:000085B0:  62 98 A0 E3 03 94 89 E3
+F00:0738       	mov	R8,#0
+               S01:000085B8:  00 80 A0 E3
+F00:0739       	add	R8,R8,R9
+               S01:000085BC:  09 80 88 E0
+F00:0740       	str	R8,[R8]
+               S01:000085C0:  00 80 88 E5
+F00:0741       	
+F00:0742       ; vend = ligne 200
+F00:0743       	mov	R9,#0x3640000
+               S01:000085C4:  D9 97 A0 E3
+F00:0744       	mov	R8,#104*200			; 199*104 + 104 -4 
+               S01:000085C8:  51 8C A0 E3 40 80 88 E3
+F00:0745       	sub	R8,R8,#4
+               S01:000085D0:  04 80 48 E2
+F00:0746       	add	R8,R8,R9
+               S01:000085D4:  09 80 88 E0
+F00:0747       	str	R8,[R8]
+               S01:000085D8:  00 80 88 E5
+F00:0748       ; vinit
+F00:0749       	mov	R9,#0x3600000
+               S01:000085DC:  36 96 A0 E3
+F00:0750       	mov		R8,#0
+               S01:000085E0:  00 80 A0 E3
+F00:0751       	add	R8,R8,R9
+               S01:000085E4:  09 80 88 E0
+F00:0752       	str	R8,[R8]
+               S01:000085E8:  00 80 88 E5
+F00:0753       
+F00:0754       
+F00:0755       
+F00:0756       ; ---------------attente debug affichage
+F00:0757       
+F00:0758       	mov   r9,#0x3400000               
+               S01:000085EC:  0D 95 A0 E3
+F00:0759       	mov   r8,#777
+               S01:000085F0:  03 8C A0 E3 09 80 88 E3
+F00:0760       ; border	
+F00:0761       	orr   r8,r8,#0x00000000            
+               S01:000085F8:  00 80 88 E3
+F00:0762       	str   r8,[r9]  
+               S01:000085FC:  00 80 89 E5
+F00:0763       
+F00:0764       
+F00:0765       	mov		R8,#10000
+               S01:00008600:  27 8C A0 E3 10 80 88 E3
+F00:0766       bouclewait:
+F00:0767       	mov	R8,R8
+               S01:00008608:  08 80 A0 E1
+F00:0768       	subs	R8,R8,#1
+               S01:0000860C:  01 80 58 E2
+F00:0769       	bgt	bouclewait
+               S01:00008610:  FC FF FF CA
+F00:0770       
+F00:0771       	mov   r9,#0x3400000               
+               S01:00008614:  0D 95 A0 E3
+F00:0772       	mov   r8,#000  
+               S01:00008618:  00 80 A0 E3
+F00:0773       ; border	
+F00:0774       	orr   r8,r8,#0x00000000            
+               S01:0000861C:  00 80 88 E3
+F00:0775       	str   r8,[r9]  
+               S01:00008620:  00 80 89 E5
+F00:0776       
+F00:0777       ; ---------------attente debug affichage
+F00:0778       
+F00:0779       ;	- vstart modifiable après démarrage affichage : vinit à 0, vstart à 0, vend à 199*104+100, attendre affichage, pe
+F00:0780       
+F00:0781       ; vinit à zéro
+F00:0782       ; vinit
+F00:0783       ;	mov	R9,#0x3600000
+F00:0784       	;mov	R8,#104*50			; 
+F00:0785       ;	mov		R8,#0
+F00:0786       ;	add	R8,R8,R9
+F00:0787       ;	str	R8,[R8]
+F00:0788       
+F00:0789       ; vstart à 0
+F00:0790       ; vstart = 0
+F00:0791       ;	mov	R9,#0x3620000
+F00:0792       ;	mov	R8,#104*50			; 199*104 + 104 -4 
+F00:0793       ;	mov	R8,#0
+F00:0794       ;	add	R8,R8,R9
+F00:0795       ;	str	R8,[R8]
+F00:0796       
+F00:0797       ; vend = ligne 200
+F00:0798       ;	mov	R9,#0x3640000
+F00:0799       ;	mov	R8,#104*39			; 199*104 + 104 -4 
+F00:0800       ;	sub	R8,R8,#4
+F00:0801       ;	add	R8,R8,R9
+F00:0802       ;	str	R8,[R8]
+F00:0803       
+F00:0804       
+F00:0805       
+F00:0806       
+F00:0807       
+F00:0808       	; update pointeur video hardware vinit
+F00:0809       ;	ldr	r0,screenaddr1_MEMC
+F00:0810       ;	mov r0,r0,lsr #4
+F00:0811       ;	mov r0,r0,lsl #2
+F00:0812       ;	mov r1,#0x3600000
+F00:0813       ;	add r0,r0,r1
+F00:0814       ;	str r0,[r0]
+F00:0815       
+F00:0816       ; vinit à la ligne 199
+F00:0817       	;mov	R8,#0x3600000
+F00:0818       	;add	R8,R8,#(199*104)
+F00:0819       	;ldr	R8,valeur_vinit_premiere_ligne
+F00:0820       	;str	R8,[R8]
+F00:0821       
+F00:0822       	;ldr	R8,valeur_vend_premiere_ligne
+F00:0823       	;str	R8,[R8]
+F00:0824       
+F00:0825       
+F00:0826       ;	ldr	R8,valeur_vstart_premiere_ligne
+F00:0827       ;	str	R8,[R8]
+F00:0828       
+F00:0829       
+F00:0830       	
+F00:0831       	;MOV       R13,#ylines                  ;reset yline counter
+F00:0832       
+F00:0833       ; ----- QTM
+F00:0834       ;	LDRB      R8,qtmcontrol
+F00:0835       ;	TEQ       R8,#1
+F00:0836       ;	BNE       exitVScode                   ;back to IRQ mode and exit
+F00:0837       
+F00:0838       ;rastersound:                  ;entered in FIQ mode, must exit via IRQ mode with SUBS PC,R14,#4
+F00:0839       ;	TEQP      PC,#%11<<26 OR %10  ;enter IRQ mode, IRQs/FIQs off
+F00:0840       ;	MOV       R0,R0               ;sync
+F00:0841       ;	STMFD     R13!,{R14}          ;stack R13_IRQ
+F00:0842       ;	TEQP      PC,#%11<<26 OR %11  ;enter SVC mode, IRQs/FIQs off
+F00:0843       ;	MOV       R0,R0               ;sync
+F00:0844       
+F00:0845       ;	STR       R13,tempr13         ;
+F00:0846       ;	LDRB      R13,dma_in_progress ;
+F00:0847       ;	TEQ       R13,#0              ;
+F00:0848       ;	LDRNE     R13,tempr13         ;
+F00:0849       ;	BNE       exitysoundcode      ;
+F00:0850       ;	STRB      PC,dma_in_progress  ;
+F00:0851       
+F00:0852       ;	adr		R13,startofstack	;FNlong_adr("",13,startofstack);
+F00:0853       ;	STMFD     R13!,{R14}          ;stack R14_SVC
+F00:0854       ;	LDR       R14,tempr13         ;
+F00:0855       ;	STMFD     R13!,{R14}          ;stack R13_SVC - we are now reentrant!!!
+F00:0856       ;	BL        rastersound_1       ;call rastersound routine - enables IRQs
+F00:0857       
+F00:0858       ;	MOV       R14,#0              ;...on return IRQs/FIQs will be off
+F00:0859       ;	STRB      R14,dma_in_progress ;
+F00:0860       ;	LDMFD     R13,{R13,R14}       ;restore R14_SVC and R13_SVC
+F00:0861       
+F00:0862       ;exitysoundcode:
+F00:0863       ;	TEQP      PC,#%11<<26 OR %10  ;back to IRQ mode
+F00:0864       ;	MOV       R0,R0               ;sync
+F00:0865       
+F00:0866       ;	LDMFD     R13!,{R14}
+F00:0867       ;	SUBS      PC,R14,#4           ;return to foreground
+F00:0868       
+F00:0869       
+F00:0870       exitVScode:
+F00:0871       ;	mode IRQ mode, 
+F00:0872       	TEQP      PC,#0x0C000002			; %000011<<26 OR %10 ;36 A4 back to IRQ mode				: xor sur bits 27&26 = autorise IRQ et FIRQ.
+               S01:00008624:  83 F3 3F E3
+F00:0873       	MOV       R0,R0                  ;37 A8 sync IRQ registers
+               S01:00008628:  00 00 A0 E1
+F00:0874       	SUBS      PC,R14,#4              ;38 AC return to foreground
+               S01:0000862C:  04 F0 5E E2
+F00:0875       ;----------------------------------------------------------------------------------------------------------------------
+F00:0876       
+F00:0877       			
+F00:0878       			
+F00:0879       			
+F00:0880       
+F00:0881       saveR14_firq_local:	.long 0
+               S01:00008630:  00 00 00 00
+F00:0882       ; ---------------------
+F00:0883       ; variables RM
+F00:0884       os_version:		.long      0         ;1 byte &A0 for Arthur 0.3/1.2, &A1 for RO2, &A3 for RO3.0, &A4 for RO3.1
+               S01:00008634:  00 00 00 00
+F00:0885       fiqoriginal:	
+F00:0886       .long      0         ;R8
+               S01:00008638:  00 00 00 00
+F00:0887       .long      0         ;R9
+               S01:0000863C:  00 00 00 00
+F00:0888       .long      0         ;R10
+               S01:00008640:  00 00 00 00
+F00:0889       .long      0         ;R11
+               S01:00008644:  00 00 00 00
+F00:0890       .long      0         ;R12
+               S01:00008648:  00 00 00 00
+F00:0891       .long      0         ;R13
+               S01:0000864C:  00 00 00 00
+F00:0892       .long      0         ;R14
+               S01:00008650:  00 00 00 00
+F00:0893       
+F00:0894       oldIRQa:	.long	0				; ancien vecteur IRQ A du système
+               S01:00008654:  00 00 00 00
+F00:0895       oldIRQb:	.long	0				; ancien vecteur IRQ B du système
+               S01:00008658:  00 00 00 00
+F00:0896       newIRQfirstinst:	.long	0	
+               S01:0000865C:  00 00 00 00
+F00:0897       oldIRQbranch:		.long 	0
+               S01:00008660:  00 00 00 00
+F00:0898       oldIRQaddress:		.long	0
+               S01:00008664:  00 00 00 00
+F00:0899       
+F00:0900       vsyncbyte:		.long 	0
+               S01:00008668:  00 00 00 00
+F00:0901       
+F00:0902       ; pointeurs proches	
+F00:0903       		.p2align		4
+F00:0904       pointeur_module97:		.long	module97
+               S01:00008670:  00 87 00 00
+F00:0905       couleur:	.long	0x7f7f7f7f
+               S01:00008674:  7F 7F 7F 7F
+F00:0906       couleur2:	.long	0x1e1e1e1e
+               S01:00008678:  1E 1E 1E 1E
+F00:0907       screenaddr1:	.long 0
+               S01:0000867C:  00 00 00 00
+F00:0908       screenaddr2:	.long 0
+               S01:00008680:  00 00 00 00
+F00:0909       screenaddr1_MEMC:	.long 0
+               S01:00008684:  00 00 00 00
+F00:0910       screenaddr2_MEMC:	.long 0
+               S01:00008688:  00 00 00 00
+F00:0911       
+F00:0912       ;pointeur_XOS_ServiceCall: .long toto
+F00:0913       ;toto:
+F00:0914       ;	.byte "XOS_ServiceCall",0
+F00:0915       
+F00:0916       
+F00:0917       	.p2align 8
+F00:0918       
+F00:0919       ; datas lointaines
+F00:0920       		.p2align 4
+F00:0921       module97:		.incbin	"97,ffa"
+               S01:00008700:  00 00 00 00 F0 00 00 00 F8 00 00 00 00 01 00 00
+               S01:00008710:  34 00 00 00 3B 00 00 00 68 00 00 00 00 00 00 00
+F00:0922       
+F00:0923       
+F00:0924       valeur_vinit_premiere_ligne:		.long	0x3600000+(98*104)
+               S01:000088D4:  D0 27 60 03
+F00:0925       valeur_vstart_premiere_ligne:		.long	0x3620000+(98*104)
+               S01:000088D8:  D0 27 62 03
+F00:0926       valeur_vend_premiere_ligne:		.long		0x3640000+100+(98*104)
+               S01:000088DC:  34 28 64 03
+F00:0927       
+F00:0928       ; 58 lignes en tout
+F00:0929       ;       .long   couleur0, vstart, vend
+F00:0930       table_couleur0_vstart_vend:
+F00:0931       	.set couleurt,0b1111
+F00:0932       	.set couleurt2,0b111000
+F00:0933       	.set couleurt3,0b111000000
+F00:0934       
+F00:0935       ;1ere ligne : fin de l'écran du haut. : vend = 0x3640000+((200*104)-4)
+F00:0936       	.set	numero_ligne_reflet,199
+F00:0937       	.set 	couleur0,0
+F00:0938       	.long   couleur0, 0x3620000 + (numero_ligne_reflet*104), 0x3640000+((200*104)-4)
+               S01:000088E0:  00 00 00 00
+               S01:000088E4:  D8 50 62 03
+               S01:000088E8:  3C 51 64 03
+F00:0939       	.set	couleur0, couleur0+0b100000000
+F00:0940       	.set	numero_ligne_reflet , numero_ligne_reflet - 1
+F00:0941       	
+F00:0942       	
+F00:0943       	
+F00:0944       	.rept	6
+F00:0950       
+F03:0001       		.rept	2
+F03:0004       
+F04:0001       			.long   couleur0, 0x3620000 + (numero_ligne_reflet*104), 0x3640000+(((numero_ligne_reflet+1)*104)+100)
+               S01:000088EC:  00 01 00 00
+               S01:000088F0:  70 50 62 03
+               S01:000088F4:  3C 51 64 03
+F04:0002       			.set	numero_ligne_reflet , numero_ligne_reflet - 1
+F04:0003       		
+F04:0001       			.long   couleur0, 0x3620000 + (numero_ligne_reflet*104), 0x3640000+(((numero_ligne_reflet+1)*104)+100)
+               S01:000088F8:  00 01 00 00
+               S01:000088FC:  08 50 62 03
+               S01:00008900:  D4 50 64 03
+F04:0002       			.set	numero_ligne_reflet , numero_ligne_reflet - 1
+F04:0003       		
+F03:0005       		.set	couleur0, couleur0+0b100000000
+F03:0006       	
+F03:0001       		.rept	2
+F03:0004       
+F05:0001       			.long   couleur0, 0x3620000 + (numero_ligne_reflet*104), 0x3640000+(((numero_ligne_reflet+1)*104)+100)
+               S01:00008904:  00 02 00 00
+               S01:00008908:  A0 4F 62 03
+               S01:0000890C:  6C 50 64 03
+F05:0002       			.set	numero_ligne_reflet , numero_ligne_reflet - 1
+F05:0003       		
+F05:0001       			.long   couleur0, 0x3620000 + (numero_ligne_reflet*104), 0x3640000+(((numero_ligne_reflet+1)*104)+100)
+               S01:00008910:  00 02 00 00
+               S01:00008914:  38 4F 62 03
+               S01:00008918:  04 50 64 03
+F05:0002       			.set	numero_ligne_reflet , numero_ligne_reflet - 1
+F05:0003       		
+F03:0005       		.set	couleur0, couleur0+0b100000000
+F03:0006       	
+F03:0001       		.rept	2
+F03:0004       
+F06:0001       			.long   couleur0, 0x3620000 + (numero_ligne_reflet*104), 0x3640000+(((numero_ligne_reflet+1)*104)+100)
+               S01:0000891C:  00 03 00 00
+               S01:00008920:  D0 4E 62 03
+               S01:00008924:  9C 4F 64 03
+F06:0002       			.set	numero_ligne_reflet , numero_ligne_reflet - 1
+F06:0003       		
+F06:0001       			.long   couleur0, 0x3620000 + (numero_ligne_reflet*104), 0x3640000+(((numero_ligne_reflet+1)*104)+100)
+               S01:00008928:  00 03 00 00
+               S01:0000892C:  68 4E 62 03
+               S01:00008930:  34 4F 64 03
+F06:0002       			.set	numero_ligne_reflet , numero_ligne_reflet - 1
+F06:0003       		
+F03:0005       		.set	couleur0, couleur0+0b100000000
+F03:0006       	
+F03:0001       		.rept	2
+F03:0004       
+F07:0001       			.long   couleur0, 0x3620000 + (numero_ligne_reflet*104), 0x3640000+(((numero_ligne_reflet+1)*104)+100)
+               S01:00008934:  00 04 00 00
+               S01:00008938:  00 4E 62 03
+               S01:0000893C:  CC 4E 64 03
+F07:0002       			.set	numero_ligne_reflet , numero_ligne_reflet - 1
+F07:0003       		
+F07:0001       			.long   couleur0, 0x3620000 + (numero_ligne_reflet*104), 0x3640000+(((numero_ligne_reflet+1)*104)+100)
+               S01:00008940:  00 04 00 00
+               S01:00008944:  98 4D 62 03
+               S01:00008948:  64 4E 64 03
+F07:0002       			.set	numero_ligne_reflet , numero_ligne_reflet - 1
+F07:0003       		
+F03:0005       		.set	couleur0, couleur0+0b100000000
+F03:0006       	
+F03:0001       		.rept	2
+F03:0004       
+F08:0001       			.long   couleur0, 0x3620000 + (numero_ligne_reflet*104), 0x3640000+(((numero_ligne_reflet+1)*104)+100)
+               S01:0000894C:  00 05 00 00
+               S01:00008950:  30 4D 62 03
+               S01:00008954:  FC 4D 64 03
+F08:0002       			.set	numero_ligne_reflet , numero_ligne_reflet - 1
+F08:0003       		
+F08:0001       			.long   couleur0, 0x3620000 + (numero_ligne_reflet*104), 0x3640000+(((numero_ligne_reflet+1)*104)+100)
+               S01:00008958:  00 05 00 00
+               S01:0000895C:  C8 4C 62 03
+               S01:00008960:  94 4D 64 03
+F08:0002       			.set	numero_ligne_reflet , numero_ligne_reflet - 1
+F08:0003       		
+F03:0005       		.set	couleur0, couleur0+0b100000000
+F03:0006       	
+F03:0001       		.rept	2
+F03:0004       
+F09:0001       			.long   couleur0, 0x3620000 + (numero_ligne_reflet*104), 0x3640000+(((numero_ligne_reflet+1)*104)+100)
+               S01:00008964:  00 06 00 00
+               S01:00008968:  60 4C 62 03
+               S01:0000896C:  2C 4D 64 03
+F09:0002       			.set	numero_ligne_reflet , numero_ligne_reflet - 1
+F09:0003       		
+F09:0001       			.long   couleur0, 0x3620000 + (numero_ligne_reflet*104), 0x3640000+(((numero_ligne_reflet+1)*104)+100)
+               S01:00008970:  00 06 00 00
+               S01:00008974:  F8 4B 62 03
+               S01:00008978:  C4 4C 64 03
+F09:0002       			.set	numero_ligne_reflet , numero_ligne_reflet - 1
+F09:0003       		
+F03:0005       		.set	couleur0, couleur0+0b100000000
+F03:0006       	
+F00:0951       ; 12+1 = 13 lignes
+F00:0952       ; ligne 186	à 62 sur 25 lignes
+F00:0953       ;       .long   couleur0, vstart, vend
+F00:0954       		.long   couleur0, 0x3620000 + (186*104), 0x3640000+((187*104)+100)
+               S01:0000897C:  00 07 00 00
+               S01:00008980:  90 4B 62 03
+               S01:00008984:  5C 4C 64 03
+F00:0955               .long   couleur0, 0x3620000 + (178*104), 0x3640000+(186*104)+100
+               S01:00008988:  00 07 00 00
+               S01:0000898C:  50 48 62 03
+               S01:00008990:  F4 4B 64 03
+F00:0956               .long   couleur0, 0x3620000 + (170*104), 0x3640000+(178*104)+100
+               S01:00008994:  00 07 00 00
+               S01:00008998:  10 45 62 03
+               S01:0000899C:  B4 48 64 03
+F00:0957               .long   couleur0, 0x3620000 + (162*104), 0x3640000+(170*104)+100
+               S01:000089A0:  00 07 00 00
+               S01:000089A4:  D0 41 62 03
+               S01:000089A8:  74 45 64 03
+F00:0958               .long   couleur0, 0x3620000 + (155*104), 0x3640000+(162*104)+100
+               S01:000089AC:  00 07 00 00
+               S01:000089B0:  F8 3E 62 03
+               S01:000089B4:  34 42 64 03
+F00:0959               .long   couleur0, 0x3620000 + (147*104), 0x3640000+(155*104)+100
+               S01:000089B8:  00 07 00 00
+               S01:000089BC:  B8 3B 62 03
+               S01:000089C0:  5C 3F 64 03
+F00:0960               .long   couleur0, 0x3620000 + (140*104), 0x3640000+(147*104)+100
+               S01:000089C4:  00 07 00 00
+               S01:000089C8:  E0 38 62 03
+               S01:000089CC:  1C 3C 64 03
+F00:0961               .long   couleur0, 0x3620000 + (133*104), 0x3640000+(140*104)+100
+               S01:000089D0:  00 07 00 00
+               S01:000089D4:  08 36 62 03
+               S01:000089D8:  44 39 64 03
+F00:0962               .long   couleur0, 0x3620000 + (126*104), 0x3640000+(133*104)+100
+               S01:000089DC:  00 07 00 00
+               S01:000089E0:  30 33 62 03
+               S01:000089E4:  6C 36 64 03
+F00:0963               .long   couleur0, 0x3620000 + (119*104), 0x3640000+(126*104)+100
+               S01:000089E8:  00 07 00 00
+               S01:000089EC:  58 30 62 03
+               S01:000089F0:  94 33 64 03
+F00:0964               .long   couleur0, 0x3620000 + (113*104), 0x3640000+(119*104)+100
+               S01:000089F4:  00 07 00 00
+               S01:000089F8:  E8 2D 62 03
+               S01:000089FC:  BC 30 64 03
+F00:0965               .long   couleur0, 0x3620000 + (106*104), 0x3640000+(113*104)+100
+               S01:00008A00:  00 07 00 00
+               S01:00008A04:  10 2B 62 03
+               S01:00008A08:  4C 2E 64 03
+F00:0966               .long   couleur0, 0x3620000 + (101*104), 0x3640000+(106*104)+100
+               S01:00008A0C:  00 07 00 00
+               S01:00008A10:  08 29 62 03
+               S01:00008A14:  74 2B 64 03
+F00:0967               .long   couleur0, 0x3620000 + (95*104), 0x3640000+(101*104)+100
+               S01:00008A18:  00 07 00 00
+               S01:00008A1C:  98 26 62 03
+               S01:00008A20:  6C 29 64 03
+F00:0968               .long   couleur0, 0x3620000 + (90*104), 0x3640000+(95*104)+100
+               S01:00008A24:  00 07 00 00
+               S01:00008A28:  90 24 62 03
+               S01:00008A2C:  FC 26 64 03
+F00:0969               .long   couleur0, 0x3620000 + (85*104), 0x3640000+(90*104)+100
+               S01:00008A30:  00 07 00 00
+               S01:00008A34:  88 22 62 03
+               S01:00008A38:  F4 24 64 03
+F00:0970               .long   couleur0, 0x3620000 + (81*104), 0x3640000+(85*104)+100
+               S01:00008A3C:  00 07 00 00
+               S01:00008A40:  E8 20 62 03
+               S01:00008A44:  EC 22 64 03
+F00:0971               .long   couleur0, 0x3620000 + (77*104), 0x3640000+(81*104)+100
+               S01:00008A48:  00 07 00 00
+               S01:00008A4C:  48 1F 62 03
+               S01:00008A50:  4C 21 64 03
+F00:0972               .long   couleur0, 0x3620000 + (73*104), 0x3640000+(77*104)+100
+               S01:00008A54:  00 07 00 00
+               S01:00008A58:  A8 1D 62 03
+               S01:00008A5C:  AC 1F 64 03
+F00:0973               .long   couleur0, 0x3620000 + (70*104), 0x3640000+(73*104)+100
+               S01:00008A60:  00 07 00 00
+               S01:00008A64:  70 1C 62 03
+               S01:00008A68:  0C 1E 64 03
+F00:0974               .long   couleur0, 0x3620000 + (68*104), 0x3640000+(70*104)+100
+               S01:00008A6C:  00 07 00 00
+               S01:00008A70:  A0 1B 62 03
+               S01:00008A74:  D4 1C 64 03
+F00:0975               .long   couleur0, 0x3620000 + (65*104), 0x3640000+(68*104)+100
+               S01:00008A78:  00 07 00 00
+               S01:00008A7C:  68 1A 62 03
+               S01:00008A80:  04 1C 64 03
+F00:0976               .long   couleur0, 0x3620000 + (64*104), 0x3640000+(65*104)+100
+               S01:00008A84:  00 07 00 00
+               S01:00008A88:  00 1A 62 03
+               S01:00008A8C:  CC 1A 64 03
+F00:0977               .long   couleur0, 0x3620000 + (62*104), 0x3640000+(64*104)+100
+               S01:00008A90:  00 07 00 00
+               S01:00008A94:  30 19 62 03
+               S01:00008A98:  64 1A 64 03
+F00:0978               .long   couleur0, 0x3620000 + (61*104), 0x3640000+(62*104)+100
+               S01:00008A9C:  00 07 00 00
+               S01:00008AA0:  C8 18 62 03
+               S01:00008AA4:  94 19 64 03
+F00:0979       ; 25+13 = 38 lignes affichées, reste 20 lignes
+F00:0980       ;       .long   couleur0, vstart, vend
+F00:0981              .long   couleur0, 0x3620000 + (60*104), 0x3640000+((61*104)+100)
+               S01:00008AA8:  00 07 00 00
+               S01:00008AAC:  60 18 62 03
+               S01:00008AB0:  2C 19 64 03
+F00:0982              .long   couleur0, 0x3620000 + (55*104), 0x3640000+(60*104)+100
+               S01:00008AB4:  00 07 00 00
+               S01:00008AB8:  58 16 62 03
+               S01:00008ABC:  C4 18 64 03
+F00:0983               .long   couleur0, 0x3620000 + (50*104), 0x3640000+(55*104)+100
+               S01:00008AC0:  00 07 00 00
+               S01:00008AC4:  50 14 62 03
+               S01:00008AC8:  BC 16 64 03
+F00:0984               .long   couleur0, 0x3620000 + (45*104), 0x3640000+(50*104)+100
+               S01:00008ACC:  00 07 00 00
+               S01:00008AD0:  48 12 62 03
+               S01:00008AD4:  B4 14 64 03
+F00:0985               .long   couleur0, 0x3620000 + (41*104), 0x3640000+(45*104)+100
+               S01:00008AD8:  00 07 00 00
+               S01:00008ADC:  A8 10 62 03
+               S01:00008AE0:  AC 12 64 03
+F00:0986               .long   couleur0, 0x3620000 + (37*104), 0x3640000+(41*104)+100
+               S01:00008AE4:  00 07 00 00
+               S01:00008AE8:  08 0F 62 03
+               S01:00008AEC:  0C 11 64 03
+F00:0987               .long   couleur0, 0x3620000 + (32*104), 0x3640000+(37*104)+100
+               S01:00008AF0:  00 07 00 00
+               S01:00008AF4:  00 0D 62 03
+               S01:00008AF8:  6C 0F 64 03
+F00:0988               .long   couleur0, 0x3620000 + (28*104), 0x3640000+(32*104)+100
+               S01:00008AFC:  00 07 00 00
+               S01:00008B00:  60 0B 62 03
+               S01:00008B04:  64 0D 64 03
+F00:0989               .long   couleur0, 0x3620000 + (24*104), 0x3640000+(28*104)+100
+               S01:00008B08:  00 07 00 00
+               S01:00008B0C:  C0 09 62 03
+               S01:00008B10:  C4 0B 64 03
+F00:0990               .long   couleur0, 0x3620000 + (21*104), 0x3640000+(24*104)+100
+               S01:00008B14:  00 07 00 00
+               S01:00008B18:  88 08 62 03
+               S01:00008B1C:  24 0A 64 03
+F00:0991               .long   couleur0, 0x3620000 + (17*104), 0x3640000+(21*104)+100
+               S01:00008B20:  00 07 00 00
+               S01:00008B24:  E8 06 62 03
+               S01:00008B28:  EC 08 64 03
+F00:0992               .long   couleur0, 0x3620000 + (14*104), 0x3640000+(17*104)+100
+               S01:00008B2C:  00 07 00 00
+               S01:00008B30:  B0 05 62 03
+               S01:00008B34:  4C 07 64 03
+F00:0993               .long   couleur0, 0x3620000 + (11*104), 0x3640000+(14*104)+100
+               S01:00008B38:  00 07 00 00
+               S01:00008B3C:  78 04 62 03
+               S01:00008B40:  14 06 64 03
+F00:0994               .long   couleur0, 0x3620000 + (8*104), 0x3640000+(11*104)+100
+               S01:00008B44:  00 07 00 00
+               S01:00008B48:  40 03 62 03
+               S01:00008B4C:  DC 04 64 03
+F00:0995               .long   couleur0, 0x3620000 + (6*104), 0x3640000+(8*104)+100
+               S01:00008B50:  00 07 00 00
+               S01:00008B54:  70 02 62 03
+               S01:00008B58:  A4 03 64 03
+F00:0996               .long   couleur0, 0x3620000 + (4*104), 0x3640000+(6*104)+100
+               S01:00008B5C:  00 07 00 00
+               S01:00008B60:  A0 01 62 03
+               S01:00008B64:  D4 02 64 03
+F00:0997               .long   couleur0, 0x3620000 + (2*104), 0x3640000+(4*104)+100
+               S01:00008B68:  00 07 00 00
+               S01:00008B6C:  D0 00 62 03
+               S01:00008B70:  04 02 64 03
+F00:0998               .long   couleur0, 0x3620000 + (1*104), 0x3640000+(2*104)+100
+               S01:00008B74:  00 07 00 00
+               S01:00008B78:  68 00 62 03
+               S01:00008B7C:  34 01 64 03
+F00:0999               .long   couleur0, 0x3620000 + (0*104), 0x3640000+(1*104)+100
+               S01:00008B80:  00 07 00 00
+               S01:00008B84:  00 00 62 03
+               S01:00008B88:  CC 00 64 03
+F00:1000               .long   couleur0, 0x3620000 + (0*104), 0x3640000+(0*104)+100
+               S01:00008B8C:  00 07 00 00
+               S01:00008B90:  00 00 62 03
+               S01:00008B94:  64 00 64 03
+F00:1001       
+F00:1002       
+F00:1003       ; ligne 199 : vstart = 0, vend=(200*104)-4
+F00:1004       ;	.long	couleur0,0x3620000, 0x3640000+((200*104)-4)
+F00:1005       ; ligne 200: vstart = 10*104, vend = 104-4
+F00:1006       ;	.long	couleur0,0x3620000+(104*10), 0x3640000+((1*104)-4)
+F00:1007       
+F00:1008       
+F00:1009       
+F00:1010       
+F00:1011       ; fin
+F00:1012       		.long	0x77					; couleur du fond
+               S01:00008B98:  77 00 00 00
+F00:1013       		.long	0x3640000+104				; vend : 0x3620000	
+               S01:00008B9C:  68 00 64 03
+F00:1014       		.long	0x3600000					; vinit pour 1ere ligne
+               S01:00008BA0:  00 00 60 03
+F00:1015       
+F00:1016       ; ------------------------------------------------------------------
+F00:1017       ;
+F00:1018       ; code principal de l'interruption FIQ
+F00:1019       ;
+F00:1020       ; calé entre 0x18 et 0x58
+F00:1021       ;
+F00:1022       ; ------------------------------------------------------------------
+F00:1023       
+F00:1024       
+F00:1025       pointeur_fiqbase:		.long	fiqbase
+               S01:00008BA4:  A8 8B 00 00
+F00:1026       fiqbase:              ;copy to &18 onwards, 57 instructions max
+F00:1027                             ;this pointer must be relative to module
+F00:1028       
+F00:1029       		.incbin		"build\fiqrmi.bin"
+               S01:00008BA8:  43 F3 3F E3 00 00 A0 E1 00 00 A0 E1 14 80 DE E5
+               S01:00008BB8:  40 00 18 E3 8C F0 9F 05 16 80 CE E5 04 80 9D E4
+F00:1030       
+F00:1031       
+F00:1032       fiqend:
+F00:1033       
+F00:1034       
+
+
+Sections:
+S01  seg8000
+
+
+Sources:
+F00  rmrebuild.asm
+F01  swis.h.asm
+F02  REPEAT:rmrebuild.asm:line 191
+F03  REPEAT:rmrebuild.asm:line 950
+F04  REPEAT:REPEAT:rmrebuild.asm:line 950:line 4
+F05  REPEAT:REPEAT:rmrebuild.asm:line 950:line 4
+F06  REPEAT:REPEAT:rmrebuild.asm:line 950:line 4
+F07  REPEAT:REPEAT:rmrebuild.asm:line 950:line 4
+F08  REPEAT:REPEAT:rmrebuild.asm:line 950:line 4
+F09  REPEAT:REPEAT:rmrebuild.asm:line 950:line 4
+
+
+Symbols:
+fiqend EXPR(35984=0x8c90) UNUSED ABS 
+fiqbase EXPR(35752=0x8ba8) ABS 
+couleur0 EXPR(1792=0x700) 
+numero_ligne_reflet EXPR(186=0xba) 
+couleurt3 EXPR(448=0x1c0) UNUSED 
+couleurt2 EXPR(56=0x38) UNUSED 
+couleurt EXPR(15=0xf) UNUSED 
+valeur_vend_premiere_ligne EXPR(35036=0x88dc) UNUSED ABS 
+valeur_vstart_premiere_ligne EXPR(35032=0x88d8) UNUSED ABS 
+valeur_vinit_premiere_ligne EXPR(35028=0x88d4) UNUSED ABS 
+couleur2 EXPR(34424=0x8678) UNUSED ABS 
+module97 EXPR(34560=0x8700) ABS 
+newIRQfirstinst EXPR(34396=0x865c) UNUSED ABS 
+saveR14_firq_local EXPR(34352=0x8630) UNUSED ABS 
+bouclewait EXPR(34312=0x8608) ABS 
+kbd_stack EXPR(34120=0x8548) UNUSED ABS 
+nextkeybyte EXPR(34119=0x8547) UNUSED ABS 
+keycounter EXPR(34116=0x8544) ABS 
+kbd_received EXPR(34072=0x8518) UNUSED ABS 
+exitVScode EXPR(34340=0x8624) ABS 
+RM_check_keyboard EXPR(34056=0x8508) ABS 
+RM_clearkeybuffer EXPR(34040=0x84f8) UNUSED ABS 
+keybyte1 EXPR(34117=0x8545) ABS 
+sortie_keycheck EXPR(34036=0x84f4) ABS 
+keybyte2 EXPR(34118=0x8546) ABS 
+waitloop_vbl EXPR(33996=0x84cc) ABS 
+vsyncbyte EXPR(34408=0x8668) ABS 
+notHSync EXPR(34136=0x8558) ABS 
+FIQ_notHSync_valeur EXPR(192=0xc0) 
+pointeur_fiqbase EXPR(35748=0x8ba4) ABS 
+oldIRQaddress EXPR(34404=0x8664) ABS 
+oldIRQbranch EXPR(34400=0x8660) ABS 
+oldIRQb EXPR(34392=0x8658) ABS 
+oldIRQa EXPR(34388=0x8654) ABS 
+fiqoriginal EXPR(34360=0x8638) ABS 
+os_version EXPR(34356=0x8634) ABS 
+save_lr EXPR(33688=0x8398) ABS 
+RM_release EXPR(33916=0x847c) ABS 
+toucheclavier EXPR(33644=0x836c) ABS 
+exit EXPR(33608=0x8348) ABS 
+RM_scankeyboard EXPR(34012=0x84dc) ABS 
+RM_wait_VBL EXPR(33992=0x84c8) ABS 
+boucle EXPR(33592=0x8338) ABS 
+RM_start EXPR(33692=0x839c) ABS 
+RM_init EXPR(33648=0x8370) ABS 
+boucle_triangle_ligne3 EXPR(33532=0x82fc) ABS 
+boucle_triangle_ligne2 EXPR(33456=0x82b0) ABS 
+boucle_triangle_ligne EXPR(33364=0x8254) ABS 
+couleur EXPR(34420=0x8674) ABS 
+screenaddr2_MEMC EXPR(34440=0x8688) ABS 
+screenaddr1_MEMC EXPR(34436=0x8684) ABS 
+screenaddr2 EXPR(34432=0x8680) ABS 
+screenaddr1 EXPR(34428=0x867c) ABS 
+pointeur_module97 EXPR(34416=0x8670) ABS 
+table_couleur0_vstart_vend EXPR(35040=0x88e0) ABS 
+main EXPR(32768=0x8000) UNUSED ABS 
+XOS_ServiceCall EXPR(131120=0x20030) 
+BKP EXPR(281477=0x44b85) UNUSED 
+RasterMan_ReadScanAddr EXPR(294539=0x47e8b) UNUSED 
+RasterMan_ClearKeyBuffer EXPR(294538=0x47e8a) UNUSED 
+RasterMan_ScanKeyboard EXPR(294537=0x47e89) UNUSED 
+RasterMan_QTMParamAddr EXPR(294536=0x47e88) UNUSED 
+RasterMan_SetMEMCRegister EXPR(294535=0x47e87) UNUSED 
+RasterMan_SetVIDCRegister EXPR(294534=0x47e86) UNUSED 
+RasterMan_ReadScanline EXPR(294533=0x47e85) UNUSED 
+RasterMan_Wait EXPR(294530=0x47e82) UNUSED 
+RasterMan_Release EXPR(294529=0x47e81) UNUSED 
+RasterMan_Install EXPR(294528=0x47e80) UNUSED 
+RasterMan_SetTables EXPR(294531=0x47e83) UNUSED 
+RasterMan_Version EXPR(294532=0x47e84) UNUSED 
+QTM_SetSampleSpeed EXPR(294473=0x47e49) UNUSED 
+QTM_Stop EXPR(294466=0x47e42) UNUSED 
+QTM_Start EXPR(294465=0x47e41) UNUSED 
+QTM_Load EXPR(294464=0x47e40) UNUSED 
+OS_ConvertHex8 EXPR(212=0xd4) UNUSED 
+OS_ConvertHex4 EXPR(210=0xd2) UNUSED 
+OS_ConvertHex2 EXPR(209=0xd1) UNUSED 
+Event_VSync EXPR(4=0x4) UNUSED 
+EventV EXPR(16=0x10) UNUSED 
+ErrorV EXPR(1=0x1) UNUSED 
+OS_AddToVector EXPR(71=0x47) UNUSED 
+OS_Release EXPR(32=0x20) UNUSED 
+OS_Claim EXPR(31=0x1f) UNUSED 
+VD_ScreenStart EXPR(148=0x94) UNUSED 
+DynArea_Screen EXPR(2=0x2) 
+IKey_Space EXPR(157=0x9d) UNUSED 
+IKey_RightClick EXPR(244=0xf4) UNUSED 
+IKey_LeftClick EXPR(246=0xf6) UNUSED 
+OSWord_WritePalette EXPR(12=0xc) UNUSED 
+OSByte_ReadKey EXPR(129=0x81) UNUSED 
+OSByte_WriteDisplayBank EXPR(113=0x71) UNUSED 
+OSByte_WriteVDUBank EXPR(112=0x70) UNUSED 
+OSByte_Vsync EXPR(19=0x13) UNUSED 
+OSByte_EventDisable EXPR(13=0xd) UNUSED 
+OSByte_EventEnable EXPR(14=0xe) UNUSED 
+OS_Module EXPR(30=0x1e) UNUSED 
+OS_ConvertCardinal4 EXPR(216=0xd8) UNUSED 
+OS_ReadDynamicArea EXPR(92=0x5c) 
+OS_ReadMonotonicTime EXPR(66=0x42) UNUSED 
+OS_ReadVduVariables EXPR(49=0x31) UNUSED 
+OS_GenerateError EXPR(43=0x2b) UNUSED 
+OS_ChangeDynamicArea EXPR(42=0x2a) 
+OS_BreakPt EXPR(23=0x17) UNUSED 
+OS_Exit EXPR(17=0x11) 
+OS_File EXPR(8=0x8) UNUSED 
+OS_Word EXPR(7=0x7) UNUSED 
+XOS_Byte EXPR(131078=0x20006) UNUSED 
+OS_Byte EXPR(6=0x6) 
+OS_NewLine EXPR(3=0x3) UNUSED 
+OS_WriteO EXPR(2=0x2) UNUSED 
+OS_WriteC EXPR(0=0x0) 
+saveR14_firq EXPR(224=0xe0) UNUSED 
+position_ligne_hsync EXPR(228=0xe4) 
+hsyncline_high EXPR(0=0x0) 
+hsyncline_low EXPR(127=0x7f) 
+hsyncline EXPR(127=0x7f) 
+vsyncreturn_high_ligne199 EXPR(126=0x7e) 
+vsyncreturn_low_ligne199 EXPR(165=0xa5) 
+vsyncreturn_ligne199 EXPR(32421=0x7ea5) 
+vsyncreturn_high EXPR(27=0x1b) UNUSED 
+vsyncreturn_low EXPR(230=0xe6) UNUSED 
+vsyncreturn EXPR(7142=0x1be6) 
+ylines EXPR(58=0x3a) 
+IKey_Escape EXPR(157=0x9d) UNUSED 
+Screen_Mode EXPR(97=0x61) 
+__VASM EXPR(0=0x0) INTERNAL 
+__MSDOSFS EXPR(0=0x0) INTERNAL 
+
+There have been no errors.
