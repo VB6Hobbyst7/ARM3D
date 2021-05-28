@@ -11,7 +11,7 @@
 .equ	vsyncreturn_low,		(vsyncreturn & 0x00FF)>>0
 .equ	vsyncreturn_high,		((vsyncreturn & 0xFF00)>>8)
 
-.equ	vsyncreturn_ligne199,			7142+(197*128)+127-64						; vsyncreturn=7168+16-1-48   +   vsyncreturn+=7
+.equ	vsyncreturn_ligne199,			7142+(197*128)+127-64-48						; vsyncreturn=7168+16-1-48   +   vsyncreturn+=7
 .equ	vsyncreturn_low_ligne199,		(vsyncreturn_ligne199 & 0x00FF)>>0
 .equ	vsyncreturn_high_ligne199,		((vsyncreturn_ligne199 & 0xFF00)>>8)
 
@@ -31,12 +31,11 @@ FIQ_startofcode:
 ;R12 = destination couleur 0 = 0x3400000 
 ;R13 = table_couleur0_vstart_vend : table source : couleur 0, vstart, vend, pour chaque ligne
 ;R14 = 0x3200000	- utilisation permanente
-			nop									; 3 20
+
 			LDRB      R8,[R14,#0x14+0]       	; 4 24 IOC : load irq_A triggers ***BUG to v0.13*** v0.14 read &14+0 was reading status at &10, which ignores IRQ mask!!!
 			TST       R8,#0b01000000        	; 5 28 bit 3 = Vsync, bit 6 = T1 trigger (HSync)			
 ; on saute en VSYNC
 			LDREQ     PC,FIQ_notHSync			; 6 2C			; FIQ_notHSync 	    ; 5 28 *v0.14 if not T1, then go to VSync/Keyboard code*
-
 			STRB      R8,[R14,#0x14+2]       	; 7 30  IOC :  (v0.14 moved past branch) clear all interrupt triggers
 
 ; les modifs MEMC et VIDC vont ici	
@@ -46,28 +45,15 @@ FIQ_startofcode:
 
 			ldmia	R13!,{r8-r9}				; 10 3C
 ; modif de vstart
-
-			str		R8,[R8]			; vstart	; 12 44
-			nop
-			
+			str		R8,[R8]			; vstart	; 11 44
 ; modif de vend
-			
-			;nop								
 			str		R9,[R9]			; vend		; 13 48
-			
-			
-			
-			STRB      R14,[R14,#0x28+2]       	;11 40 *v0.14* set IRQB mask to %00000000 = no STx, SRx IRQs now
-			ldr		  R8,position_ligne_hsync 	;12 44  nb lignes restantes avant fin d ecran
-
-			nop
-			nop
-
-			
-			SUBS      R8,R8,#1				  	;13 50  -1
-			str		  R8,position_ligne_hsync	;14 54  
+			STRB      R14,[R14,#0x28+2]       	;14 40 *v0.14* set IRQB mask to %00000000 = no STx, SRx IRQs now
+			ldr		  R8,position_ligne_hsync 	;15 44  nb lignes restantes avant fin d ecran
+			SUBS      R8,R8,#1				  	;18 50  -1
+			str		  R8,position_ligne_hsync	;19 54  
 ; si nb_ligne > 0				
-			BGT		  fin_hsync					;15 58
+			BGT		  fin_hsync					;20 58
 ; nb lignes restantes = 0 , relancer vsyncreturn
 ; only get here (EQ) if at last line on screen
 
@@ -82,18 +68,16 @@ FIQ_startofcode:
 
 ; FIQ_exitcode:
 fin_hsync:
-			;LDMIA     R14,{R4-R7}           	;23 78			
-			nop									;23 78
-			;ldr		  R14,saveR14_firq		;24 7C
-			nop									;24 7C
-
 			TEQP      PC,#0x0C000002			;25 80 %000011<<26 OR %10 ;27 80 back to IRQ mode, maintain 'GT', Z clear
 			MOV       R0,R0                 	;26 84 sync IRQ registers
 			SUBS      PC,R14,#4             	;27 88 return to foreground
-			
-			
-			
 
+			nop									; 12		
+			nop									; 3 20			
+			nop									;23 78
+			nop									;24 7C		
+			nop									; 16
+			nop									; 17
 			nop								;33 98
 			nop								;34 9C
 			nop								;35 A0
@@ -166,9 +150,7 @@ fin_hsync:
 FIQ_notHSync:                    ;*NEED TO ADJUST REF. IN swi_install IF THIS MOVES FROM &C0*
 .long      0x1234                      ;43 &C0 pointer to notHSync ***quad aligned***
 
-valeur_vstart:
 .long      0x3620000              ;44 &C4 n/r
-valeur_vend:
 .long      0x3640000              ;45 &C8 n/r
 .long      0                      ;46 &CC n/r
 
@@ -178,7 +160,6 @@ FIQ_tempstack:
 .long      0                      ;48 &D4 R5
 .long      0                      ;49 &D8 R6
 .long      0                      ;50 &DC R7
-saveR14_firq:
 .long      0                      ;51 &E0 n/r
 position_ligne_hsync:
 .long      0                      ;52 &E4 n/r

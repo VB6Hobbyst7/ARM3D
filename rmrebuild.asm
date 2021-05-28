@@ -1,4 +1,6 @@
-; faire la table des 7 premieres lignes
+; OK : faire la table pour 2eme pointeur mémoire écran
+; OK : swapper les pointeurs pendant la vbl
+; OK : faire la table des 7 premieres lignes
 
 ; démontrer : 
 ; 	- vinit copié dans vstart : mettre vinit a 0, vstart à 50*104, vend à 199*104+100 : résultat ?
@@ -71,11 +73,10 @@
 
 
 .equ Screen_Mode, 97
-.equ	IKey_Escape, 0x9d
 
-; valeurs fixes RMA
+; valeurs fixes RM / timers
 .equ	ylines,			58
-.equ	vsyncreturn,	7142						; vsyncreturn=7168+16-1-48   +   vsyncreturn+=7
+.equ	vsyncreturn,	7142						; vsyncreturn=7168+16-1-56   +   vsyncreturn+=7
 .equ	vsyncreturn_low,		(vsyncreturn & 0x00FF)>>0
 .equ	vsyncreturn_high,		((vsyncreturn & 0xFF00)>>8)
 
@@ -104,24 +105,6 @@ main:
 
 ;	SWI 0x39
 
-			mov			R13,#table_couleur0_vstart_vend
-
-; les modifs MEMC et VIDC vont ici	
-			ldr		R8,[R13],#4					; 8  34   couleur 0
-; R12 = destination couleur 0 = 0x3400000 
-			;str		R8,[R12]					; 9  38   met la couleur 0
-
-			ldmia	R13!,{r8-r9}				; 10 3C
-; modif de vstart
-
-			;nop
-			;str		R8,[R8]			; vstart	; 12 44
-			nop
-			
-; modif de vend
-			
-			;nop								
-			;str		R9,[R9]			; vend		; 13 48
 
 
 
@@ -169,22 +152,23 @@ main:
 	
 	; r0 = pointeur memoire ecrans
 	
-;	add		R0,R0,#416*32
+	add		R0,R0,#416*32
 	str		r0,screenaddr1
 	add		r0,r0,#416*290
 	str		r0,screenaddr2
 	
 
-	mov		R0,#0
+	mov		R0,#416*32
 	str		r0,screenaddr1_MEMC
 	add		r0,r0,#416*290
 	str		r0,screenaddr2_MEMC
 
 
+
 	SWI		0x01
 	.byte	"---+++++++++++++++++++L1",10,13,0
 	.p2align 2
-	.rept		5
+	.rept		10
 	SWI		0x01
 	.byte	"1234567890123456789123456789012345678912345L2",10,13,0
 	.p2align 2
@@ -201,85 +185,51 @@ main:
 
 	
 	ldr		r1,screenaddr1
-	;add		R1,R1,#416*70
-
-	add		R4,R1,#32
-	add		R5,R4,#415-64
-; au milieu
-	add		R1,R1,#208
-	mov		R2,R1
-
-	ldr		r3,couleur
-	add		R6,R3,#25
+	bl		dessine_sur_ecran
 	
-; nombre de lignes
-	mov		R0,#150
-
-boucle_triangle_ligne:
-	strb	r3,[r1]
-	strb	r6,[r4]
-	strb	r3,[r5]
-
-	strb	r3,[r2]
-	subs	R1,R1,#1
-	adds	R2,R2,#1
+	ldr		r1,screenaddr2
+	bl		dessine_sur_ecran
 	
-	add		R1,R1,#416
-	add		R2,R2,#416
-	add		R4,R4,#416
-	add		R5,R5,#416
-	
-	subs	R0,R0,#1
-	bgt		boucle_triangle_ligne
-
-	ldr		r1,screenaddr1
-	add		R1,R1,#416*100
-
-	add		R4,R1,#32
-	add		R5,R4,#415-64
-; au milieu
-	add		R1,R1,#208
-	mov		R2,R1
-
-	ldr		r3,couleur
-	add		R6,R3,#25
-; nombre de lignes
-	mov		R0,#150
-
-boucle_triangle_ligne2:
-	strb	r3,[r1]
-	strb	r6,[r4]
-	strb	r3,[r5]
-
-	strb	r3,[r2]
-	subs	R1,R1,#1
-	adds	R2,R2,#1
-	
-	add		R1,R1,#416
-	add		R2,R2,#416
-	add		R4,R4,#416
-	add		R5,R5,#416
-	
-	subs	R0,R0,#1
-	bgt		boucle_triangle_ligne2
-
-; ligne horizontale a 200
-	ldr		r1,screenaddr1
-	add		R1,R1,#416*199
-	add		R3,R3,#5654
-
-	mov		R0,#350
-
-boucle_triangle_ligne3:
-	strb	r3,[r1],#1
-	subs	R0,R0,#1
-	bgt		boucle_triangle_ligne3
 
 
 	SWI		22
 	MOVNV R0,R0            
 
+;-----------
+;	.ifeq		0
 
+; swap des pointeurs :
+; swap pointeur ecrans
+	ldr		r8,screenaddr1
+	ldr		r9,screenaddr2
+	str		r9,screenaddr1
+	str		r8,screenaddr2
+
+	ldr		r8,screenaddr1_MEMC
+	ldr		r9,screenaddr2_MEMC
+	str		r9,screenaddr1_MEMC
+	str		r8,screenaddr2_MEMC
+
+; swap pointeurs table reflet
+
+	ldr		R8,pointeur_table_reflet_MEMC1
+	ldr		R9,pointeur_table_reflet_MEMC2
+	str		R9,pointeur_table_reflet_MEMC1
+	str		R8,pointeur_table_reflet_MEMC2
+
+
+	ldr		R8,vstart_MEMC1
+	ldr		R9,vstart_MEMC2
+	str		R9,vstart_MEMC1
+	str		R8,vstart_MEMC2
+
+	ldr		R8,vend_MEMC1
+	ldr		R9,vend_MEMC2
+	str		R9,vend_MEMC1
+	str		R8,vend_MEMC2
+
+;	.ENDIF
+;-----------
 ; update pointeur video hardware vinit
 	ldr	r0,screenaddr1_MEMC
 	mov r0,r0,lsr #4
@@ -337,6 +287,97 @@ exit:
 	
 	MOV R0,#0
 	SWI OS_Exit
+
+
+
+dessine_sur_ecran:
+
+	mov		R12,R1
+
+	;add		R1,R1,#416*70
+
+	add		R4,R1,#32
+	add		R5,R4,#415-64
+; au milieu
+	add		R1,R1,#208
+	mov		R2,R1
+
+	ldr		r3,couleur
+	add		R6,R3,#25
+	
+; nombre de lignes
+	mov		R0,#150
+
+boucle_triangle_ligne:
+	strb	r3,[r1]
+	strb	r6,[r4]
+	strb	r3,[r5]
+
+	strb	r3,[r2]
+	subs	R1,R1,#1
+	adds	R2,R2,#1
+	
+	add		R1,R1,#416
+	add		R2,R2,#416
+	add		R4,R4,#416
+	add		R5,R5,#416
+	
+	subs	R0,R0,#1
+	bgt		boucle_triangle_ligne
+
+	mov		R1,R12
+	add		R1,R1,#416*100
+
+	add		R4,R1,#32
+	add		R5,R4,#415-64
+; au milieu
+	add		R1,R1,#208
+	mov		R2,R1
+
+	ldr		r3,couleur
+	add		R6,R3,#25
+; nombre de lignes
+	mov		R0,#150
+
+boucle_triangle_ligne2:
+	strb	r3,[r1]
+	strb	r6,[r4]
+	strb	r3,[r5]
+
+	strb	r3,[r2]
+	subs	R1,R1,#1
+	adds	R2,R2,#1
+	
+	add		R1,R1,#416
+	add		R2,R2,#416
+	add		R4,R4,#416
+	add		R5,R5,#416
+	
+	subs	R0,R0,#1
+	bgt		boucle_triangle_ligne2
+
+; ligne horizontale a 200
+	mov		R1,R12
+	;ldr		r1,screenaddr1
+	add		R1,R1,#416*199
+	add		R3,R3,#5654
+
+	mov		R0,#350
+
+boucle_triangle_ligne3:
+	strb	r3,[r1],#1
+	subs	R0,R0,#1
+	bgt		boucle_triangle_ligne3
+	mov		pc,lr
+
+
+
+
+
+
+
+
+
 toucheclavier:		.long 0
 ;----------------------------------------------------------------------------------------------------------------------
 RM_init:
@@ -723,10 +764,39 @@ notHSync:
 	mov 		R8,#ylines                  ;reset yline counter
 	str			R8,[R9]
 	
-	mov			R13,#table_couleur0_vstart_vend
-	mov			R8,#0
-	str			R8,[R12]				; remise à noir du fond
 
+;	b		zap_swap1
+
+; swap des pointeurs :
+; swap pointeur ecrans
+	ldr		r8,screenaddr1
+	ldr		r9,screenaddr2
+	str		r9,screenaddr1
+	str		r8,screenaddr2
+
+	ldr		r8,screenaddr1_MEMC
+	ldr		r9,screenaddr2_MEMC
+	str		r9,screenaddr1_MEMC
+	str		r8,screenaddr2_MEMC
+
+; swap pointeurs table reflet
+
+	ldr		R8,pointeur_table_reflet_MEMC1
+	ldr		R9,pointeur_table_reflet_MEMC2
+	str		R9,pointeur_table_reflet_MEMC1
+	str		R8,pointeur_table_reflet_MEMC2
+
+	ldr		R8,vstart_MEMC1
+	ldr		R9,vstart_MEMC2
+	str		R9,vstart_MEMC1
+	str		R8,vstart_MEMC2
+
+	ldr		R8,vend_MEMC1
+	ldr		R9,vend_MEMC2
+	str		R9,vend_MEMC1
+	str		R8,vend_MEMC2
+
+zap_swap1:
 ;--------------
 ; test avec vstart 
 ; vinit = 0x3600000
@@ -735,23 +805,36 @@ notHSync:
 
 ; vstart = 0
 	mov	R9,#0x3620000
-	mov	R8,#0
+	;mov	R8,#104*32
+	ldr		R8,vstart_MEMC1
 	add	R8,R8,R9
 	str	R8,[R8]
 	
 ; vend = ligne 200
 	mov	R9,#0x3640000
-	mov	R8,#104*200			; 199*104 + 104 -4 
+	;mov	R8,#104*232			; 199*104 + 104 -4 : 200 +32 lignes en haut
+	ldr	R8,vend_MEMC1
 	sub	R8,R8,#4
 	add	R8,R8,R9
 	str	R8,[R8]
+	
+; update pointeur video hardware vinit
+	ldr	r8,screenaddr1_MEMC
+	mov r8,r8,lsr #4
+	mov r8,r8,lsl #2
+	mov r9,#0x3600000
+	add r8,r8,r9
+	str r8,[r8]
+
+	
 ; vinit
-	mov	R9,#0x3600000
-	mov		R8,#0
-	add	R8,R8,R9
-	str	R8,[R8]
+;	mov	R9,#0x3600000
+;	mov		R8,#0
+;	add	R8,R8,R9
+;	str	R8,[R8]
 
 
+	.ifeq		1
 
 ; ---------------attente debug affichage
 
@@ -768,11 +851,17 @@ bouclewait:
 	subs	R8,R8,#1
 	bgt	bouclewait
 
-	mov   r9,#0x3400000               
-	mov   r8,#000  
-; border	
-	orr   r8,r8,#0x00000000            
-	str   r8,[r9]  
+	.endif
+	
+	ldr			R13,pointeur_table_reflet_MEMC1
+	;mov			R13,#table_couleur0_vstart_vend
+
+; couleur fond = noir
+	mov			R8,#0
+	str			R8,[R12]				; remise à noir du fond
+	
+
+ 
 
 ; ---------------attente debug affichage
 
@@ -878,7 +967,6 @@ exitVScode:
 			
 			
 
-saveR14_firq_local:	.long 0
 ; ---------------------
 ; variables RM
 os_version:		.long      0         ;1 byte &A0 for Arthur 0.3/1.2, &A1 for RO2, &A3 for RO3.0, &A4 for RO3.1
@@ -925,25 +1013,28 @@ valeur_vinit_premiere_ligne:		.long	0x3600000+(98*104)
 valeur_vstart_premiere_ligne:		.long	0x3620000+(98*104)
 valeur_vend_premiere_ligne:		.long		0x3640000+100+(98*104)
 
+pointeur_table_reflet_MEMC1:	.long	table_couleur0_vstart_vend_MEMC1
+pointeur_table_reflet_MEMC2:	.long	table_couleur0_vstart_vend_MEMC2
+
+vstart_MEMC1:		.long		104*32
+vend_MEMC1:			.long		104*232
+vstart_MEMC2:		.long		104*32+(104*290)
+vend_MEMC2:			.long		104*232+(104*290)
+
+
 ; 58 lignes en tout
 ;       .long   couleur0, vstart, vend
-table_couleur0_vstart_vend:
-	.set couleurt,0b1111
-	.set couleurt2,0b111000
-	.set couleurt3,0b111000000
-
+;------------------------------------------------------------------------------------------------
+table_couleur0_vstart_vend_MEMC1:
 ;1ere ligne : fin de l'écran du haut. : vend = 0x3640000+((200*104)-4)
 	.set	numero_ligne_reflet,199
 	.set 	couleur0,0
-	.long   couleur0, 0x3620000 + (numero_ligne_reflet*104), 0x3640000+((200*104)-4)
+	.long   couleur0, 0x3620000 + (numero_ligne_reflet*104)+(104*32), 0x3640000+((200*104)-4)+(104*32)
 	.set	couleur0, couleur0+0b100000000
 	.set	numero_ligne_reflet , numero_ligne_reflet - 1
-	
-	
-	
 	.rept	6
 		.rept	2
-			.long   couleur0, 0x3620000 + (numero_ligne_reflet*104), 0x3640000+(((numero_ligne_reflet+1)*104)+100)
+			.long   couleur0, 0x3620000 + (numero_ligne_reflet*104)+(104*32), 0x3640000+(((numero_ligne_reflet+1)*104)+100)+(104*32)
 			.set	numero_ligne_reflet , numero_ligne_reflet - 1
 		.endr
 		.set	couleur0, couleur0+0b100000000
@@ -951,53 +1042,122 @@ table_couleur0_vstart_vend:
 ; 12+1 = 13 lignes
 ; ligne 186	à 62 sur 25 lignes
 ;       .long   couleur0, vstart, vend
-		.long   couleur0, 0x3620000 + (186*104), 0x3640000+((187*104)+100)
-        .long   couleur0, 0x3620000 + (178*104), 0x3640000+(186*104)+100
-        .long   couleur0, 0x3620000 + (170*104), 0x3640000+(178*104)+100
-        .long   couleur0, 0x3620000 + (162*104), 0x3640000+(170*104)+100
-        .long   couleur0, 0x3620000 + (155*104), 0x3640000+(162*104)+100
-        .long   couleur0, 0x3620000 + (147*104), 0x3640000+(155*104)+100
-        .long   couleur0, 0x3620000 + (140*104), 0x3640000+(147*104)+100
-        .long   couleur0, 0x3620000 + (133*104), 0x3640000+(140*104)+100
-        .long   couleur0, 0x3620000 + (126*104), 0x3640000+(133*104)+100
-        .long   couleur0, 0x3620000 + (119*104), 0x3640000+(126*104)+100
-        .long   couleur0, 0x3620000 + (113*104), 0x3640000+(119*104)+100
-        .long   couleur0, 0x3620000 + (106*104), 0x3640000+(113*104)+100
-        .long   couleur0, 0x3620000 + (101*104), 0x3640000+(106*104)+100
-        .long   couleur0, 0x3620000 + (95*104), 0x3640000+(101*104)+100
-        .long   couleur0, 0x3620000 + (90*104), 0x3640000+(95*104)+100
-        .long   couleur0, 0x3620000 + (85*104), 0x3640000+(90*104)+100
-        .long   couleur0, 0x3620000 + (81*104), 0x3640000+(85*104)+100
-        .long   couleur0, 0x3620000 + (77*104), 0x3640000+(81*104)+100
-        .long   couleur0, 0x3620000 + (73*104), 0x3640000+(77*104)+100
-        .long   couleur0, 0x3620000 + (70*104), 0x3640000+(73*104)+100
-        .long   couleur0, 0x3620000 + (68*104), 0x3640000+(70*104)+100
-        .long   couleur0, 0x3620000 + (65*104), 0x3640000+(68*104)+100
-        .long   couleur0, 0x3620000 + (64*104), 0x3640000+(65*104)+100
-        .long   couleur0, 0x3620000 + (62*104), 0x3640000+(64*104)+100
-        .long   couleur0, 0x3620000 + (61*104), 0x3640000+(62*104)+100
+		.long   couleur0, 0x3620000 + (186*104)+(104*32), 0x3640000+((187*104)+100)+(104*32)
+        .long   couleur0, 0x3620000 + (178*104)+(104*32), 0x3640000+(186*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (170*104)+(104*32), 0x3640000+(178*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (162*104)+(104*32), 0x3640000+(170*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (155*104)+(104*32), 0x3640000+(162*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (147*104)+(104*32), 0x3640000+(155*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (140*104)+(104*32), 0x3640000+(147*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (133*104)+(104*32), 0x3640000+(140*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (126*104)+(104*32), 0x3640000+(133*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (119*104)+(104*32), 0x3640000+(126*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (113*104)+(104*32), 0x3640000+(119*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (106*104)+(104*32), 0x3640000+(113*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (101*104)+(104*32), 0x3640000+(106*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (95*104)+(104*32), 0x3640000+(101*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (90*104)+(104*32), 0x3640000+(95*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (85*104)+(104*32), 0x3640000+(90*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (81*104)+(104*32), 0x3640000+(85*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (77*104)+(104*32), 0x3640000+(81*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (73*104)+(104*32), 0x3640000+(77*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (70*104)+(104*32), 0x3640000+(73*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (68*104)+(104*32), 0x3640000+(70*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (65*104)+(104*32), 0x3640000+(68*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (64*104)+(104*32), 0x3640000+(65*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (62*104)+(104*32), 0x3640000+(64*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (61*104)+(104*32), 0x3640000+(62*104)+100+(104*32)
 ; 25+13 = 38 lignes affichées, reste 20 lignes
 ;       .long   couleur0, vstart, vend
-       .long   couleur0, 0x3620000 + (60*104), 0x3640000+((61*104)+100)
-       .long   couleur0, 0x3620000 + (55*104), 0x3640000+(60*104)+100
-        .long   couleur0, 0x3620000 + (50*104), 0x3640000+(55*104)+100
-        .long   couleur0, 0x3620000 + (45*104), 0x3640000+(50*104)+100
-        .long   couleur0, 0x3620000 + (41*104), 0x3640000+(45*104)+100
-        .long   couleur0, 0x3620000 + (37*104), 0x3640000+(41*104)+100
-        .long   couleur0, 0x3620000 + (32*104), 0x3640000+(37*104)+100
-        .long   couleur0, 0x3620000 + (28*104), 0x3640000+(32*104)+100
-        .long   couleur0, 0x3620000 + (24*104), 0x3640000+(28*104)+100
-        .long   couleur0, 0x3620000 + (21*104), 0x3640000+(24*104)+100
-        .long   couleur0, 0x3620000 + (17*104), 0x3640000+(21*104)+100
-        .long   couleur0, 0x3620000 + (14*104), 0x3640000+(17*104)+100
-        .long   couleur0, 0x3620000 + (11*104), 0x3640000+(14*104)+100
-        .long   couleur0, 0x3620000 + (8*104), 0x3640000+(11*104)+100
-        .long   couleur0, 0x3620000 + (6*104), 0x3640000+(8*104)+100
-        .long   couleur0, 0x3620000 + (4*104), 0x3640000+(6*104)+100
-        .long   couleur0, 0x3620000 + (2*104), 0x3640000+(4*104)+100
-        .long   couleur0, 0x3620000 + (1*104), 0x3640000+(2*104)+100
-        .long   couleur0, 0x3620000 + (0*104), 0x3640000+(1*104)+100
-        .long   couleur0, 0x3620000 + (0*104), 0x3640000+(0*104)+100
+       .long   couleur0, 0x3620000 + (60*104)+(104*32), 0x3640000+((61*104)+100)+(104*32)
+       .long   couleur0, 0x3620000 + (55*104)+(104*32), 0x3640000+(60*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (50*104)+(104*32), 0x3640000+(55*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (45*104)+(104*32), 0x3640000+(50*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (41*104)+(104*32), 0x3640000+(45*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (37*104)+(104*32), 0x3640000+(41*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (32*104)+(104*32), 0x3640000+(37*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (28*104)+(104*32), 0x3640000+(32*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (24*104)+(104*32), 0x3640000+(28*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (21*104)+(104*32), 0x3640000+(24*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (17*104)+(104*32), 0x3640000+(21*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (14*104)+(104*32), 0x3640000+(17*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (11*104)+(104*32), 0x3640000+(14*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (8*104)+(104*32), 0x3640000+(11*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (6*104)+(104*32), 0x3640000+(8*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (4*104)+(104*32), 0x3640000+(6*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (2*104)+(104*32), 0x3640000+(4*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (1*104)+(104*32), 0x3640000+(2*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (0*104)+(104*32), 0x3640000+(1*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (0*104)+(104*32), 0x3640000+(0*104)+100+(104*32)
+; 38+20=58
+;------------------------------------------------------------------------------------------------
+table_couleur0_vstart_vend_MEMC2:
+;1ere ligne : fin de l'écran du haut. : vend = 0x3640000+((200*104)-4)
+	.set	numero_ligne_reflet,199
+	.set 	couleur0,0
+	.long   couleur0, 0x3620000 + (numero_ligne_reflet*104)+(104*32)+(104*290), 0x3640000+((200*104)-4)+(104*32)+(104*290)
+	.set	couleur0, couleur0+0b100000000
+	.set	numero_ligne_reflet , numero_ligne_reflet - 1
+	.rept	6
+		.rept	2
+			.long   couleur0, 0x3620000 + (numero_ligne_reflet*104)+(104*32)+(104*290), 0x3640000+(((numero_ligne_reflet+1)*104)+100)+(104*32)+(104*290)
+			.set	numero_ligne_reflet , numero_ligne_reflet - 1
+		.endr
+		.set	couleur0, couleur0+0b100000000
+	.endr
+; 12+1 = 13 lignes
+; ligne 186	à 62 sur 25 lignes
+;       .long   couleur0, vstart, vend
+		.long   couleur0, 0x3620000 + (186*104)+(104*32)+(104*290), 0x3640000+((187*104)+100)+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (178*104)+(104*32)+(104*290), 0x3640000+(186*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (170*104)+(104*32)+(104*290), 0x3640000+(178*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (162*104)+(104*32)+(104*290), 0x3640000+(170*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (155*104)+(104*32)+(104*290), 0x3640000+(162*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (147*104)+(104*32)+(104*290), 0x3640000+(155*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (140*104)+(104*32)+(104*290), 0x3640000+(147*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (133*104)+(104*32)+(104*290), 0x3640000+(140*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (126*104)+(104*32)+(104*290), 0x3640000+(133*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (119*104)+(104*32)+(104*290), 0x3640000+(126*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (113*104)+(104*32)+(104*290), 0x3640000+(119*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (106*104)+(104*32)+(104*290), 0x3640000+(113*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (101*104)+(104*32)+(104*290), 0x3640000+(106*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (95*104)+(104*32)+(104*290), 0x3640000+(101*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (90*104)+(104*32)+(104*290), 0x3640000+(95*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (85*104)+(104*32)+(104*290), 0x3640000+(90*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (81*104)+(104*32)+(104*290), 0x3640000+(85*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (77*104)+(104*32)+(104*290), 0x3640000+(81*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (73*104)+(104*32)+(104*290), 0x3640000+(77*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (70*104)+(104*32)+(104*290), 0x3640000+(73*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (68*104)+(104*32)+(104*290), 0x3640000+(70*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (65*104)+(104*32)+(104*290), 0x3640000+(68*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (64*104)+(104*32)+(104*290), 0x3640000+(65*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (62*104)+(104*32)+(104*290), 0x3640000+(64*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (61*104)+(104*32)+(104*290), 0x3640000+(62*104)+100+(104*32)+(104*290)
+; 25+13 = 38 lignes affichées, reste 20 lignes
+;       .long   couleur0, vstart, vend
+       .long   couleur0, 0x3620000 + (60*104)+(104*32)+(104*290), 0x3640000+((61*104)+100)+(104*290)+(104*32)
+       .long   couleur0, 0x3620000 + (55*104)+(104*32)+(104*290), 0x3640000+(60*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (50*104)+(104*32)+(104*290), 0x3640000+(55*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (45*104)+(104*32)+(104*290), 0x3640000+(50*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (41*104)+(104*32)+(104*290), 0x3640000+(45*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (37*104)+(104*32)+(104*290), 0x3640000+(41*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (32*104)+(104*32)+(104*290), 0x3640000+(37*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (28*104)+(104*32)+(104*290), 0x3640000+(32*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (24*104)+(104*32)+(104*290), 0x3640000+(28*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (21*104)+(104*32)+(104*290), 0x3640000+(24*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (17*104)+(104*32)+(104*290), 0x3640000+(21*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (14*104)+(104*32)+(104*290), 0x3640000+(17*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (11*104)+(104*32)+(104*290), 0x3640000+(14*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (8*104)+(104*32)+(104*290), 0x3640000+(11*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (6*104)+(104*32)+(104*290), 0x3640000+(8*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (4*104)+(104*32)+(104*290), 0x3640000+(6*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (2*104)+(104*32)+(104*290), 0x3640000+(4*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (1*104)+(104*32)+(104*290), 0x3640000+(2*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (0*104)+(104*32)+(104*290), 0x3640000+(1*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (0*104)+(104*32)+(104*290), 0x3640000+(0*104)+100+(104*290)+(104*32)
+; 38+20=58
+;------------------------------------------------------------------------------------------------
+
 
 
 ; ligne 199 : vstart = 0, vend=(200*104)-4

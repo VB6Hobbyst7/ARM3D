@@ -1,13 +1,25 @@
+; - remettre dans sequence, -1 = infini / attente fin de calcul
+; - plusieurs séquences en parallèle. pour pouvoir répeter les objets indépendamment. 
+
+
 ; TO DO
 ; ------
 ; !!!!!   ==============>    faire un scrolling completement dynamique en 3D
 ; idées objets : transformation décompte de chiffres, avion, ballon dirigeable
 ; reprendre la version du 10/05 des spheres violettes
 ; Interaction entre les objets, Passage hélico ou avion sous arche, Tirs entre hélicos, Explosion par transformation
-; rotation autour du point ZERO de l'objet hors observateur
+; QTM ?
+; YM6 ?
 
 ; DONE
 ; ------
+; OK - refaire la courbe de reflet
+; OK - effacer juste 200 lignes
+; OK - repetition de plage = 0 => nombre alétoire de répétition entre 1 et 3
+; OK - faire une sequence exemple clean
+; OK - debugger calculs qui freezent ??
+; OK : boucler sur plusieurs séquences, en fait boucler sur toutes les sequences. : n° sequence debut, n° sequence fin, nombre de répétitions
+; OK : rotation autour du point ZERO de l'objet hors observateur
 ; OK : utiliser incrementations positions X Y Z de l'objet
 ; OK : ---> scene avec plusieurs objets : creer structure temporaire objet pour calculs, 
 ; OK : faire 4 tables de mouvement en code
@@ -79,8 +91,8 @@
 ;	- nb frame animation, une fois à zéro => retour au début des coordonnées des points d'animation
 
 
-.equ	nombre_de_boules_maxi, 320
-.equ	taille_buffer_calculs, 256*nombre_de_boules_maxi*4
+.equ	nombre_de_boules_maxi, 64
+.equ	taille_buffer_calculs, 1024*nombre_de_boules_maxi*4
 
 .equ Screen_Mode, 97
 .equ	IKey_Escape, 0x9d
@@ -89,20 +101,37 @@
 
 .include "swis.h.asm"
 
+; valeurs fixes RM / timers
+.equ	ylines,			58
+.equ	vsyncreturn,	7142						; vsyncreturn=7168+16-1-56   +   vsyncreturn+=7 / vsyncreturn=7168+16-1-48 =OK
+.equ	vsyncreturn_low,		(vsyncreturn & 0x00FF)>>0
+.equ	vsyncreturn_high,		((vsyncreturn & 0xFF00)>>8)
+
+.equ	vsyncreturn_ligne199,			7142+(197*128)+127-64-48					; vsyncreturn=7168+16-1-48   +   vsyncreturn+=7
+.equ	vsyncreturn_low_ligne199,		(vsyncreturn_ligne199 & 0x00FF)>>0
+.equ	vsyncreturn_high_ligne199,		((vsyncreturn_ligne199 & 0xFF00)>>8)
+
+
+.equ	hsyncline,		128-1			; 127
+.equ	hsyncline_low,			((hsyncline & 0x00FF)>>0)
+.equ	hsyncline_high,			((hsyncline & 0xFF00)>>8)
+
+.equ	position_ligne_hsync,	 	0xE4
+
+
 	.org 0x8000
 	.balign 8
 
 
+
 main:
-				
 
 		
+	SWI		OS_ReadMonotonicTime
+; R0=Number of centiseconds
+	ldr		R1,pointeur_compteur_aleatoire
+	str		R0,[R1]
 
-
-; rmload RM24
-;	mov		R1,#nom_Rasterman
-;	mov		R0,#01
-;	swi		OS_Module
 
 ; rmload QT
 ;	mov		R1,#nom_QT
@@ -158,9 +187,6 @@ ok_assez_de_ram:
 	mov		R1,#-1
 	SWI 	0x400EC			; Wimp_SlotSize 
 
-	ldr		R1,fond_de_la_memoire
-	mov		R0,#0x1234
-	str		R0,[R1]
 
 ; ---------------------------------
 
@@ -172,15 +198,1431 @@ ok_assez_de_ram:
 	bl 		creer_table_416
 
 
-	SWI		0x01
-	.byte	"---",0
-	.p2align 2
-; ---------------------------------
+
+	bl		calcul_d_une_sequence
+	
+	
+;------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------
+
+
+
+	bl		swap_pointeurs_buffers_calcul_et_affichage
+	
+	bl		init_sequences
+
+	
+	
+
+	MOV r0,#22	;Set MODE
+	SWI OS_WriteC
+	MOV r0,#Screen_Mode
+	SWI OS_WriteC
+
+
+	MOV r0,#23	;Disable cursor
+	SWI OS_WriteC
+	MOV r0,#1
+	SWI OS_WriteC
+	MOV r0,#0
+	SWI OS_WriteC
+	SWI OS_WriteC
+	SWI OS_WriteC
+	SWI OS_WriteC
+	SWI OS_WriteC
+	SWI OS_WriteC
+	SWI OS_WriteC
+	SWI OS_WriteC
+	
+	; Set screen size for number of buffers
+	MOV r0, #DynArea_Screen
+	SWI OS_ReadDynamicArea
+	; r1=taille actuelle de la memoire ecran
+	MOV r0, #DynArea_Screen
+; 416 * ( 32+258+32+258+32)
+	MOV r2, #416*612
+
+	; 320*256 * 2 ecrans
+	SUBS r1, r2, r1
+	SWI OS_ChangeDynamicArea
+	
+; taille dynamic area screen = 320*256*2
+
+	MOV r0, #DynArea_Screen
+	SWI OS_ReadDynamicArea
+	
+	; r0 = pointeur memoire ecrans
+	
+	add		R0,R0,#416*32
+	str		r0,screenaddr1
+	add		r0,r0,#416*290
+	str		r0,screenaddr2
+	
+	mov		r0,#416*32
+	str		r0,screenaddr1_MEMC
+	add		r0,r0,#416*290
+	str		r0,screenaddr2_MEMC
+	
+	ldr		r1,screenaddr1
+	ldr		r2,screenaddr2
+	ldr		r3,couleur
+	mov		R3,#0
+	mov		r0,#26832/2
+.clsall:
+	str		r3,[r1],#4
+	str		r3,[r2],#4
+	subs	r0,r0,#1
+	bne		.clsall
+	
+	ldr		r3,couleur2
+	mov		R3,#0
+	mov		r0,#26832/2
+.clsall2:
+	str		r3,[r1],#4
+	str		r3,[r2],#4
+	subs	r0,r0,#1
+	bne		.clsall2
+
+
+	
+; mise en place de la palette
+; change border color
+	SWI		22
+	MOVNV R0,R0            
+
+	mov   r0,#0x3400000               
+	mov   r1,#1000  
+; border	
+	orr   r1,r1,#0x00000000            
+	str   r1,[r0]                     
+
+	mov   r0,#0x3400000               
+	mov   r1,#1000  
+; 	couleur 15
+	orr   r1,r1,#0x3C000000            
+	str   r1,[r0]                     
+
+	mov   r0,#0x3400000               
+	mov   r1,#100  
+; 	couleur 14
+	orr   r1,r1,#0x38000000            
+	str   r1,[r0]                     
+
+
+
+
+	
+	bl		set_palette
+
+
+	teqp  r15,#0                     
+	mov   r0,r0 
+
+
+	.ifeq		1
+;// couleurs par le system
+
+	ldr		r12,pointeur_sprite_boule_violette
+	mov		R11,#16
+	mov		r3,#0
+	
+; R3 = index
+; R4 = RGBx word
+; Uses R0,R1 
+.boucle_couleurs_OS:
+
+	ldr		R4,[R12],#4					; 0302 0000 / B=3 , G=0 , R=2
+	bl		palette_set_colour
+	
+	add		R3,R3,#1
+
+	subs	r11,r11,#1
+	bgt		.boucle_couleurs_OS
+	
+	.endif
+	
+	;------------------
+
+
+    MOV R0,#19
+    SWI OS_Byte
+
+	SWI		22
+	MOVNV R0,R0
+	
+
+	
+	
+	; update pointeur video hardware
+	ldr	r0,screenaddr1_MEMC
+	mov r0,r0,lsr #4
+	mov r0,r0,lsl #2
+	mov r1,#0x3600000
+	add r0,r0,r1
+	str r0,[r0]
+
+	;b		toto
+
+;	ldr		R3,pointeur_table_mode97
+;	ldr		R2,[R3],#4			; nb de registres
+;	mov   	r0,#0x3400000
+	
+;boucle_mode97:
+;	ldr		R1,[R3],#4
+;	str		r1,[r0]
+;	mov   r0,r0
+;	
+;	subs	R2,R2,#1
+;	bgt		boucle_mode97
+
+
+
+;	teqp  r15,#0                     
+;	mov   r0,r0
+
+; je suis en supervisor mode SVC pour démarrer RM	
+	bl		RM_init
+
+	bl		RM_start
+
+	
+
+	
+	
+
+boucle:
+
+	bl		RM_wait_VBL
+
+; exit if SPACE is pressed
+	bl      RM_scankeyboard
+	cmp		R0,#0x5F
+	bne		boucle
+
+
+	
+exit:
+
+	bl		RM_wait_VBL
+
+;-----------------------
+;sortie finale
+;-----------------------
+
+
+	bl	RM_release
+
+
+
+	
+
+	MOV r0,#22	;Set MODE
+	SWI OS_WriteC
+	MOV r0,#12
+	SWI OS_WriteC
+
+
+; rmkill module mode97
+	mov		R1,#nom_mode97
+	mov		R0,#04
+	swi		OS_Module
+
+; rmkill QT
+;	mov		R1,#nom_module_QT
+;	mov		R0,#04
+;	swi		OS_Module
+
+	ldr		R0,ancienne_taille_alloc_memoire_current_slot 	; New size of current slot
+	mov		R1,#-1											;  	New size of next slot
+	SWI		0x400EC											; Wimp_SlotSize 
+	str		R0,ancienne_taille_alloc_memoire_current_slot
+
+
+	
+	MOV R0,#0
+	SWI OS_Exit
+
+
+; ------------------ end of main code ----------------------
+
+couleur:	.long	0x7f7f7f7f
+couleur2:	.long	0x1e1e1e1e
+
+
+valeur_ecran_forcee:			.long	((416*140)+128) * 16
+valeur_ecran_forcee0:			.long	((416*140)+128) * 16
+valeur_ecran_forcee1:			.long	((416*160)+129) * 16
+valeur_ecran_forcee2:			.long	((416*180)+130) * 16
+valeur_ecran_forcee3:			.long	((416*200)+131) * 16
+
+valeur_taille_memoire:		.long ((taille_buffer_calculs*2))
+ancienne_taille_alloc_memoire_current_slot:			.long 0
+
+nom_mode97:				.byte		"mode97",0		
+;nom_Rasterman:			.byte		"rm24",0
+;nom_QT:					.byte		"qt",0
+;nom_module_Rasterman:	.byte		"Rasterman",0
+;nom_module_QT:			.byte		"QTMTracker",0
+		.p2align 4
+
+
+
+
+
+
+;--------------------------------------------------------------------
+;    VBL
+;--------------------------------------------------------------------
+
+	.ifeq		1
+
+
+
+
+
+
+; // set palette
+
+	ldr		r12,pointeur_sprite_boule_violette
+
+	mov		r11,#0x00000000
+	mov   	r0,#0x3400000 
+	mov		R2,#16			; 16 couleurs
+	
+.boucle_palette2:
+
+	ldr		r1,[r12],#4		; r1=couleur format PC
+	mov		r1,r1,lsr #16
+	orr		r1,r1,r11		;r11 = registre en cours
+	str		r1,[r0]                     
+	
+	add		R11,R11,#0x04000000
+	
+	subs	R2,R2,#1
+	bgt		.boucle_palette2
+
+
+
+
+
+
+
+; changement couleur border
+	mov   r0,#0x3400000               
+	mov   r1,#000
+; border	
+	;orr   r1,r1,#0x40000000            
+	orr   r1,r1,#0x00000000            
+
+	str   r1,[r0]   
+	nop
+
+	mov		R0,#save_regs
+	ldmia	R0,{R1-R14}
+
+	
+	ldr r0,saver0
+	
+	
+	ldr pc,savelr
+
+	.endif
+
+saveR11_local:		.long 0
+saveR12_local:		.long 0	
+saveR10_local:		.long 0	
+saveR0_local:		.long 0
+saveR1_local:		.long 0
+
+		.p2align		2
+pointeur_module97:		.long	module97
+
+savelr0:		.long		0
+;--------------------------------------------------------------------
+
+set_palette:
+
+	str 	lr,savelr0
+
+;	SWI		22
+;	MOVNV R0,R0            
+
+	ldr		r12,pointeur_sprite_boule_violette
+
+	mov		r11,#0x00000000
+	mov   	r0,#0x3400000 
+	mov		R2,#15			; 16 couleurs
+	
+.boucle_palette:
+
+	ldr		r1,[r12],#4		; r1=couleur format PC
+	mov		r1,r1,lsr #16
+	orr		r1,r1,r11		;r11 = registre en cours
+	str		r1,[r0]                     
+	
+	add		R11,R11,#0x04000000
+	
+	subs	R2,R2,#1
+	bgt		.boucle_palette
+	
+	
+
+;	teqp  r15,#0                     
+;	mov   r0,r0 
+	
+	ldr pc,savelr0
+
+	
+pointeur_sprite_boule_violette:			.long sprite_boule_violette
+
+;----------------------------------------------------
+;
+;    RM reconstruit et adapté
+;
+;----------------------------------------------------
+
+
+;----------------------------------------------------------------------------------------------------------------------
+RM_init:
+; ne fait que verifier la version de Risc OS...
+	str		lr,save_lr
+; get OS version
+	MOV     R0,#129
+	MOV     R1,#0
+	MOV     R2,#0xFF
+	SWI     OS_Byte
+
+	STRB    R1,os_version
+
+; Risc os 3.5 ? => sortie
+	CMP     R1,#0xA5
+	beq		exit
+	
+	ldr		lr,save_lr
+	mov		pc,lr
+save_lr:		.long		0
+
+; SH decoded IRQ and FIQ masks
+;
+; to load/set/store IRQ and FIQ masks use:
+;
+; Rx=mask
+; Ry=&3200000 (IOC base)
+;
+;
+; LDRB Rx,[Ry,#&18+0]      ;load irqa mask (+0)
+; STRB Rx,oldirqa          ;store original mask
+; MOV  Rx,#%00100000       ;only allow timer 0 interrupt
+; STRB Rx,[Ry,#&18+2]      ;(note +2 on storing)
+;
+; LDRB Rx,[Ry,#&28+0]      ;load irqb mask (+0)
+; STRB Rx,oldirqb          ;store original mask
+; MOV  Rx,#%00000010       ;only allow sound interrupt
+; STRB Rx,[Ry,#&28+2]      ;(note +2 on storing)
+;
+;
+
+;irqa mask = IOC (&3200000) + &18
+;
+;bit 0   - il6 0 printer busy / printer irq
+;    1   - il7 0 serial port ringing / low battery
+;    2   - if  0 printer ack / floppy index
+;    3s  - ir  1 vsync
+;    4   - por 0 power on
+;    5c  - tm0 0 timer 0
+;    6   - tm1 1 timer 1
+;    7   - 1   0 n/c      (fiq downgrade?)
+;
+;irqb mask = IOC (&3200000) + &28
+;
+;bit 0   - il0 0 expansion card fiq downgrade
+;    1   - il1 0 sound system buffer change
+;    2   - il2 0 serial port controller
+;    3   - il3 0 hdd controller / ide controller
+;    4   - il4 0 floppy changed / floppy interrupt
+;    5   - il5 0 expansion card interrupt
+;    6   - stx 1 keyboard transmit empty
+;    7cs - str 1 keyboard recieve full
+;
+; c = cmdline critical
+; s = desktop critical
+;
+;fiq mask (none are critical) = IOC (&3200000) + &38
+;
+;bit 0  - fh0 0 floppy data request / floppy dma
+;    1  - fh1 0 fdc interrupt / fh1 pin on ioc
+;    2  - fl  0 econet interrupt
+;    3  - c3  0 c3 on ioc
+;    4  - c4  0 c4 on ioc / serial interrupt (also IRQB bit2)
+;    5  - c5  0 c5 on ioc
+;    6  - il0 0 expansion card interrupt
+;    7  - 1   0 force fiq (always 1)
+;
+;cr
+;
+;bit 0 - c0 IIC data
+;    1 - c1 IIC clock
+;    2 - c2 floppy ready / density
+;    3 - c3 reset enable / unique id
+;    4 - c4 aux i/o connector / serial fiq
+;    5 - c5 speaker
+;    6 - if printer ack or floppy index
+;    7 - ir vsync
+;	
+;----------------------------------------------------------------------------------------------------------------------
+RM_start:
+	str		lr,save_lr
+; appel XOS car si appel OS_SWI si erreur, ça sort directement
+	MOV		R0,#0x0C           ;claim FIQ
+	SWI		XOS_ServiceCall
+	bvs		exit
+
+
+; we own FIQs
+
+
+	TEQP	PC,#0xC000001					; bit 27 & 26 = 1, bit 0=1 : IRQ Disable+FIRQ Disable+FIRQ mode ( pour récupérer et sauvegarder les registres FIRQ )
+;	TEQP	PC,#0b11<<26 OR 0b01			;disable IRQs and FIQs, change to FIQ mode
+	MOV		R0,R0
+
+	ADR       R0,fiqoriginal				; sauvegarde de R8-R14
+	STMIA     R0,{R8-R14}
+
+	MOV       R1,#0x3200000
+	LDRB      R0,[R1,#0x18]					; lecture et sauvegarde mask IRQ A
+	STR       R0,oldIRQa
+	LDRB      R0,[R1,#0x28]					; lecture et sauvegarde mask IRQ B
+	STR       R0,oldIRQb
+
+; When installing, we will start on the next VSync, so set IRQ for VSync only
+; and set T1 to contain 'vsyncvalue', so everything in place for VSync int...
+
+	MOV       R0,#0b00001000
+	STRB      R0,[R1,#0x18+2]    ;set IRQA mask to %00001000 = VSync only : bit 3 sur mask IRQ A = vsync
+	MOV       R0,#0
+	STRB      R0,[R1,#0x28+2]    ;set IRQB mask to 0					:	IRQ B mask à 0 = disabled
+	STRB      R0,[R1,#0x38+2]    ;set FIQ mask to 0 (disable FIQs)		:	FIRQ  mask à 0 = disabled
+
+; Timer 1 / IRQ A
+	MOV       R0,#0xFF           ;*v0.14* set max T1 - ensure T1 doesn't trigger before first VSync!
+	STRB      R0,[R1,#0x50+2]    ;T1 low byte, +2 for write			: verrou / compteur = 0xFFFF
+	STRB      R0,[R1,#0x54+2]    ;T1 high byte, +2 for write
+	STRB      R1,[R1,#0x58+2]    ;T1_go = reset T1					: remet le compteur a la valeur latch ( verrou)
+
+; on prépare le compteur du Timer 1 qui tournera entre le Vsync et la 1ere ligne de hsync
+	MOV       R0,#vsyncreturn_low_ligne199			;or ldr r8,vsyncval  - will reload with this on VSync...			
+	STRB      R0,[R1,#0x50+2]    				;T1 low byte, +2 for write									: verrou / compteur 
+	MOV       R0,#vsyncreturn_high_ligne199			;or mov r8,r8,lsr#8
+	STRB      R0,[R1,#0x54+2]   					;T1 high byte, +2 for write								: verrou / compteur 
+
+
+; poke our IRQ/FIQ code into &1C-&FC : copie des routines IRQ/FIRQ dans la mémoire basse en 0x18
+	MOV       R0,#0
+	LDR       R1,[R0,#0x18]      ;load current IRQ vector
+	STR       R1,oldIRQbranch
+
+	BIC       R1,R1,#0xFF000000
+	MOV       R1,R1,LSL#2
+	ADD       R1,R1,#0x18+8
+	STR       R1,oldIRQaddress
+
+;copy IRQ/FIQ code to &18 onwards
+	ldr			R0,pointeur_fiqbase
+	MOV       R1,#0x18	
+	LDMIA     R0!,{R2-R12}
+	STMIA     R1!,{R2-R12}      ;11 pokey codey
+	LDMIA     R0!,{R2-R12}
+	STMIA     R1!,{R2-R12}      ;22 pokey codey
+	LDMIA     R0!,{R2-R12}
+	STMIA     R1!,{R2-R12}      ;33 pokey codey
+	LDMIA     R0!,{R2-R12}
+	STMIA     R1!,{R2-R12}      ;44 pokey codey
+	LDMIA     R0!,{R2-R12}
+	STMIA     R1!,{R2-R12}      ;55 pokey codey
+	LDMIA     R0!,{R2-R4}
+	STMIA     R1!,{R2-R4}       ;58 pokey codey (58 max)
+
+; init des registres permanents
+	MOV			R14,#0x3200000         	; 6 2C set R14 to IOC address
+	mov			R12,#0x3400000
+
+
+.equ 	FIQ_notHSync_valeur, 0xC0
+; on écrit l'adresse de la routine Vsync dans le code IRQ/FIRQ en bas de mémoire  pour revenir si vsync ou keyboard
+	adr		R0,notHSync					;FNlong_adr("",0,notHSync)   ;set up VSync code after copying
+	MOV     R1,#FIQ_notHSync_valeur 	;ref. works if assembling on RO3, note 'FIQ_notHSync' is 0-relative!
+	STR       R0,[R1]
+
+; sauvegarde de la première instruction pour vérifier la présence du code , pour ne pas lancer plusieurs fois RM, inutile dans mon cas.
+;	MOV       R0,#0
+;	LDR       R1,[R0,#0x18]      ;first IRQ instruction from our code
+;	STR       R1,newIRQfirstinst
+
+; sortie
+;									mode SVC Supervisor
+	TEQP      PC,#0b11				; %00<<26 OR %11;enable IRQs and FIQs, change to user mode
+	MOV       R0,R0
+	
+	ldr		lr,save_lr
+	mov		pc,lr					;exit in USER mode and with IRQs and FIQs on
+
+
+;----------------------------------------------------------------------------------------------------------------------
+RM_release:
+	str		lr,save_lr
+
+; we own FIQs
+				  
+	TEQP      PC,#0x0C000001					; %11<<26 OR %01            ;disable IRQs and FIQs, switch FIQ mode
+	MOV       R0,R0
+
+	MOV       R0,#0
+	LDR       R1,oldIRQbranch
+	STR       R1,[R0,#0x18]        ;restore original IRQ controller
+	
+	MOV       R0,#0
+	MOV       R1,#0x3200000
+	STRB      R0,[R1,#0x38+2]      ;set FIQ mask to 0 (disable FIQs)
+
+	LDR       R0,oldIRQa
+	STRB      R0,[R1,#0x18+2]
+	LDR       R0,oldIRQb
+	STRB      R0,[R1,#0x28+2]      ;restore IRQ masks
+
+	TEQP      PC,#0b11  			; (%00<<26) OR %11          ;enable IRQs and FIQs, stay SVC mode
+	MOV       R0,R0
+
+
+	MOV       R0,#0x0B             ;release FIQ
+	SWI       XOS_ServiceCall
+
+	ldr		lr,save_lr
+	mov		pc,lr					; return USER mode, leave IRQs and FIQs on
+
+;----------------------------------------------------------------------------------------------------------------------
+RM_wait_VBL:
+	LDRB      R11,vsyncbyte   ;load our byte from FIQ address, if enabled
+waitloop_vbl:
+	LDRB      R12,vsyncbyte
+	TEQ       R12,R11
+	BEQ       waitloop_vbl
+	MOVS      PC,R14
+
+;----------------------------------------------------------------------------------------------------------------------
+RM_scankeyboard:
+; https://www.riscosopen.org/wiki/documentation/show/Low-Level%20Internal%20Key%20Numbers
+; retour : R0 = touche sur 2 octets
+	;mov		R12,#0
+	;mov		R0,#0
+
+	LDRB      R12,keybyte2
+	ands			R12,R12,#0b1111
+	beq		  sortie_keycheck
+	LDRB      R0,keybyte1
+	ands			R0,R0,#0b1111
+	ORR       R0,R12,R0,LSL#4
+
+sortie_keycheck:
+	mov		pc,lr				; retour 
+
+;----------------------------------------------------------------------------------------------------------------------
+RM_clearkeybuffer:		   ;10 - temp SWI, probably not needed in future once full handler done
+	MOV       R12,#0
+	STRB      R12,keybyte1
+	STRB      R12,keybyte2
+	MOV       PC,R14      ;flags not preserved
+
+
+;----------------------------------------------------------------------------------------------------------------------
+; routine de verif du clavier executée pendant l'interruption.  lors de la lecture de 0x04, le bit d'interruption est remis à zéro
+RM_check_keyboard:
+	;CMP       R13,#256            ;retrace? - this is a backup to disable STx SRx irqs, n/r
+	;MOVNE     R8,#%00000000       ;           n/r once everything is working
+	;STRNEB    R8,[R14,#&28+2]     ;set IRQB mask to %11000000 = STx or SRx
+	;BNE       exitVScode          ;back to IRQ mode and exit
+
+; dans la vbl, registres sauvés en debut de VBL
+	;ADR       R8,kbd_stack
+	;STMIA     R8,{R4-R7}          ;some regs to play with
+
+; R14 = IOC 
+	MOV       R9,#0x3200000       ; R14 to IOC address
+	LDRB      R8,[R9,#0x24+0]     ;load irq_B triggers								:IRQ B Status, bit 7 = buffer clavier vide
+	TST       R8,#0b10000000       ;bit 7 = SRx, cleared by a read from 04
+
+	; LDMEQIA     R8,{R4-R7}          ;restore regs
+	BEQ         exitVScode          ;back to IRQ mode and exit
+;BNE       kbd_received
+;:
+;.kbd_trans
+;TST       R4,#%01000000       ;bit 6 = STx, cleared by a write to 04
+;LDRNEB    R5,nextkeybyte
+;STRNEB    R5,[R14,#&04+2]     ;clear STx
+;MOVNE     R5,#%10000000       ;set mask to wait for ok-to-read
+;STRNEB    R5,[R14,#&28+2]     ;set IRQB mask to %10000000 = SRx
+;:
+;LDMIA     R8,{R4-R7}          ;restore regs
+;B         exitVScode          ;back to IRQ mode and exit
+;
+;
+kbd_received:
+
+; process key byte, and put ack value in nextkeybyte
+
+	LDRB      R8,keycounter
+	RSBS      R8,R8,#1            ;if =1 (NE), then this is the first byte, else (EQ)=second byte
+	STRB      R8,keycounter
+
+	LDRB      R10,[R9,#0x04+0]     ;load byte, clear SRx							: lors de la lecture de 0x04, le bit d'interruption est remis à zéro
+	STRNEB    R10,keybyte1															; si pas R10 vide on stock l'octet clavier 1
+	STRNEB    R9,keybyte2			;clear byte 2!!! (was key-bug until v0.20)
+	
+	MOVNE     R8,#0b00111111       ;if first byte, reply with bACK					: pdf TRM A4 : BACK 0011 1111 ACK for first keyboard data byte pair.
+	STREQB    R10,keybyte2
+	
+	MOVEQ     R8,#0b00110001       ;if second byte, reply with sACK					: pdf TRM A4 : SACK 0011 0001 Last data byte ACK.
+	STRB      R8,[R9,#0x04+2] 		;transmit response = sACK
+	;STRB      R6,nextkeybyte
+
+	;MOV       R5,#%01000000       ;set mask to wait for ok-to-transmit
+	;STRB      R5,[R14,#&28+2]     ;set IRQB mask to %01000000 = STx
+	
+	;LDMIA     R8,{R4-R7}          ;restore regs
+	B         exitVScode          ;back to IRQ mode and exit
+	;B         kbd_trans
+
+
+; bACK=%00111111
+; sACK=%00110001
+
+
+keycounter:  .byte 0 ;1 or 0
+keybyte1:    .byte 0
+keybyte2:    .byte 0
+nextkeybyte: .byte 0
+
+kbd_stack:
+.long      0 ;R4
+.long      0 ;R5
+.long      0 ;R6
+.long      0 ;R7
+
+
+;currently have rem'd the disable STx SRx irqs in hsync code and checkkeyboard code
+
+;next try only enabling receive, assume transmit is ok...
+
+;something wrong - &FFFF (HRST) seems to be only byte received
+;v0.14 worked when trying only enabling receive, assume transmit is ok...
+
+; on arrive avec:
+; sauvegarde de R14 dans saveR14_firq en 0xE0
+; sauvegarde de R4-R7 dans FIQ_tempstack en 0xD0
+;  R14 = pointeur sur saveR14_firq
+;  R8 = load irq_A triggers ( anciennement R8) R4 
+;  R5 = 0x3200000 ( anciennement R14)  - IOC -
+;  R6 = ...
+;  R7 = ...
+
+;----------------------------------------------------------------------------------------------------------------------
+notHSync:
+VBL:
+	TST       R8,#0b00001000       ;retest R5 is it bit 3 = Vsync? (bit 6 = T1 trigger/HSync)				: R8 = 0x14 = IRQ Request A => bit 3=vsync, bit 6=Timer 1 / hsync
+	STRNEB    R14,[R14,#0x58+2]    ;if VSync, reset T1 (latch should already have the vsyncvalue...)		: si vsync, alors on refait un GO = on remet le compteur (latch) pour le timer 1 à la valeur vsyncreturn ( mise dans les registres dans le start et  après la derniere ligne )
+;
+; that's the high-priority stuff done, now we can check keyboard too...
+;
+	BEQ       RM_check_keyboard       ;check IRQ_B for SRx/STx interrupts									: R8=0 / si 0, c'est qu'on a ni bit3=vsync, ni bit 6=Timer 1, donc c'est une IRQ B = clavier/keyboard
+
+	STRB      R8,[R14,#0x14+2]     ; ...and clear all IRQ_A interrupt triggers								: 1 = clear, donc ré-écrire la valeur de request efface/annule la requete d'interruption
+
+; remaskage IRQ A : Timer 1 + Vsync
+	MOV       R8,#0b01000000        ; Timer 1 only. **removed VSync trigger v0.05
+;	MOV       R8,#0b01001000		; EDZ : Vsync + Timer 1
+;	MOV       R8,#0b00001000		; EDZ : Vsync only
+
+	STRB      R8,[R14,#0x18+2]     ;set IRQA mask to %01000000 = T1 only									: mask IRQ A : bit 6 = Timer 1, plus de Vsync
+
+; remaskage IRQ B : clavier/keyboard
+	MOV       R8,#0b10000000       ;R8,#%11000000
+	STRB      R8,[R14,#0x28+2]     ;set IRQB mask to %11000000 = STx or SRx									: mask IRQ B pour clavier
+
+; remet le compteur inter ligne pour la frequence de Timer 1 = Hsync	
+	MOV       R8,#hsyncline_low			; (hsyncline AND &00FF)>>0
+	STRB      R8,[R14,#0x50+2]              ;T1 low byte, +2 for write
+	MOV       R8,#hsyncline_high		; (hsyncline AND &FF00)>>8
+	STRB      R8,[R14,#0x54+2]              ;T1 high byte, +2 for write
+
+; vsyncbyte = 3 - vsyncbyte
+; sert de flag de vsync, si modifié => vsync
+	LDRB      R8,vsyncbyte
+	RSB       R8,R8,#3
+	STRB      R8,vsyncbyte
+
+
+;	ADR       R8,regtable
+;	LDMIA     R8,{R9,R10,R11,R12}          ;reset table registers to defaults
+
+; on remet le nombre de ligne a decrementer avant d'arriver à vsync
+	mov			R9,#position_ligne_hsync
+	mov 		R8,#ylines                  ;reset yline counter
+	str			R8,[R9]
+	
+
+;	b		zap_swap1
+
+; swap des pointeurs :
+; swap pointeur ecrans
+	ldr		r8,screenaddr1
+	ldr		r9,screenaddr2
+	str		r9,screenaddr1
+	str		r8,screenaddr2
+
+	ldr		r8,screenaddr1_MEMC
+	ldr		r9,screenaddr2_MEMC
+	str		r9,screenaddr1_MEMC
+	str		r8,screenaddr2_MEMC
+
+; swap pointeurs table reflet
+
+	ldr		R8,pointeur_table_reflet_MEMC1
+	ldr		R9,pointeur_table_reflet_MEMC2
+	str		R9,pointeur_table_reflet_MEMC1
+	str		R8,pointeur_table_reflet_MEMC2
+
+	ldr		R8,vstart_MEMC1
+	ldr		R9,vstart_MEMC2
+	str		R9,vstart_MEMC1
+	str		R8,vstart_MEMC2
+
+	ldr		R8,vend_MEMC1
+	ldr		R9,vend_MEMC2
+	str		R9,vend_MEMC1
+	str		R8,vend_MEMC2
+
+zap_swap1:
+;--------------
+; test avec vstart 
+; vinit = 0x3600000
+; vstart = 0x3620000 = 0
+; vend = 0x3640000 = 26
+
+; vstart = 0
+	mov	R9,#0x3620000
+	;mov	R8,#104*32
+	ldr		R8,vstart_MEMC1
+	add	R8,R8,R9
+	str	R8,[R8]
+	
+; vend = ligne 200
+	mov	R9,#0x3640000
+	;mov	R8,#104*232			; 199*104 + 104 -4 : 200 +32 lignes en haut
+	ldr	R8,vend_MEMC1
+	sub	R8,R8,#4
+	add	R8,R8,R9
+	str	R8,[R8]
+	
+; update pointeur video hardware vinit
+	ldr	r8,screenaddr1_MEMC
+	mov r8,r8,lsr #4
+	mov r8,r8,lsl #2
+	mov r9,#0x3600000
+	add r8,r8,r9
+	str r8,[r8]
+
+	
+; vinit
+;	mov	R9,#0x3600000
+;	mov		R8,#0
+;	add	R8,R8,R9
+;	str	R8,[R8]
+
+
+
+
+; init des registres permanents
+	MOV			R14,#0x3200000         	; 6 2C set R14 to IOC address
+	mov			R12,#0x3400000
+	ldr			R13,pointeur_table_reflet_MEMC1
+	;mov			R13,#table_couleur0_vstart_vend
+
+; couleur fond = noir
+	mov			R8,#000
+	str			R8,[R12]				; remise à noir du fond
+	
+
+ 
+
+; ---------------attente debug affichage
+
+;	- vstart modifiable après démarrage affichage : vinit à 0, vstart à 0, vend à 199*104+100, attendre affichage, pendant affichage : vstart à 50*104
+
+; vinit à zéro
+; vinit
+;	mov	R9,#0x3600000
+	;mov	R8,#104*50			; 
+;	mov		R8,#0
+;	add	R8,R8,R9
+;	str	R8,[R8]
+
+; vstart à 0
+; vstart = 0
+;	mov	R9,#0x3620000
+;	mov	R8,#104*50			; 199*104 + 104 -4 
+;	mov	R8,#0
+;	add	R8,R8,R9
+;	str	R8,[R8]
+
+; vend = ligne 200
+;	mov	R9,#0x3640000
+;	mov	R8,#104*39			; 199*104 + 104 -4 
+;	sub	R8,R8,#4
+;	add	R8,R8,R9
+;	str	R8,[R8]
+
+
+
+
+
+	; update pointeur video hardware vinit
+;	ldr	r0,screenaddr1_MEMC
+;	mov r0,r0,lsr #4
+;	mov r0,r0,lsl #2
+;	mov r1,#0x3600000
+;	add r0,r0,r1
+;	str r0,[r0]
+
+; vinit à la ligne 199
+	;mov	R8,#0x3600000
+	;add	R8,R8,#(199*104)
+	;ldr	R8,valeur_vinit_premiere_ligne
+	;str	R8,[R8]
+
+	;ldr	R8,valeur_vend_premiere_ligne
+	;str	R8,[R8]
+
+
+;	ldr	R8,valeur_vstart_premiere_ligne
+;	str	R8,[R8]
+
+
+	
+	;MOV       R13,#ylines                  ;reset yline counter
+
+; ----- QTM
+;	LDRB      R8,qtmcontrol
+;	TEQ       R8,#1
+;	BNE       exitVScode                   ;back to IRQ mode and exit
+
+;rastersound:                  ;entered in FIQ mode, must exit via IRQ mode with SUBS PC,R14,#4
+;	TEQP      PC,#%11<<26 OR %10  ;enter IRQ mode, IRQs/FIQs off
+;	MOV       R0,R0               ;sync
+;	STMFD     R13!,{R14}          ;stack R13_IRQ
+;	TEQP      PC,#%11<<26 OR %11  ;enter SVC mode, IRQs/FIQs off
+;	MOV       R0,R0               ;sync
+
+;	STR       R13,tempr13         ;
+;	LDRB      R13,dma_in_progress ;
+;	TEQ       R13,#0              ;
+;	LDRNE     R13,tempr13         ;
+;	BNE       exitysoundcode      ;
+;	STRB      PC,dma_in_progress  ;
+
+;	adr		R13,startofstack	;FNlong_adr("",13,startofstack);
+;	STMFD     R13!,{R14}          ;stack R14_SVC
+;	LDR       R14,tempr13         ;
+;	STMFD     R13!,{R14}          ;stack R13_SVC - we are now reentrant!!!
+;	BL        rastersound_1       ;call rastersound routine - enables IRQs
+
+;	MOV       R14,#0              ;...on return IRQs/FIQs will be off
+;	STRB      R14,dma_in_progress ;
+;	LDMFD     R13,{R13,R14}       ;restore R14_SVC and R13_SVC
+
+;exitysoundcode:
+;	TEQP      PC,#%11<<26 OR %10  ;back to IRQ mode
+;	MOV       R0,R0               ;sync
+
+;	LDMFD     R13!,{R14}
+;	SUBS      PC,R14,#4           ;return to foreground
+
+;exitVScode:
+;	mode IRQ mode, 
+
+;	b		skipall
+
+
+	adr		R8,sauvegarde_registres_VBL
+	STMIA	R8,{R0-R7,R12-R14}
+
+	
+; VBL : routines cls et sprite
+
+;-------- CLS
+;416x258 = 107328
+
+
+
+	ldr		R0,screenaddr2
+	bl		CLS_416_258
+
+
+	
+	
+	
+; Affichage Sprites
+
+; ------------------------------------------------------------------------
+;
+;        boucle affichage VBL Sprites
+;
+; ------------------------------------------------------------------------
+
+
+
+affichage_sprites:
+;	ldr		R12,pointeur_actuel_buffer_en_cours_d_affichage
+;	ldr		R11,nb_sprites_en_cours_affichage
+
+
+	ldr		R12,pointeur_lecture_calculs_pendant_affichage
+	ldr		R11,nombre_sprites_sequence_en_cours_affichage
+
+
+
+;	ldr		R0,valeur_ecran_forcee2
+;	str		R0,valeur_ecran_forcee
+
+
+boucle_affiche_sprites_vbl:	
+
+	
+	ldr		R0,[R12],#4			; octet compressé : position mémoire ecran + n° sprite
+
+	str		R11,saveR11_local
+	str		R12,saveR12_local
+
+
+
+; décodage
+; R0 = Y*416 +x << 4 + n° sprite
+; cible : R0=position, R5 = X n° décalage, R6 = n° sprite
+	
+	and		R6,R0,#0b111111					; R6 = position X * 16 + n° sprite
+	mov		R0,R0,asr #4
+	adr		R3,table_positions_sprites64
+
+	ldr		r2,screenaddr2
+	add		R1,R2,R0			; R1=R2+R0 offset ecran
+
+; saut dans la routine de sprite
+	ldr		R15,[R3,R6, lsl #2]				; R15 = adresse routine sprite
+	
+retour_copie_sprite:
+
+	ldr		R11,saveR11_local
+	ldr		R12,saveR12_local
+
+
+
+	subs	R11,R11,#1
+	bgt		boucle_affiche_sprites_vbl
+
+	str		R12,pointeur_lecture_calculs_pendant_affichage
+
+;----------------------------------------
+;    gérer un nombre aléatoire
+;----------------------------------------
+	LDR		R0,compteur_aleatoire
+	ADD		R0,R0,#13
+	EOR		R0,R0,R0,ROR #9
+	STR		R0,compteur_aleatoire
+
+	
+	
+;----------------------------------------
+;exploiter sequences
+; - diminuer nombre_frames_sequence_en_cours_affichage de 1
+; si egal à 0 
+;	- continuer à parcourir les sequences :
+		
+;		- si sequence_infinie=0 => diminuer nb_repetition_sequence_affichage
+;		- si égal à 0 => lire la suite à partir de pointeur_lecture_sequences_affichage : si repetition = -1 => sequence_infinie = 1
+;		- si >0 : pointeur_initial_lecture_calculs_pendant_affichage => pointeur_lecture_calculs_pendant_affichage & nombre_frames_initial_sequence_en_cours_affichage => nombre_frames_sequence_en_cours_affichage
+
+; gestion du nombre de frame de la séquence
+	ldr		R0,nombre_frames_sequence_en_cours_affichage
+	subs	R0,R0,#1
+	bgt		pas_fin_frames_affichage_sequence_en_cours
+
+
+		ldr		R5,numero_sequence_en_cours
+		;- numéro_de_séquence_en_cours + 1
+		adds	R5,R5,#1
+		ldr		R6,numero_sequence_fin
+		cmp		R5,R6
+		ble		pas_arrive_au_dernier_numero_de_sequence_de_la_scene  ; / de la plage de séquence
+			; on a dépassé le dernier numéro de sequence de la plage de séquence
+			; si infinie ??
+			; est ce une séquence infinie ?
+			ldr		R1,sequence_infinie
+			cmp		R1,#-1
+			bne		la_sequence_en_cours_n_est_pas_infinie
+			mov		R1,#0x40
+			str		R1,nb_repetition_sequence_affichage				; on force la répétition de la plage à 64 à chaque passage
+
+	
+		la_sequence_en_cours_n_est_pas_infinie:
+
+
+			; - nb_répétition_actuel=nb_répétition_actuel -1
+			ldr		R6,nb_repetition_sequence_affichage
+			subs	R6,R6,#1
+			bgt		pas_fin_de_repetition_de_sequence
+
+				; nb_répétition_actuel = 0, on a fait toute la plage de la séquence avec N répétitions, il faut avancer le pointeur de séquence pour lire la table de sequence
+				ldr		R2,pointeur_lecture_sequences_affichage
+				; - numéro de séquence
+				; - nb répétition de la séquence
+				ldr		R3,[R2],#4				; R3 = numéro de séquence début
+	
+				cmp		R3,#-1					; on est à la fin de la liste de sequences ?
+				; -1 = fin des sequences
+					; ldr exécuté pour retour au début
+					ldrle	R2,pointeur_lecture_sequences
+					ldrle	R3,[R2],#4				; R3 = numéro de séquence début
+	
+				; on est pas a la fin	
+				ldr		R5,[R2],#4				; R5 = numéro de séquence fin
+				ldr		R6,[R2],#4				; R4 = nb répétition de la séquence
+				
+				cmp		R6,#-1					; si nombre de repetitions de la plage = -1 => séquence infinie
+				bne		pas_sequence_infinie	
+				str		R6,sequence_infinie
+			pas_sequence_infinie:
+				cmp		R6,#0					; si nombre de repetitions de la plage = 0 => nombre aléatoire de répétitions
+				bne		.pas_zero_repetition_sequence
+				ldr		R6,compteur_aleatoire
+				ands		R6,R6,#0b11				; on garde 2 bits : entre 0 et 3
+				moveq		R6,#2					; 0=>2
+				
+				
+			.pas_zero_repetition_sequence:				
+				str		R6,nb_repetition_sequence_affichage
+				str		R3,numero_sequence_debut
+				str		R3,numero_sequence_en_cours
+				str		R5,numero_sequence_fin
+				str		R2,pointeur_lecture_sequences_affichage
+
+
+
+			pas_fin_de_repetition_de_sequence:
+			;- numéro_de_séquence_en_cours = numéro de séquence de début : numero_sequence_debut 
+			ldr		R5,numero_sequence_debut 
+			str		R6,nb_repetition_sequence_affichage
+	
+		pas_arrive_au_dernier_numero_de_sequence_de_la_scene:
+		str		R5,numero_sequence_en_cours
+		
+			;- numéro_de_séquence_en_cours => récuperation de pointeur sur la mémoire de calcul & nombre d'étapes frames d'affichage & nombre de points/sprites de la séquence
+	;on est arrivé au bout de la séquence, il faut passer à la séquence suivante
+		ldr		R1,pointeur_buffer_sequences_affichage
+	; numéro séquence en cours permet de lire les infos concernant cette séquence
+		ldr		R3,numero_sequence_en_cours
+		mov		R3,R3,lsl #2				; R3*4
+		add		R3,R3,R3, lsl #1			; R3 = R3*4 + R3*4*2 = 12*R3
+		ldr		R4,[R1,R3]					; pointeur mémoire debut séquence
+		str		R4,pointeur_lecture_calculs_pendant_affichage
+		str		R4,pointeur_initial_lecture_calculs_pendant_affichage
+		add		R1,R1,#4
+		ldr		R4,[R1,R3]					; nb étapes/frames de la séquence
+		str		R4,nombre_frames_sequence_en_cours_affichage
+		mov		R0,R4
+		str		R4,nombre_frames_initial_sequence_en_cours_affichage
+		add		R1,R1,#4
+		ldr		R4,[R1,R3]					; nb points de la séquence
+		str		R4,nombre_sprites_sequence_en_cours_affichage	
+	
+	
+	pas_fin_frames_affichage_sequence_en_cours:
+	str		R0,nombre_frames_sequence_en_cours_affichage
+sortie_des_tests_car_sequence_infinie:	
+
+;----------------------------------------
+
+
+
+	adr		R8,sauvegarde_registres_VBL
+	LDMIA	R8,{R0-R7,R12-R14}
+
+skipall:
+
+
+; couleur fond = noir
+	mov			R8,#0
+	str			R8,[R12]				; remise à noir du fond
+
+
+exitVScode:
+;	mode IRQ mode, 
+	TEQP      PC,#0x0C000002			; %000011<<26 OR %10 ;36 A4 back to IRQ mode				: xor sur bits 27&26 = autorise IRQ et FIRQ. xor sur bit1 = 01 xor 0b10 = 11 SVC
+	MOV       R0,R0                  ;37 A8 sync IRQ registers
+	SUBS      PC,R14,#4              ;38 AC return to foreground
+;----------------------------------------------------------------------------------------------------------------------
+
+			
+sauvegarde_registres_VBL:
+		.skip			8*4			; R0-R7
+		.skip			3*4			; R12-R14
+
+; en fonction de X modulo 4
+table_positions_sprites64:
+table_spritespos0:
+	.rept	16
+	.long	pos0v2
+	.endr
+table_spritespos1:
+	.rept	16
+	.long	pos1v2
+	.endr
+table_spritespos2:
+	.rept	16
+	.long	pos2v2
+	.endr
+table_spritespos3:
+	.rept	16
+	.long	pos3v2
+	.endr
+
+
+; ---------------------
+
+
+pointeur_compteur_aleatoire:			.long		compteur_aleatoire
+compteur_aleatoire:						.long		0x1234
+; variables RM
+os_version:		.long      0         ;1 byte &A0 for Arthur 0.3/1.2, &A1 for RO2, &A3 for RO3.0, &A4 for RO3.1
+fiqoriginal:	
+.long      0         ;R8
+.long      0         ;R9
+.long      0         ;R10
+.long      0         ;R11
+.long      0         ;R12
+.long      0         ;R13
+.long      0         ;R14
+
+oldIRQa:	.long	0				; ancien vecteur IRQ A du système
+oldIRQb:	.long	0				; ancien vecteur IRQ B du système
+newIRQfirstinst:	.long	0	
+oldIRQbranch:		.long 	0
+oldIRQaddress:		.long	0
+
+vsyncbyte:		.long 	0
+pointeur_fiqbase:		.long	fiqbase
+
+pointeur_table_reflet_MEMC1:	.long	table_couleur0_vstart_vend_MEMC1
+pointeur_table_reflet_MEMC2:	.long	table_couleur0_vstart_vend_MEMC2
+
+vstart_MEMC1:		.long		104*32
+vend_MEMC1:			.long		104*232
+vstart_MEMC2:		.long		104*32+(104*290)
+vend_MEMC2:			.long		104*232+(104*290)
+
+; 58 lignes en tout
+;       .long   couleur0, vstart, vend
+;------------------------------------------------------------------------------------------------
+;1ere ligne : fin de l'écran du haut. : vend = 0x3640000+((200*104)-4)
+;       .long   couleur0, vstart, vend
+; 	.long   couleur0, 0x3620000 + (199*104)+(104*32), 0x3640000+((200*104)-4)+(104*32)
+
+;       .long   couleur0, vstart, vend
+;       .long   couleur0, vstart, vend
+;table_couleur0_vstart_vend_MEMC1:
+;table_couleur0_vstart_vend_MEMC1:
+	.include	"table_sol2V2.s"
+  
+;------------------------------------------------------------------------------------------------
+
+
+screenaddr1:	.long 0
+screenaddr2:	.long 0
+screenaddr1_MEMC:	.long 0
+screenaddr2_MEMC:	.long 0
+
+
+
+;--------------------------------------------------------------------
+;    Transformation
+;--------------------------------------------------------------------
+
+;- dans la boucle d'initialisation des animations :
+;
+;	- calculer deltaX/nb etapes, delta Y / nb etapes, delta Z/nb etapes
+;	- multiplier chaque valeur par 2^15
+;	- stocker dans table_increments_pas_transformations : X source ,increment X, Y source, increment Y, Z source, increment Z , n° sprite : tout x 2^15
+;			pointeur_table_increments_pas_transformations
+; fonction : preparation_transformation:
+;
+;
+;- dans la boucle de calcul des rotations/projections
+;	- remplir pointeur_buffer_coordonnees_objet_transformees:
+;		- avec calcul de table_increments_pas_transformations  : X + inc X, Y+inc Y , Z+inc Z, 
+;		- stocker le resultat dans table_increments_pas_transformations +0 +8 + 16
+;		- stocker le resultat / 2^15 dans pointeur_buffer_coordonnees_objet_transformees
+
+
+preparation_transformation:
+
+
+
+		ldr		R12,pointeur_table_increments_pas_transformations						; destination pour les X Y Z et increments
+		ldr		R11,pointeur_coordonnees_objet_source_transformation					; points de l'objet source : X Y Z n°sprite
+		ldr		R10,pointeur_coordonnees_objet_destination_transformation				; coordonnees objet destination : X Y Z n°sprite
+		
+		ldr		R9,nb_etapes_transformation
+		
+		ldr		R0,nb_points_objet_en_cours
+		
+boucle_preparation_transformation:
+		
+		mov		R7,#3
+		
+boucle_preparation_transformation_1_valeur:
+
+		ldr		R1,[R11],#4					; on recupere X point objet source
+		ldr		R2,[R10],#4					; on recupere X point objet destination
+		
+		subs	R3,R2,R1					; Delta X = X destination - X source
+
+; calcul du pas : il faut diviser R3 par R9
+; en tenant compte de R3 négatif ?
+
+; si r3 négatif :
+ 	mov R4,#0
+	
+
+	cmp r3,#0
+	bpl .deltaX_positif
+; r11 négatif
+
+	rsb r3,r3,#0
+	mov r4,#1		; R5 = 1 si X negatif
+
+.deltaX_positif:
+	mov		R3,R3,asl #15				; * 2^15
+
+; R5 = ( R3 / R9 )
+; registres dispos	:  R5 R6 R7 R8 R13 R14
+
+	MOV      R5,#0     ;clear R5 to accumulate result
+	MOV      R6,#1     ;set bit 0 in R6, which will be
+					   ;shifted left then right
+.startdivX_transformation1:
+	CMP      R9,R3
+	MOVLS    R9,R9,LSL#1
+	MOVLS    R6,R6,LSL#1
+	BLS      .startdivX_transformation1
+
+.nextdivX_transformation1:
+	CMP       R3,R9
+	SUBCS     R3,R3,R9
+	ADDCS     R5,R5,R6
+	MOVS      R6,R6,LSR#1
+	MOVCC     R9,R9,LSR#1
+	BCC			.nextdivX_transformation1
+
+	cmp		R4,#0			; R3 était négatif ?
+	beq		.X_transformation_negatif
+	rsb		r5,r5,#0		; alors résultat négatif
+	
+.X_transformation_negatif:
+
+; R5 = R3/R9
+
+	mov		R1,R1,asl #15	; X * 2^15
+	
+	str		R1,[R12],#4		; on stocke X * 2^15
+	str		R5,[R12],#4		; increment X * 2^15
+	
+	subs	R7,R7,#1
+	bgt		boucle_preparation_transformation_1_valeur
+	
+	ldr		R7,[R11],#4			; n° sprite source
+	add		R10,R10,#4			; on saute le n° sprite objet destination
+	str		R7,[R12],#4			; n° sprite table increment
+		
+	subs	R0,R0,#1
+	bgt		boucle_preparation_transformation
+; sortie
+	mov pc, r14
+
+
+;--------------	
+;	calcul progressif des X Y Z transformation
+;	source : pointeur_table_increments_pas_transformations : X source ,increment X, Y source, increment Y, Z source, increment Z  : tout x 2^15
+;	dest : pointeur_buffer_coordonnees_objet_transformees
+
+
+realisation_transformation:
+
+
+		ldr		R12,pointeur_buffer_coordonnees_objet_transformees
+		ldr		R11,pointeur_table_increments_pas_transformations
+	
+		ldr		R0,nb_points_objet_en_cours
+
+boucle_realisation_transformation:
+		mov		R7,#3
+
+boucle_realisation_transformation_1_valeur:
+		ldr		R1,[R11]					; X * 2^15
+		ldr		R2,[R11,#4]					; increment X * 2^15
+		
+		adds	R1,R1,R2					; X + increment X/Z
+		
+		str		R1,[R11],#4					; on stocke X avance * 2^15
+		add		R11,R11,#4					; on passe l'increment
+		
+		mov		R1,R1,asr #15				; on supprime les decimales
+		
+		str		R1,[R12],#4
+		
+		subs	R7,R7,#1
+		bgt		boucle_realisation_transformation_1_valeur
+		
+		ldr		R7,[R11],#4			; n° sprite source
+		str		R7,[R12],#4			; n° sprite destination
+		
+		subs	R0,R0,#1
+		bgt		boucle_realisation_transformation
+		
+; sortie
+		mov pc, r14	
+
+
+
+; ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+;
+;
+;
+;			Calcul d'une sequence
+;
+;
+; ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+sauvegarde_R14_calcul_d_une_sequence:			.long		0
+compteur_etapes:		.long		0
+numero_compteur_message:						.long		975
+calcul_d_une_sequence:
+	str		R14,sauvegarde_R14_calcul_d_une_sequence
+
 
 	mov		R0,#0
 	str		R0,nb_frames_total_calcul
+	str		R0,nb_points_objet_en_cours_objet_anime
 
 ; on démarre une sequence de calculs, donc on pointe au debut du buffer de calcul
+
+
 	ldr		R5,pointeur_buffer_en_cours_de_calcul
 	str		R5,pointeur_actuel_buffer_en_cours_de_calcul
 
@@ -188,14 +1630,19 @@ ok_assez_de_ram:
 	ldr		R5,pointeur_buffer_sequences_calcul
 	str		R5,pointeur_actuel_buffer_sequences_calcul
 
-; le pointeur vers les variables pour calculer 1 objet	
-	ldr		R5,pointeur_buffers_variables_objets_initial
-	str		R5,pointeur_buffers_variables_objets_en_cours
 
 
 ; --------------- début init des  calculs --------------------------
 boucle_lecture_animations:
 ; sauvegarde dans les sequences le pointeur dans le buffer de calcul au début des calculs
+	SWI		0x01
+	.byte	"---",0
+	.p2align 2
+
+; le pointeur vers les variables pour calculer 1 objet	
+	ldr		R5,pointeur_buffers_variables_objets_initial
+	str		R5,pointeur_buffers_variables_objets_en_cours
+
 
 
 	ldr		R12,pointeur_actuel_buffer_sequences_calcul
@@ -234,8 +1681,8 @@ boucle_lecture_animations:
 
 
 boucle_preparation_objet_par_objet:
-
 	mov		R2,#0
+	
 	str		R2,flag_transformation_en_cours			; pas de transformation
 	str		R2,flag_animation_en_cours				; pas d'animation
 	str		R2,flag_classique_en_cours				; pas d'objet classique
@@ -458,7 +1905,6 @@ pas_de_transformation:
 	ldr		R0,nb_frames_rotation_classique
 	str		R0,nb_frame_en_cours
 
-
 	str		R1,saveR1
 	bl		push_sauvegarde_variables_de_l_objet_full
 	ldr		R1,saveR1
@@ -498,9 +1944,24 @@ pas_de_transformation:
 
 
 boucle_calcul_frames_classiques:
-	SWI		0x01
-	.byte	"/  ",0
-	.p2align 2
+
+	ldr		R12,compteur_etapes
+	add		R12,R12,#1
+	str		R12,compteur_etapes
+	
+;	ldr		R13,numero_compteur_message
+;	cmp		R12,R13
+;	bne		pas_affichage_message_compteur
+
+;	SWI		0x01
+;	.byte	"**********************",10,13,10,13,10,13,10,13,0
+;	.p2align 2
+
+;	SWI BKP
+
+pas_affichage_message_compteur:
+	
+	
 
 ; apres la boucle sur les objets, on revient au début de la pile de structures
 ; le pointeur vers les variables pour calculer 1 objet	
@@ -515,15 +1976,12 @@ boucle_calcul_frames_classiques:
 	str		R4,nb_points_objet_en_cours_au_total
 
 ; on initialize le buffer de destination
+
 	ldr		R2,pointeur_coordonnees_projetees
 	str		R2,pointeur_coordonnees_projetees_actuel
 
 		
 boucle_execution_objet_par_objet:
-
-	SWI		0x01
-	.byte	"o  ",0
-	.p2align 2
 
 ; on charge les variables de l'objet en cours, le pointeur n'est pas avancé
 	bl		pop_sauvegarde_variables_de_l_objet_full
@@ -606,6 +2064,11 @@ boucle_execution_objet_par_objet:
 	ldr		R5,nb_points_objet_en_cours_objet_classique
 	str		R5,nb_points_objet_en_cours
 
+;	SWI		0x01
+;	.byte	"Tra-",0
+;	.p2align 2
+	
+	
 	bl		realisation_transformation
 
 .pas_de_transformation:
@@ -616,8 +2079,8 @@ boucle_execution_objet_par_objet:
 
 
 
-	ldr		R5,pointeur_buffer_calculs_intermediaire
-	str		R5,pointeur_coordonnees_projetees
+;	ldr		R5,pointeur_buffer_calculs_intermediaire
+;	str		R5,pointeur_coordonnees_projetees_actuel
 
 
 
@@ -629,7 +2092,6 @@ boucle_execution_objet_par_objet:
 
 ; ----------------------
 ; projection points fixes et transformés au début :
-
 	ldr		R2,flag_classique_en_cours
 	cmp		R2,#1
 	bne		.pas_de_rotation_classique_en_boucle
@@ -656,7 +2118,11 @@ ok_points_objet_classique_ou_transforme:
 	str		R2,nb_points_objet_en_cours
 
 
+
+; appel de Calc3D pour objet classique+transformé
 	bl		calc3D
+
+
 
 .pas_de_rotation_classique_en_boucle:
 
@@ -704,8 +2170,10 @@ ok_points_objet_classique_ou_transforme:
 	str		R2,pointeur_points_objet_en_cours
 	ldr		R2,nb_points_objet_en_cours_objet_anime
 	str		R2,nb_points_objet_en_cours
+
 	
 
+; appel de Calc3D pour objet animé
 ; on calcul nb_points_objet_en_cours points, venant de pointeur_points_objet_en_cours
 	bl		calc3D
 	
@@ -720,6 +2188,7 @@ ok_points_objet_classique_ou_transforme:
 
 .pas_d_animation_dans_la_boucle_de_calcul_principale:
 
+
 	ldr		R4,nb_points_objet_en_cours_au_total
 
 	ldr		R2,nb_points_objet_en_cours_objet_classique
@@ -730,7 +2199,6 @@ ok_points_objet_classique_ou_transforme:
 	str		R4,nb_sprites_en_cours_calcul
 	str		R2,nb_points_un_seul_objet
 	
-
 
 ; on met à jour les variables dans la structure des objets, le pointeur sur les structures est incrémenté
 	bl		push_sauvegarde_variables_de_l_objet_full
@@ -746,9 +2214,7 @@ ok_points_objet_classique_ou_transforme:
 	mov		R12,#etape_en_cours
 	mov		R13,#11
 	str		R13,[R12]
-	
-;	bl		bubblesort_XYZ
-;	bl		quick_sort
+
 	bl		quick_sort2
 	
 ; tracage	
@@ -756,15 +2222,15 @@ ok_points_objet_classique_ou_transforme:
 	mov		R13,#12
 	str		R13,[R12]
 
-
 	bl		copie_dans_buffer_calcul_final
+
 	
 	; tracage	
 	mov		R12,#etape_en_cours
 	mov		R13,#13
 	str		R13,[R12]
 
-	
+
 ; on avance dans le gros buffer final	
 	ldr		R2,pointeur_actuel_buffer_en_cours_de_calcul
 	ldr		R1,nb_points_objet_en_cours_au_total
@@ -792,22 +2258,110 @@ ok_points_objet_classique_ou_transforme:
 	str		R12,pointeur_actuel_buffer_sequences_calcul
 
 	
-
-
 	b		boucle_lecture_animations
 
 sortie_boucle_animations:
 
+	ldr		R14,sauvegarde_R14_calcul_d_une_sequence
+
+
+	mov		pc,lr
+	
+init_sequences:
+	
+;initialiser sequences
+;- stocker nb frames affichage en cours
+;- stocker nb sprites affichage en cours
+;- stocker pointeur buffer memoire affichage en cours
+
+
+; mets la sequence infinie d'attente de la fin des calculs en OFF
+	mov		R1,#0
+	str		R1,sequence_infinie
+
+	ldr		R1,pointeur_lecture_sequences
+; - numéro de séquence
+; - nb répétition de la séquence
+	ldr		R2,[R1],#4				; R2 = numéro de séquence début
+	ldr		R5,[R1],#4				; R5 = numéro de séquence fin
+	ldr		R3,[R1],#4				; R3 = nb répétition de la séquence
+	
+	cmp		R3,#-1					; si nombre de repetitions de la plage = -1 => séquence infinie
+	bne		pas_sequence_infinie_init
+	str		R3,sequence_infinie
+pas_sequence_infinie_init:
+
+	cmp		R3,#0					; si nombre de repetitions de la plage = 0 => nombre aléatoire de répétitions
+	bne		.pas_zero_repetition_sequence_init
+	ldr		R3,compteur_aleatoire
+	ands	R3,R3,#0b11				; on garde 2 bits : entre 0 et 3
+	moveq	R3,#2					; 0=>2
+
+.pas_zero_repetition_sequence_init:
+	str		R3,nb_repetition_sequence_affichage
+	str		R1,pointeur_lecture_sequences_affichage
+
+
+	str		R2,numero_sequence_debut
+	str		R2,numero_sequence_en_cours
+	str		R5,numero_sequence_fin
+	
+	
+
+
+; 	- pointeur mémoire debut séquence
+;	- nb étapes de la séquence
+;	- nb points de la séquence
+	
+	ldr		R1,pointeur_buffer_sequences_affichage
+; R2 * 12 = 4+8
+	mov		R2,R2,lsl #2				; R2*4
+	add		R2,R2,R2, lsl #1			; R2 = R2*4 + R2*4*2 = 12*R2
+	ldr		R4,[R1,R2]					; pointeur mémoire debut séquence
+	str		R4,pointeur_lecture_calculs_pendant_affichage
+	str		R4,pointeur_initial_lecture_calculs_pendant_affichage
+	add		R1,R1,#4
+	ldr		R4,[R1,R2]					; nb étapes/frames de la séquence
+	str		R4,nombre_frames_sequence_en_cours_affichage
+	str		R4,nombre_frames_initial_sequence_en_cours_affichage
+	add		R1,R1,#4
+	ldr		R4,[R1,R2]					; nb points de la séquence
+	str		R4,nombre_sprites_sequence_en_cours_affichage
+	
+	
+	mov		pc,lr
+
+
+; variable gestion des sequences lors de l'affichage
+nb_repetition_sequence_affichage:			.long	0
+pointeur_lecture_sequences_affichage:			.long	0
+pointeur_lecture_calculs_pendant_affichage:		.long	0
+pointeur_initial_lecture_calculs_pendant_affichage:		.long	0
+nombre_frames_initial_sequence_en_cours_affichage:		.long	0
+nombre_frames_sequence_en_cours_affichage:		.long	0
+nombre_sprites_sequence_en_cours_affichage:		.long	0
+
+; 	- pointeur mémoire debut séquence
+;	- nb étapes de la séquence
+;	- nb points de la séquence
+pointeur_buffer_sequences_calcul:				.long buffer_sequences_calcul
+pointeur_buffer_sequences_affichage:			.long buffer_sequences_affichage
+pointeur_actuel_buffer_sequences_calcul:		.long buffer_sequences_calcul
+pointeur_actuel_buffer_sequences_affichage:		.long buffer_sequences_affichage
+sequence_infinie:								.long 0
+
+pointeur_lecture_sequences:			.long		anim1_sequences
+numero_sequence_debut:				.long		0
+numero_sequence_fin:				.long		0
+numero_sequence_en_cours:			.long		0
+
 
 ;------------------------------------------------------------------------------------------------------------
-;------------------------------------------------------------------------------------------------------------
-;------------------------------------------------------------------------------------------------------------
-;------------------------------------------------------------------------------------------------------------
-	SWI		0x01
-	.byte	"+++",0
-	.p2align 2
-	
+
+swap_pointeurs_buffers_calcul_et_affichage:
+
 ; on swappe calcul et affichage
+
 	ldr		R1,pointeur_buffer_en_cours_d_affichage
 	ldr		R2,pointeur_buffer_en_cours_de_calcul
 	str		R2,pointeur_buffer_en_cours_d_affichage
@@ -832,404 +2386,13 @@ sortie_boucle_animations:
 	;str		R12,pointeur_actuel_buffer_en_cours_d_affichage
 
 
+	mov	pc,lr
 
-	
-;initialiser sequences
-;- stocker nb frames affichage en cours
-;- stocker nb sprites affichage en cours
-;- stocker pointeur buffer memoire affichage en cours
-
-; mets la sequence infinie d'attente de la fin des calculs en OFF
-	mov		R1,#0
-	str		R1,sequence_infinie
-
-	ldr		R1,pointeur_lecture_sequences
-; - numéro de séquence
-; - nb répétition de la séquence
-	ldr		R2,[R1],#4				; R2 = numéro de séquence
-	ldr		R3,[R1],#4				; R3 = nb répétition de la séquence
-	str		R3,nb_repetition_sequence_affichage
-	str		R1,pointeur_lecture_sequences_affichage
-
-; 	- pointeur mémoire debut séquence
-;	- nb étapes de la séquence
-;	- nb points de la séquence
-	
-	ldr		R1,pointeur_buffer_sequences_affichage
-; R2 * 12 = 4+8
-	mov		R2,R2,lsl #2				; R2*4
-	add		R2,R2,R2, lsl #1			; R2 = R2*4 + R2*4*2 = 12*R2
-	ldr		R4,[R1,R2]					; pointeur mémoire debut séquence
-	str		R4,pointeur_lecture_calculs_pendant_affichage
-	str		R4,pointeur_initial_lecture_calculs_pendant_affichage
-	add		R1,R1,#4
-	ldr		R4,[R1,R2]					; nb étapes/frames de la séquence
-	str		R4,nombre_frames_sequence_en_cours_affichage
-	str		R4,nombre_frames_initial_sequence_en_cours_affichage
-	add		R1,R1,#4
-	ldr		R4,[R1,R2]					; nb points de la séquence
-	str		R4,nombre_sprites_sequence_en_cours_affichage
-	
-	
-
-	
-
-
-	MOV r0,#22	;Set MODE
-	SWI OS_WriteC
-	MOV r0,#Screen_Mode
-	SWI OS_WriteC
-
-
-	MOV r0,#23	;Disable cursor
-	SWI OS_WriteC
-	MOV r0,#1
-	SWI OS_WriteC
-	MOV r0,#0
-	SWI OS_WriteC
-	SWI OS_WriteC
-	SWI OS_WriteC
-	SWI OS_WriteC
-	SWI OS_WriteC
-	SWI OS_WriteC
-	SWI OS_WriteC
-	SWI OS_WriteC
-	
-	; Set screen size for number of buffers
-	MOV r0, #DynArea_Screen
-	SWI OS_ReadDynamicArea
-	; r1=taille actuelle de la memoire ecran
-	MOV r0, #DynArea_Screen
-; 416 * ( 32+258+32+258+32)
-	MOV r2, #416*612
-
-	; 320*256 * 2 ecrans
-	SUBS r1, r2, r1
-	SWI OS_ChangeDynamicArea
-	
-; taille dynamic area screen = 320*256*2
-
-	MOV r0, #DynArea_Screen
-	SWI OS_ReadDynamicArea
-	
-	; r0 = pointeur memoire ecrans
-	
-	add		R0,R0,#416*32
-	str		r0,screenaddr1
-	add		r0,r0,#416*290
-	str		r0,screenaddr2
-	
-	mov		r0,#416*32
-	str		r0,screenaddr1_MEMC
-	add		r0,r0,#416*290
-	str		r0,screenaddr2_MEMC
-	
-	ldr		r1,screenaddr1
-	ldr		r2,screenaddr2
-	ldr		r3,couleur
-	mov		R3,#0
-	mov		r0,#26832/2
-.clsall:
-	str		r3,[r1],#4
-	str		r3,[r2],#4
-	subs	r0,r0,#1
-	bne		.clsall
-	
-	ldr		r3,couleur2
-	mov		R3,#0
-	mov		r0,#26832/2
-.clsall2:
-	str		r3,[r1],#4
-	str		r3,[r2],#4
-	subs	r0,r0,#1
-	bne		.clsall2
-	
-	
-; mise en place de la palette
-; change border color
-	SWI		22
-	MOVNV R0,R0            
-
-	mov   r0,#0x3400000               
-	mov   r1,#1000  
-; border	
-	orr   r1,r1,#0x00000000            
-	str   r1,[r0]                     
-
-	mov   r0,#0x3400000               
-	mov   r1,#1000  
-; 	couleur 15
-	orr   r1,r1,#0x3C000000            
-	str   r1,[r0]                     
-
-	mov   r0,#0x3400000               
-	mov   r1,#100  
-; 	couleur 14
-	orr   r1,r1,#0x38000000            
-	str   r1,[r0]                     
-
-
-
-	teqp  r15,#0                     
-	mov   r0,r0 
-
-	; Claim the Event vector
-	mov r0, #EventV
-	adr r1, event_handler
-	mov r2, #0
-;	swi OS_AddToVector
-	swi	OS_Claim
-	
-	; Enable Vsync event
-	mov r0, #OSByte_EventEnable
-	mov r1, #Event_VSync
-	SWI OS_Byte
-	
-	bl		set_palette
-
-
-
-;// couleurs par le system
-
-	ldr		r12,pointeur_sprite_boule_violette
-	mov		R11,#16
-	mov		r3,#0
-	
-; R3 = index
-; R4 = RGBx word
-; Uses R0,R1 
-.boucle_couleurs_OS:
-
-	ldr		R4,[R12],#4					; 0302 0000 / B=3 , G=0 , R=2
-	bl		palette_set_colour
-	
-	add		R3,R3,#1
-
-	subs	r11,r11,#1
-	bgt		.boucle_couleurs_OS
-	
-	
-	;------------------
-
-
-    MOV R0,#19
-    SWI OS_Byte
-
-	SWI		22
-	MOVNV R0,R0
-	
-
-	
-	
-	; update pointeur video hardware
-	ldr	r0,screenaddr1_MEMC
-	mov r0,r0,lsr #4
-	mov r0,r0,lsl #2
-	mov r1,#0x3600000
-	add r0,r0,r1
-	str r0,[r0]
-
-	;b		toto
-
-;	ldr		R3,pointeur_table_mode97
-;	ldr		R2,[R3],#4			; nb de registres
-;	mov   	r0,#0x3400000
-	
-;boucle_mode97:
-;	ldr		R1,[R3],#4
-;	str		r1,[r0]
-;	mov   r0,r0
-;	
-;	subs	R2,R2,#1
-;	bgt		boucle_mode97
-
-
-	teqp  r15,#0                     
-	mov   r0,r0
-	
-
-	
-
-	
-	
-
-boucle:
-
-; vsync
-;	LDR r0, vsync_count
-;.bouclevsync:
-;	LDR r1, vsync_count
-;	cmp r0, r1
-;	beq .bouclevsync
-
-
-;Vinit = &3600000+(val>>4)<<2
-
-;	ldr	r0,screenaddr1_MEMC
-;	mov r0,r0,lsr #4
-;	mov r0,r0,lsl #2
-;	mov r1,#0x3600000
-;	add r0,r0,r1
-;	str r0,[r0]
-
-
-	; exit if SPACE is pressed
-	MOV r0, #OSByte_ReadKey
-	MOV r1, #IKey_Escape
-	MOV r2, #0xff
-	SWI OS_Byte
-	
-	CMP r1, #0xff
-	CMPEQ r2, #0xff
-	BEQ exit
-
-
-	b	boucle
-
-	
-exit:
-
-;-----------------------
-;sortie finale
-;-----------------------
-
-
-
-
-	; disable vsync event
-	mov r0, #OSByte_EventDisable
-	mov r1, #Event_VSync
-	swi OS_Byte
-	
-		; release our event handler
-	mov r0, #EventV
-	adr r1, event_handler
-	mov r2, #0
-	swi OS_Release
-	
-
-	MOV r0,#22	;Set MODE
-	SWI OS_WriteC
-	MOV r0,#12
-	SWI OS_WriteC
-
-
-; rmkill module mode97
-	mov		R1,#nom_mode97
-	mov		R0,#04
-	swi		OS_Module
-
-; rmkill QT
-;	mov		R1,#nom_module_QT
-;	mov		R0,#04
-;	swi		OS_Module
-
-	ldr		R0,ancienne_taille_alloc_memoire_current_slot 	; New size of current slot
-	mov		R1,#-1											;  	New size of next slot
-	SWI		0x400EC											; Wimp_SlotSize 
-	str		R0,ancienne_taille_alloc_memoire_current_slot
-
-
-	
-	MOV R0,#0
-	SWI OS_Exit
-	nop
-	nop
-
-couleur:	.long	0x7f7f7f7f
-couleur2:	.long	0x1e1e1e1e
-
-
-valeur_ecran_forcee:			.long	((416*140)+128) * 16
-valeur_ecran_forcee0:			.long	((416*140)+128) * 16
-valeur_ecran_forcee1:			.long	((416*160)+129) * 16
-valeur_ecran_forcee2:			.long	((416*180)+130) * 16
-valeur_ecran_forcee3:			.long	((416*200)+131) * 16
-
-valeur_taille_memoire:		.long ((taille_buffer_calculs*2))
-ancienne_taille_alloc_memoire_current_slot:			.long 0
-
-nom_mode97:				.byte		"mode97",0		
-;nom_Rasterman:			.byte		"rm24",0
-;nom_QT:					.byte		"qt",0
-;nom_module_Rasterman:	.byte		"Rasterman",0
-;nom_module_QT:			.byte		"QTMTracker",0
-		.p2align 4
-
-; variable gestion des sequences lors de l'affichage
-nb_repetition_sequence_affichage:			.long	0
-pointeur_lecture_sequences_affichage:			.long	0
-pointeur_lecture_calculs_pendant_affichage:		.long	0
-pointeur_initial_lecture_calculs_pendant_affichage:		.long	0
-nombre_frames_initial_sequence_en_cours_affichage:		.long	0
-nombre_frames_sequence_en_cours_affichage:		.long	0
-nombre_sprites_sequence_en_cours_affichage:		.long	0
-
-; 	- pointeur mémoire debut séquence
-;	- nb étapes de la séquence
-;	- nb points de la séquence
-pointeur_buffer_sequences_calcul:				.long buffer_sequences_calcul
-pointeur_buffer_sequences_affichage:			.long buffer_sequences_affichage
-pointeur_actuel_buffer_sequences_calcul:		.long buffer_sequences_calcul
-pointeur_actuel_buffer_sequences_affichage:		.long buffer_sequences_affichage
-sequence_infinie:								.long 0
-
-pointeur_lecture_sequences:			.long		anim1_sequences
-
+;------------------------------------------------------------------------------------------------------------
 ;-----------------------
 ; routines de sauvegardes et restaurations des variables dans la structure d'objet
 ;-----------------------
-pop_sauvegarde_variables_de_l_objet_partiel:
-; mise à jour  des variables de l'objet en cours à partir de la structure d'objet
-	ldr		R13,pointeur_buffers_variables_objets_en_cours
-	ldr		R0,[R13,#52]						; angleX : ok	+52	
-	ldr		R1,[R13,#56]						; angleY : ok	+56
-	ldr		R2,[R13,#60]						; angleZ : ok	+60
-	ldr		R3,[R13,#132]						; nombre_etapes_du_mouvement_en_cours : ok	+132
-	ldr		R4,[R13,#124]						; pointeur_index_actuel_mouvement : ok		+124
-	ldr		R5,[R13,#116]						; flag_mouvement_en_cours		: ok		+116
-	ldr		R6,[R13,#112]						; nb_frame_animation_en_cours : ok			+112
-	ldr		R7,[R13,#100]						; pointeur_vers_coordonnees_points_animation_en_cours : ok		+100
-	ldr		R8,[R13,#64]						; nb_frames_rotation_classique, - nb_frame_en_cours -				: ok 				+64
 
-	str		R0,angleX
-	str		R1,angleY
-	str		R2,angleZ
-	str		R3,nombre_etapes_du_mouvement_en_cours
-	str		R4,pointeur_index_actuel_mouvement
-	str		R5,flag_mouvement_en_cours
-	str		R6,nb_frame_animation_en_cours
-	str		R7,pointeur_vers_coordonnees_points_animation_en_cours
-;	str		R8,nb_frame_en_cours
-	
-	mov		pc,lr
-
-push_sauvegarde_variables_de_l_objet_partiel:
-; mise à jour de la structure d'objet à partir des variables de l'objet en cours
-	ldr		R13,pointeur_buffers_variables_objets_en_cours
-
-	ldr		R0,angleX
-	ldr		R1,angleY
-	ldr		R2,angleZ
-	ldr		R3,nombre_etapes_du_mouvement_en_cours
-	ldr		R4,pointeur_index_actuel_mouvement
-	ldr		R5,flag_mouvement_en_cours
-	ldr		R6,nb_frame_animation_en_cours
-	ldr		R7,pointeur_vers_coordonnees_points_animation_en_cours
-	ldr		R8,nb_frame_en_cours
-
-	ldr		R0,[R13,#52]						; angleX : ok	+52	
-	ldr		R1,[R13,#56]						; angleY : ok	+56
-	ldr		R2,[R13,#60]						; angleZ : ok	+60
-	ldr		R3,[R13,#132]						; nombre_etapes_du_mouvement_en_cours : ok	+132
-	ldr		R4,[R13,#124]						; pointeur_index_actuel_mouvement : ok		+124
-	ldr		R5,[R13,#116]						; flag_mouvement_en_cours		: ok		+116
-	ldr		R6,[R13,#112]						; nb_frame_animation_en_cours : ok			+112
-	ldr		R7,[R13,#100]						; pointeur_vers_coordonnees_points_animation_en_cours : ok		+100
-	ldr		R8,[R13,#64]						; nb_frames_rotation_classique, - nb_frame_en_cours -				: ok 				+64
-
-	
-	mov		pc,lr
 
 push_sauvegarde_variables_de_l_objet_full:
 ; sauvegardes des variables de l'objet en cours + on avance le pointeur de sauvegarde des structures dynamiques d'objet
@@ -1336,512 +2499,7 @@ pop_sauvegarde_variables_de_l_objet_full:
 ;	str		R13,pointeur_buffers_variables_objets_en_cours
 	
 	mov		pc,lr
-
-
-
-
-;--------------------------------------------------------------------
-;    VBL
-;--------------------------------------------------------------------
-
-
-
-; R0=event number
-event_handler:
-	cmp r0, #Event_VSync
-	movnes pc, r14
-
-	str lr,savelr
-
-	str r0,saver0
-	
-	mov		R0,#save_regs
-	stmia	R0,{R1-R14}
 		
-; update the vsync counter
-
-	LDR r0, vsync_count
-	ADD r0, r0, #1
-	STR r0, vsync_count
-
-
-; changement couleur border
-	mov   r0,#0x3400000               
-	mov   r1,#470  
-; border	
-	;orr   r1,r1,#0x40000000            
-	orr   r1,r1,#0x00000000
-	str   r1,[r0]                     
-
-; update pointeur video hardware
-	ldr	r0,screenaddr1_MEMC
-	mov r0,r0,lsr #4
-	mov r0,r0,lsl #2
-	mov r1,#0x3600000
-	add r0,r0,r1
-	str r0,[r0]
-
-; swap pointeur ecrans
-	ldr		r3,screenaddr1
-	ldr		r4,screenaddr2
-	str		r4,screenaddr1
-	str		r3,screenaddr2
-
-	ldr		r3,screenaddr1_MEMC
-	ldr		r4,screenaddr2_MEMC
-	str		r4,screenaddr1_MEMC
-	str		r3,screenaddr2_MEMC
-
-
-; // set palette
-
-	ldr		r12,pointeur_sprite_boule_violette
-
-	mov		r11,#0x00000000
-	mov   	r0,#0x3400000 
-	mov		R2,#16			; 16 couleurs
-	
-.boucle_palette2:
-
-	ldr		r1,[r12],#4		; r1=couleur format PC
-	mov		r1,r1,lsr #16
-	orr		r1,r1,r11		;r11 = registre en cours
-	str		r1,[r0]                     
-	
-	add		R11,R11,#0x04000000
-	
-	subs	R2,R2,#1
-	bgt		.boucle_palette2
-
-
-;	bl	cls_ecran_actuel
-;416x258 = 107328
-	ldr		r0,screenaddr1
-	mov		r14,#52
-	mov		r1,#0
-	mov		r2,r1
-	mov		r3,r1
-	mov		r4,r1
-	mov		r5,r1
-	mov		r6,r1
-	mov		r7,r1
-	mov		r8,r1
-	mov		r9,r1
-	mov		r10,r1
-	mov		r11,r1
-	mov		r12,r1
-	
-;12*4 = 48
-
-; 107328
-; 107328 /4 = 26832
-; 26832 / 12 = 2236
-; 
-
-
-.boucleCLS:
-	.rept	43
-	stmia	r0!,{r1-r12}
-	.endr
-	subs	r14,r14,#1
-	bne		.boucleCLS
-	
-	stmia	r0!,{r1-r8}
-
-
-; changement couleur border
-	mov   r0,#0x3400000               
-	mov   r1,#47  
-; border	
-	orr   r1,r1,#0x00000000            
-	;orr   r1,r1,#0x40000000            
-	str   r1,[r0]       
-
-
-; ------------------------------------------------------------------------
-;
-;        boucle affichage VBL Sprites
-;
-; ------------------------------------------------------------------------
-
-
-
-
-;	ldr		R12,pointeur_actuel_buffer_en_cours_d_affichage
-;	ldr		R11,nb_sprites_en_cours_affichage
-
-
-	ldr		R12,pointeur_lecture_calculs_pendant_affichage
-	ldr		R11,nombre_sprites_sequence_en_cours_affichage
-
-;	ldr		R0,valeur_ecran_forcee2
-;	str		R0,valeur_ecran_forcee
-
-
-boucle_affiche_sprites_vbl:	
-
-	
-	ldr		R0,[R12],#4			; octet compressé : position mémoire ecran + n° sprite
-
-
-	str		R11,saveR11_local
-	str		R12,saveR12_local
-
-
-
-; décodage
-; R0 = Y*416 +x << 4 + n° sprite
-; cible : R0=position, R5 = X n° décalage, R6 = n° sprite
-	
-	and		R6,R0,#0b111111					; R6 = position X * 16 + n° sprite
-	mov		R0,R0,asr #4
-	adr		R1,table_positions_sprites64
-	ldr		R15,[R1,R6, lsl #2]				; R15 = adresse routine sprite
-	
-retour_copie_sprite:
-
-	ldr		R11,saveR11_local
-	ldr		R12,saveR12_local
-
-
-
-	subs	R11,R11,#1
-	bgt		boucle_affiche_sprites_vbl
-
-	str		R12,pointeur_lecture_calculs_pendant_affichage
-
-;exploiter sequences
-; - diminuer nombre_frames_sequence_en_cours_affichage de 1
-; si egal à 0 
-;	- continuer à parcourir les sequences :
-		
-;		- si sequence_infinie=0 => diminuer nb_repetition_sequence_affichage
-;		- si égal à 0 => lire la suite à partir de pointeur_lecture_sequences_affichage : si repetition = -1 => sequence_infinie = 1
-;		- si >0 : pointeur_initial_lecture_calculs_pendant_affichage => pointeur_lecture_calculs_pendant_affichage & nombre_frames_initial_sequence_en_cours_affichage => nombre_frames_sequence_en_cours_affichage
-
-	ldr		R0,nombre_frames_sequence_en_cours_affichage
-	subs	R0,R0,#1
-	bgt		pas_fin_frames_affichage_sequence_en_cours
-
-	ldr		R1,sequence_infinie
-	cmp		R1,#0
-	beq		pas_sequence_infinie
-; on est sur une sequence infinie
-	ldr		R0,nombre_frames_initial_sequence_en_cours_affichage
-	ldr		R1,pointeur_initial_lecture_calculs_pendant_affichage
-	str		R1,pointeur_lecture_calculs_pendant_affichage
-	
-	b		pas_fin_frames_affichage_sequence_en_cours
-	
-	
-pas_sequence_infinie:
-	ldr		R1,nb_repetition_sequence_affichage
-	subs	R1,R1,#1
-	str		R1,nb_repetition_sequence_affichage
-	beq		fin_de_repetition_de_sequence
-; on repete la sequence
-	ldr		R0,nombre_frames_initial_sequence_en_cours_affichage
-	ldr		R1,pointeur_initial_lecture_calculs_pendant_affichage
-	str		R1,pointeur_lecture_calculs_pendant_affichage
-	
-	b		pas_fin_frames_affichage_sequence_en_cours	
-
-fin_de_repetition_de_sequence:
-	ldr		R2,pointeur_lecture_sequences_affichage
-; - numéro de séquence
-; - nb répétition de la séquence
-	ldr		R3,[R2],#4				; R3 = numéro de séquence
-	ldr		R4,[R2],#4				; R4 = nb répétition de la séquence
-	str		R4,nb_repetition_sequence_affichage
-	str		R2,pointeur_lecture_sequences_affichage
-	
-	cmp		R4,#-1
-	bgt		la_nouvelle_sequence_n_est_pas_infinie
-	str		R4,sequence_infinie							; on bascule en sequence infinie
-
-la_nouvelle_sequence_n_est_pas_infinie:
-; 	- pointeur mémoire debut séquence
-;	- nb étapes de la séquence
-;	- nb points de la séquence
-	
-	ldr		R1,pointeur_buffer_sequences_affichage
-; R2 * 12 = 4+8
-	mov		R3,R3,lsl #2				; R2*4
-	add		R3,R3,R3, lsl #1			; R2 = R2*4 + R2*4*2 = 12*R2
-	ldr		R4,[R1,R3]					; pointeur mémoire debut séquence
-	str		R4,pointeur_lecture_calculs_pendant_affichage
-	str		R4,pointeur_initial_lecture_calculs_pendant_affichage
-	add		R1,R1,#4
-	ldr		R4,[R1,R3]					; nb étapes/frames de la séquence
-	str		R4,nombre_frames_sequence_en_cours_affichage
-	str		R4,nombre_frames_initial_sequence_en_cours_affichage
-	add		R1,R1,#4
-	ldr		R4,[R1,R3]					; nb points de la séquence
-	str		R4,nombre_sprites_sequence_en_cours_affichage	
-	
-	b		continuer_apres_gestion_sequence
-
-
-	
-pas_fin_frames_affichage_sequence_en_cours:
-	str		R0,nombre_frames_sequence_en_cours_affichage
-
-continuer_apres_gestion_sequence:
-
-
-
-; changement couleur border
-	mov   r0,#0x3400000               
-	mov   r1,#000
-; border	
-	;orr   r1,r1,#0x40000000            
-	orr   r1,r1,#0x00000000            
-
-	str   r1,[r0]   
-	nop
-
-	mov		R0,#save_regs
-	ldmia	R0,{R1-R14}
-
-	
-	ldr r0,saver0
-	
-	
-	ldr pc,savelr
-
-saveR11_local:		.long 0
-saveR12_local:		.long 0	
-saveR10_local:		.long 0	
-saveR0_local:		.long 0
-saveR1_local:		.long 0
-
-		.p2align		2
-pointeur_module97:		.long	module97
-
-; en fonction de X modulo 4
-table_positions_sprites64:
-table_spritespos0:
-	.rept	16
-	.long	pos0v2
-	.endr
-table_spritespos1:
-	.rept	16
-	.long	pos1v2
-	.endr
-table_spritespos2:
-	.rept	16
-	.long	pos2v2
-	.endr
-table_spritespos3:
-	.rept	16
-	.long	pos3v2
-	.endr
-
-;--------------------------------------------------------------------
-
-set_palette:
-
-	str lr,savelr
-
-;	SWI		22
-;	MOVNV R0,R0            
-
-	ldr		r12,pointeur_sprite_boule_violette
-
-	mov		r11,#0x00000000
-	mov   	r0,#0x3400000 
-	mov		R2,#15			; 16 couleurs
-	
-.boucle_palette:
-
-	ldr		r1,[r12],#4		; r1=couleur format PC
-	mov		r1,r1,lsr #16
-	orr		r1,r1,r11		;r11 = registre en cours
-	str		r1,[r0]                     
-	
-	add		R11,R11,#0x04000000
-	
-	subs	R2,R2,#1
-	bgt		.boucle_palette
-	
-	
-
-;	teqp  r15,#0                     
-;	mov   r0,r0 
-	
-	ldr pc,savelr
-
-	
-
-
-
-
-
-cls_ecran_actuel:
-
-	str		r14,saver14
-;320x256 = 81920
-	
-	ldr		r15,saver14
-	
-	
-creer_table_416:
-
-	ldr		r1,pointeur_table416negatif
-	ldr		r0,valeur_N_13312					;-416*32
-	mov		r2,#292								; 260 + 32
-.boucle416:
-	
-	str		r0,[r1],#4
-	add		r0,r0,#416
-	subs	r2,r2,#1
-	bgt		.boucle416
-	mov pc, r14
-
-valeur_N_13312:			.long 		0xFFFFCC00							;-416*32
-;--------------------------------------------------------------------
-;    Transformation
-;--------------------------------------------------------------------
-
-;- dans la boucle d'initialisation des animations :
-;
-;	- calculer deltaX/nb etapes, delta Y / nb etapes, delta Z/nb etapes
-;	- multiplier chaque valeur par 2^15
-;	- stocker dans table_increments_pas_transformations : X source ,increment X, Y source, increment Y, Z source, increment Z , n° sprite : tout x 2^15
-;			pointeur_table_increments_pas_transformations
-; fonction : preparation_transformation:
-;
-;
-;- dans la boucle de calcul des rotations/projections
-;	- remplir pointeur_buffer_coordonnees_objet_transformees:
-;		- avec calcul de table_increments_pas_transformations  : X + inc X, Y+inc Y , Z+inc Z, 
-;		- stocker le resultat dans table_increments_pas_transformations +0 +8 + 16
-;		- stocker le resultat / 2^15 dans pointeur_buffer_coordonnees_objet_transformees
-
-
-preparation_transformation:
-
-
-		ldr		R12,pointeur_table_increments_pas_transformations						; destination pour les X Y Z et increments
-		ldr		R11,pointeur_coordonnees_objet_source_transformation					; points de l'objet source : X Y Z n°sprite
-		ldr		R10,pointeur_coordonnees_objet_destination_transformation				; coordonnees objet destination : X Y Z n°sprite
-		
-		ldr		R9,nb_etapes_transformation
-		
-		ldr		R0,nb_points_objet_en_cours
-		
-boucle_preparation_transformation:
-		
-		mov		R7,#3
-		
-boucle_preparation_transformation_1_valeur:
-
-		ldr		R1,[R11],#4					; on recupere X point objet source
-		ldr		R2,[R10],#4					; on recupere X point objet destination
-		
-		subs	R3,R2,R1					; Delta X = X destination - X source
-
-; calcul du pas : il faut diviser R3 par R9
-; en tenant compte de R3 négatif ?
-
-; si r3 négatif :
- 	mov R4,#0
-	cmp r3,#0
-	bpl .deltaX_positif
-; r11 négatif
-
-	rsb r3,r3,#0
-	mov r4,#1		; R5 = 1 si X negatif
-
-.deltaX_positif:
-	mov		R3,R3,asl #15				; * 2^15
-
-; R5 = ( R3 / R9 )
-; registres dispos	:  R5 R6 R7 R8 R13 R14
-
-	MOV      R5,#0     ;clear R5 to accumulate result
-	MOV      R6,#1     ;set bit 0 in R6, which will be
-					   ;shifted left then right
-.startdivX_transformation1:
-	CMP      R9,R3
-	MOVLS    R9,R9,LSL#1
-	MOVLS    R6,R6,LSL#1
-	BLS      .startdivX_transformation1
-
-.nextdivX_transformation1:
-	CMP       R3,R9
-	SUBCS     R3,R3,R9
-	ADDCS     R5,R5,R6
-	MOVS      R6,R6,LSR#1
-	MOVCC     R9,R9,LSR#1
-	BCC			.nextdivX_transformation1
-
-	cmp		R4,#0			; R3 était négatif ?
-	beq		.X_transformation_negatif
-	rsb		r5,r5,#0		; alors résultat négatif
-	
-.X_transformation_negatif:
-
-; R5 = R3/R9
-
-	mov		R1,R1,asl #15	; X * 2^15
-	
-	str		R1,[R12],#4		; on stocke X * 2^15
-	str		R5,[R12],#4		; increment X * 2^15
-	
-	subs	R7,R7,#1
-	bgt		boucle_preparation_transformation_1_valeur
-	
-	ldr		R7,[R11],#4			; n° sprite source
-	add		R10,R10,#4			; on saute le n° sprite objet destination
-	str		R7,[R12],#4			; n° sprite table increment
-		
-	subs	R0,R0,#1
-	bgt		boucle_preparation_transformation
-; sortie
-	mov pc, r14
-
-
-	
-;	calcul progressif des X Y Z transformation
-;	source : pointeur_table_increments_pas_transformations : X source ,increment X, Y source, increment Y, Z source, increment Z  : tout x 2^15
-;	dest : pointeur_buffer_coordonnees_objet_transformees
-
-
-realisation_transformation:
-
-		ldr		R12,pointeur_buffer_coordonnees_objet_transformees
-		ldr		R11,pointeur_table_increments_pas_transformations
-	
-		ldr		R0,nb_points_objet_en_cours
-
-boucle_realisation_transformation:
-		mov		R7,#3
-
-boucle_realisation_transformation_1_valeur:
-		ldr		R1,[R11]					; X * 2^15
-		ldr		R2,[R11,#4]					; increment X * 2^15
-		
-		adds	R1,R1,R2					; X + increment X/Z
-		
-		str		R1,[R11],#4					; on stocke X avance * 2^15
-		add		R11,R11,#4					; on passe l'increment
-		
-		mov		R1,R1,asr #15				; on supprime les decimales
-		
-		str		R1,[R12],#4
-		
-		subs	R7,R7,#1
-		bgt		boucle_realisation_transformation_1_valeur
-		
-		ldr		R7,[R11],#4			; n° sprite source
-		str		R7,[R12],#4			; n° sprite destination
-		
-		subs	R0,R0,#1
-		bgt		boucle_realisation_transformation
-		
-; sortie
-		mov pc, r14		
 
 nb_frame_en_cours:					.long		0
 nb_frame_en_cours_affichage:		.long		0
@@ -1867,7 +2525,7 @@ nb_points_objet_en_cours_objet_classique:		.long	8
 nb_points_objet_en_cours_objet_anime:		.long	8
 
 ; animedz
-pointeur_position_dans_les_animations:		.long	anim4
+pointeur_position_dans_les_animations:		.long	anim3
 
 nb_frames_rotation_classique:				.long 0
 nb_frames_total_calcul:						.long 0
@@ -1891,7 +2549,7 @@ flag_classique_en_cours:			.long 0
 flag_mouvement_en_cours:			.long 0
 flag_repetition_mouvement_en_cours:			.long 0
 
-pointeur_sprite_boule_violette:			.long sprite_boule_violette
+
 pointeur_table_increments_pas_transformations:		.long		table_increments_pas_transformations
 
 ; variables animation
@@ -1937,15 +2595,14 @@ position_objet_en_cours_Z:		.long 0
 position_objet_sur_ecran_X:			.long 0
 position_objet_sur_ecran_Y:			.long 0
 
-screenaddr1:	.long 0
-screenaddr2:	.long 0
-screenaddr1_MEMC:	.long 0
-screenaddr2_MEMC:	.long 0
+
 
 nombre_d_objets_de_la_scene_initial:		.long		0
 nombre_d_objets_de_la_scene_en_cours:		.long		0
 pointeur_buffers_variables_objets_initial:			.long	buffers_variables_objets
 pointeur_buffers_variables_objets_en_cours:			.long	buffers_variables_objets
+
+
 
 
 
@@ -2120,6 +2777,7 @@ calc3D:
 	
 	; au final : r14 , r13 , r10 , r6 , r11 , r12 , r7 , r4 , r8
 	; dispos : r0,r1,r2,r3, r5,r9
+
 	
 
 	ldr		R5,pointeur_points_objet_en_cours			; r5 = pointeur vers les points
@@ -2190,14 +2848,18 @@ boucle_calc_points:
 	subs r1,r1,#1
 	bne boucle_calc_points
 
+
+
 ;----------------------------------------------------------
 ; projection des points dans pointeur_coordonnees_projetees
 ; calculs des divisons X/Z et Y/Z
 ;----------------------------------------------------------
 
-	ldr 	r9,pointeur_coordonnees_transformees
+	ldr 	r9,pointeur_coordonnees_transformees					; source=points avec rotations 3D X Y Z
 	ldr 	r8,nb_points_objet_en_cours			; r8=nb points
-	ldr 	r10,pointeur_coordonnees_projetees_actuel
+	ldr 	r10,pointeur_coordonnees_projetees_actuel				; dest = points X/Z Y/Z
+
+
 
 	ldr		R2,position_objet_sur_ecran_X
 	ldr		R4,position_objet_sur_ecran_Y
@@ -2206,6 +2868,8 @@ boucle_calc_points:
 	
 ; unsued :   R14
 boucle_divisions_calcpoints:
+
+
 	
 	ldr 	r11,[r9],#4			; X point
 	ldr 	r12,[r9],#4			; Y point
@@ -2214,6 +2878,25 @@ boucle_divisions_calcpoints:
 	mov		R14,R1,asl #3					; numero de sprite * 8 
 	;str		R0,save_numero_sprite
 
+	cmp		R13,#0
+	bne		division_par_Z_pas_egal_a_zero
+
+;	SWI		BKP
+
+	ldr		R0,[R10,#-16]		; ancien X
+	str		R0,[R10,#0]
+	ldr		R0,[R10,#-12]		; ancien Y
+	str		R0,[R10,#4]
+	ldr		R0,[R10,#-8]		; ancien Z
+	str		R0,[R10,#8]
+	ldr		R0,[R10,#-4]		; ancien n°sprite
+	str		R0,[R10,#12]
+	add		R0,R0,#16
+	
+	b		fin_boucle_division1
+	
+division_par_Z_pas_egal_a_zero:
+	
 ; si r11 négatif , 
  
 
@@ -2245,6 +2928,7 @@ boucle_divisions_calcpoints:
 ; division par zéro ?
 	;CMP		R13, #0
 	;BEQ		.divide_enddivY
+
 	
 	
 	MOV      R0,#0     ;clear R0 to accumulate result
@@ -2255,6 +2939,8 @@ boucle_divisions_calcpoints:
 	MOVLS    R13,R13,LSL#1
 	MOVLS    R3,R3,LSL#1
 	BLS      .startdivX
+	
+	
  ;shift R13 left until it is about to
  ;be bigger than R111
  ;shift R3 left in parallel in order
@@ -2276,6 +2962,7 @@ boucle_divisions_calcpoints:
 
 .divide_enddivX:
 ; resultat dans R0
+
 
 
 ; signe ?
@@ -2307,8 +2994,7 @@ boucle_divisions_calcpoints:
 	
 
 .clipping_ok_pas_X_sup_416:
-	str 	r0,[r10],#4
-
+	str 	r0,[r10],#4						; stock X
 
 ;---
 ; Y / Z
@@ -2392,18 +3078,40 @@ boucle_divisions_calcpoints:
 	
 	str 	r0,[r10],#4					; stock Y projeté
 	
-; stock Z pour tri
-	str 	R13,[r10],#4
 	
+	cmp		R6,#0
+	beq		Z_etait_positif
+	rsb		r13,r13,#0
+Z_etait_positif:
+
+	str 	R13,[r10],#4				; stock Z pour tri
+
 	;ldr		R0,save_numero_sprite
 	str		R1,[r10],#4				; stock numéro de sprite
-	
 
-; boucle
-	subs r8,r8,#1
-	bne boucle_divisions_calcpoints
+
+; --- test debug
+;	ldr		R1,compteur_etapes
 	
+;	ldr		R13,numero_compteur_message
+;	cmp		R1,R13
+;	bne		pas_affichage_message_compteur2
+
+
+;	SWI BKP
+
+;pas_affichage_message_compteur2:
+
+
+	
+fin_boucle_division1:
+; boucle
+	subs 	r8,r8,#1
+	bgt	    boucle_divisions_calcpoints
+
 	str		R10,pointeur_coordonnees_projetees_actuel
+
+
 
 ; les points sont dans coordonnees_projetees
 	; retour
@@ -2485,7 +3193,7 @@ bsort_done:
 
 	mov		pc,lr
 
-
+;-------------------------------------------
 copie_dans_buffer_calcul_final:
 
 ; encodage :
@@ -2500,14 +3208,17 @@ copie_dans_buffer_calcul_final:
 ; Y ne peut pas etre negatif
 ; n° ne peut pas etre negatif
 
+
+
 	ldr		R0,nb_points_objet_en_cours_au_total
 	
-	ldr		R11,pointeur_coordonnees_projetees					; source
+	ldr		R11,pointeur_coordonnees_projetees			; source
 	ldr		R12,pointeur_actuel_buffer_en_cours_de_calcul		; destination
 	
 	ldr		r13,pointeur_table416
 	
 .boucle_copie_avec_reduction:
+
 
 	ldmia	R11!,{R1-R4}
 
@@ -2726,7 +3437,6 @@ qsort_done:
 	
 
 quick_sort2:
-
 ;  qsort:  @ Takes three parameters:
 
 ; R0 = pointeur vers le tableau de valeurs
@@ -2736,6 +3446,8 @@ quick_sort2:
 		ldr		sp,pointeur_pile_quick_sort
 
 		ldr		R0,pointeur_coordonnees_projetees
+
+
 		add		R0,R0,#8			; pointe sur Z
 
 		mov		R1,#0				; on commence à 0
@@ -2767,8 +3479,8 @@ qsort2_partition_loop:
         ldr     r3, [r0, r2, asl #4]  ; @ r3 <- a[l]							Z
 
         cmp     r3, r7                ; @ If a[l] <= pivot_element,
-        addge   r2, r2, #1            ; @ ... increment l, and
-        bge     qsort2_partition_test        ; @ ... continue to next iteration.
+        addle   r2, r2, #1            ; @ ... increment l, and										SENS DU TRI
+        ble     qsort2_partition_test        ; @ ... continue to next iteration.					SENS DU TRI
 
         sub     r4, r4, #1            ; @ Otherwise, decrement r,
         ldr     r5, [r0, r4, asl #4]  ; @ ... and swap a[l] and a[r].
@@ -2858,7 +3570,7 @@ saver0:		.long 0
 
 
 
-
+		.ifeq		1
 pointeur_table_mode97:		.long table_mode97
 table_mode97:
 	.long		14
@@ -2890,6 +3602,8 @@ table_mode97:
     .long           0xB049C000
     .long           0xB449C000
     .long           0xE000000C
+	
+	.endif
 
 
 SphereAddress:		.long 0
@@ -2898,6 +3612,59 @@ SavedR13:	.long 0
 SavedR14:	.long 0
 			.long 0
 			.long 0
+
+
+;------------------------------------------------------------------------------------------------
+
+
+
+; ligne 199 : vstart = 0, vend=(200*104)-4
+;	.long	couleur0,0x3620000, 0x3640000+((200*104)-4)
+; ligne 200: vstart = 10*104, vend = 104-4
+;	.long	couleur0,0x3620000+(104*10), 0x3640000+((1*104)-4)
+
+
+
+
+; fin
+
+
+; pointeurs proches	
+		.p2align		4
+;saveR14CLS:			.long 0
+CLS_416_258:
+;-------- CLS
+;416x258 = 107328
+	;str		R14,saveR14CLS
+	;ldr		r0,screenaddr1
+;	mov		r13,#52						; pour 258 lignes
+	mov		R13,#41						; pour 200 lignes
+	mov		r1,#0
+	mov		r2,r1
+	mov		r3,r1
+	mov		r4,r1
+	mov		r5,r1
+	mov		r6,r1
+	mov		r7,r1
+	mov		r8,r1
+	mov		r9,r1
+	mov		r10,r1
+	mov		r11,r1
+	mov		r12,r1
+	
+.boucleCLS:
+	.rept	43
+	stmia	r0!,{r1-r12}
+	.endr
+	subs	r13,r13,#1
+	bne		.boucleCLS
+	
+
+;-------- CLS
+;	ldr		pc,saveR14CLS
+	mov		pc,lr
+
+
 
 ;**********************************************************************
 ;
@@ -2908,12 +3675,11 @@ SavedR14:	.long 0
 
 	.p2align 4
 pos0v2:
-;	str 	R13,SavedR13
-;	str 	R14,SavedR14
 
 
-	ldr		r2,screenaddr1
-	add		R1,R2,R0			; R2=R2+X
+
+;	ldr		r2,screenaddr1
+;	add		R1,R2,R0			; R2=R2+X
 
 
 		adr R14,data_pos0v2            ; Data must be QWA ( checked by BASIC )
@@ -3141,12 +3907,10 @@ data_pos0v2:
 
 	.p2align 4
 pos1v2:
-;	str 	R13,SavedR13
-;	str 	R14,SavedR14
 
 
-	ldr		r2,screenaddr1
-	add		R1,R2,R0			; R2=R2+X
+;	ldr		r2,screenaddr1
+;	add		R1,R2,R0			; R2=R2+X
 
   adr R14,data_pos1v2               ; Data must be QWA ( checked by BASIC )
   ldrb r13,[r1,#2079]!          ; Pos 0
@@ -3375,12 +4139,10 @@ data_pos1v2:   ; Must be QWA ( checked by BASIC )
 ;**********************************************************************
 
 pos2v2:
-;	str 	R13,SavedR13
-;	str 	R14,SavedR14
 
 
-	ldr		r2,screenaddr1
-	add		R1,R2,R0			; R1=R2+R0 offset ecran
+;	ldr		r2,screenaddr1
+;	add		R1,R2,R0			; R1=R2+R0 offset ecran
 
 
   adr R14,data_pos2v2            ; Data must be QWA ( checked by BASIC )
@@ -3625,12 +4387,10 @@ data_pos2v2_line5:		  ; Must be quadword aligned, checked by BASIC
 ;**********************************************************************
 pos3v2:
 
-;	str 	R13,SavedR13
-;	str 	R14,SavedR14
 
 
-	ldr		r2,screenaddr1
-	add		R1,R2,R0			; R1=R2+R0 offset ecran
+;	ldr		r2,screenaddr1
+;	add		R1,R2,R0			; R1=R2+R0 offset ecran
 
   adr R14,data_pos3v2         ; Data must be quadword aligned ( checked by BASIC )
 
@@ -3755,7 +4515,7 @@ quit_pos3v2:
 
 	.p2align 4
 	
-data_pos3v2:				   ; Eric Data must be quadword aligned ( checked by BASIC )
+data_pos3v2:				   
 ; line #0
 .byte 1, 34, 34, 34        ; r0
 .byte 34, 1, 0, 0           ; r2
@@ -3861,19 +4621,45 @@ data_pos3v2:				   ; Eric Data must be quadword aligned ( checked by BASIC )
 ; line #6
 .byte 9, 165, 34, 0         ; r14
 
+
+
+creer_table_416:
+
+	ldr		r1,pointeur_table416negatif
+	ldr		r0,valeur_N_13312					;-416*32
+	mov		r2,#292								; 260 + 32
+.boucle416:
+	
+	str		r0,[r1],#4
+	add		r0,r0,#416
+	subs	r2,r2,#1
+	bgt		.boucle416
+	mov pc, r14
+
+valeur_N_13312:			.long 		0xFFFFCC00							;-416*32
+
+
+
 ;----------------------------------------------------
 ;
 ;    table de sequencage des animation
 ;
 ;----------------------------------------------------
 
-; - numéro de séquence
+; - numéro de séquence début
+; - numéro de séquence fin
 ; - nb répétition de la séquence
 anim1_sequences:
-	.long			0				; séquence 0
-	.long			3				; 1 fois
-	.long			0				; séquence 0
-	.long			-1				; infini jusqu'au calcul suivant
+	.long			0,1,-1				; transformation de sphere en tube puis transformation de tube en sphere
+	.long			2,2,0				; rotation sphere
+	.long			0,0,1				; transformation de sphere en tube
+	.long			3,3,0				; rotation tube
+	.long			1,1,1				; transformation de tube en sphere
+	.long			2,2,0				; rotation sphere	
+
+
+
+	
 	
 	.long			-1				; fin des séquences
 	
@@ -3912,7 +4698,7 @@ anim1:
 		.long		0	; nombre étapes de repetition du mouvement
 
 		.long		0x200				;	  - zoom / position observateur en Z
-		.long		0
+		.long		-1
 		
 		.long		1				; nombre d'objets de la scene		
 		.long		cube			;     - pointeur vers objet
@@ -4056,18 +4842,20 @@ anim2:
 		.long		0
 
 anim3:
+
+; etape 0
 		.long		1				; nombre d'objets de la scene
 		.long		objet_sphere
 		.long		200,0,50			;     - X,Y,Z objet
 		.long		0,0,0			;     - increment X, increment Y , increment Z
-		.long		4,4,0			;     - increment angle X, increment angle Y , increment angle Z
+		.long		2,2,0			;     - increment angle X, increment angle Y , increment angle Z
 		.long		0,128,0		; 	  - angles depart X,Y,Z, non modifié si =-1
-		.long		128				; 	  - nb frames rotation classique, 0 = pas de rotation classique
+		.long		256				; 	  - nb frames rotation classique, 0 = pas de rotation classique
 ; transformation
 		.long		coordonnees_tube64				;	  - coordonnees objet de destination d'une transformation, 0 = pas de transformation
-		.long		128				;	  - nombre étapes transformation, 0 = pas de transformation
+		.long		256				;	  - nombre étapes transformation, 0 = pas de transformation
 ; animation
-		.long		coordonnees_points_carre				;     - pointeur vers data animation, 0 = pas d'anim
+		.long		0 ;coordonnees_points_carre				;     - pointeur vers data animation, 0 = pas d'anim
 		.long		64				;	  - nombre de points à animer
 		.long		40				;     - nombre d'étapes en frame, 0 = pas d'anim
 ; mouvement de l'objet
@@ -4075,46 +4863,22 @@ anim3:
 		.long		160	; nombre étapes du mouvement
 		.long		-1	; pointeur vers table de mouvement pour repetition, -1 = pas de repetition, mouvement terminé
 		.long		0	; nombre étapes de repetition du mouvement
-
 		.long		0x200			;	  - zoom / position observateur en Z
-		.long 		0
 
-; etape 2
-		.long		1				; nombre d'objets de la scene
-		.long		dummy			;     - pointeur vers objet
+
+; etape 1
+		.long		1
+		.long		objet_tube64			;     - pointeur vers objet
 		.long		200,0,50			;     - X,Y,Z objet
 		.long		0,0,0			;     - increment X, increment Y , increment Z
-		.long		3,3,2			;     - increment angle X, increment angle Y , increment angle Z
+		.long		0,2,2			;     - increment angle X, increment angle Y , increment angle Z
 		.long		-1,-1,-1			; 	  - angles depart X,Y,Z, non modifié si =-1
-		.long		240				; 	  - nb frames rotation classique, 0 = pas de rotation classique
-; transformation
-		.long		0				;	  - coordonnees objet de destination d'une transformation, 0 = pas de transformation
-		.long		0				;	  - nombre étapes transformation, 0 = pas de transformation
-; animation
-		.long		coordonnees_points_carre				;     - pointeur vers data animation, 0 = pas d'anim
-		.long		64				;	  - nombre de points à animer
-		.long		40				;     - nombre d'étapes en frame, 0 = pas d'anim
-; mouvement de l'objet
-		.long		-1	; table_de_mouvement, -1 = pas de mouvement
-		.long		0	; nombre étapes du mouvement
-		.long		-1	; pointeur vers table de mouvement pour repetition, -1 = pas de repetition, mouvement terminé
-		.long		0	; nombre étapes de repetition du mouvement
-
-		.long		0x200			;	  - zoom / position observateur en Z
-		
-; etape 3		
-		.long		1				; nombre d'objets de la scene
-		.long		objet_points_carre			;     - pointeur vers objet
-		.long		200,0,50			;     - X,Y,Z objet
-		.long		0,0,0			;     - increment X, increment Y , increment Z
-		.long		-3,-3,-2			;     - increment angle X, increment angle Y , increment angle Z
-		.long		-1,-1,-1		; 	  - angles depart X,Y,Z, non modifié si =-1
 		.long		256				; 	  - nb frames rotation classique, 0 = pas de rotation classique
 ; transformation
-		.long		coordonnees_tube64				;	  - coordonnees objet de destination d'une transformation, 0 = pas de transformation
+		.long		coordonnees_sphere				;	  - coordonnees objet de destination d'une transformation, 0 = pas de transformation
 		.long		256				;	  - nombre étapes transformation, 0 = pas de transformation
 ; animation
-		.long		0				;     - pointeur vers data animation, 0 = pas d'anim
+		.long		0;coordonnees_points_carre				;     - pointeur vers data animation, 0 = pas d'anim
 		.long		64				;	  - nombre de points à animer
 		.long		40				;     - nombre d'étapes en frame, 0 = pas d'anim
 ; mouvement de l'objet
@@ -4122,7 +4886,50 @@ anim3:
 		.long		0	; nombre étapes du mouvement
 		.long		-1	; pointeur vers table de mouvement pour repetition, -1 = pas de repetition, mouvement terminé
 		.long		0	; nombre étapes de repetition du mouvement
+		.long		-1			;	  - zoom / position observateur en Z
 
+;étape 2
+		.long		1				; nombre d'objets de la scene
+		.long		objet_sphere
+		.long		200,0,50			;     - X,Y,Z objet
+		.long		0,0,0			;     - increment X, increment Y , increment Z
+		.long		2,0,2			;     - increment angle X, increment angle Y , increment angle Z
+		.long		0,128,0		; 	  - angles depart X,Y,Z, non modifié si =-1
+		.long		256				; 	  - nb frames rotation classique, 0 = pas de rotation classique
+; transformation
+		.long		0				;	  - coordonnees objet de destination d'une transformation, 0 = pas de transformation
+		.long		256				;	  - nombre étapes transformation, 0 = pas de transformation
+; animation
+		.long		0;coordonnees_points_carre				;     - pointeur vers data animation, 0 = pas d'anim
+		.long		64				;	  - nombre de points à animer
+		.long		40				;     - nombre d'étapes en frame, 0 = pas d'anim
+; mouvement de l'objet
+		.long		-1; 			; table_mouvement_vertical_vers_le_bas	; table_de_mouvement, -1 = pas de mouvement
+		.long		160	; nombre étapes du mouvement
+		.long		-1	; pointeur vers table de mouvement pour repetition, -1 = pas de repetition, mouvement terminé
+		.long		0	; nombre étapes de repetition du mouvement
+		.long		-1			;	  - zoom / position observateur en Z
+
+; étape 3
+		.long		1				; nombre d'objets de la scene
+		.long		objet_tube64			;     - pointeur vers objet
+		.long		200,0,50			;     - X,Y,Z objet
+		.long		0,0,0			;     - increment X, increment Y , increment Z
+		.long		2,2,0			;     - increment angle X, increment angle Y , increment angle Z
+		.long		-1,-1,-1			; 	  - angles depart X,Y,Z, non modifié si =-1
+		.long		256				; 	  - nb frames rotation classique, 0 = pas de rotation classique
+; transformation
+		.long		0				;	  - coordonnees objet de destination d'une transformation, 0 = pas de transformation
+		.long		256				;	  - nombre étapes transformation, 0 = pas de transformation
+; animation
+		.long		0;coordonnees_points_carre				;     - pointeur vers data animation, 0 = pas d'anim
+		.long		64				;	  - nombre de points à animer
+		.long		40				;     - nombre d'étapes en frame, 0 = pas d'anim
+; mouvement de l'objet
+		.long		-1	; table_de_mouvement, -1 = pas de mouvement
+		.long		0	; nombre étapes du mouvement
+		.long		-1	; pointeur vers table de mouvement pour repetition, -1 = pas de repetition, mouvement terminé
+		.long		0	; nombre étapes de repetition du mouvement
 		.long		-1			;	  - zoom / position observateur en Z
 
 ; ----------------fin de l'anim
@@ -4131,7 +4938,7 @@ anim3:
 anim4:
 		.long		2				; nombre d'objets de la scene
 		.long		objet_corps_heli			;     - pointeur vers objet
-		.long		-100,100,-2200			;     - X,Y,Z objet
+		.long		-800,100,-2200			;     - X,Y,Z objet
 		.long		0,2,20			;     - increment X, increment Y , increment Z
 		.long		0,1,0			;     - increment angle X, increment angle Y , increment angle Z
 		.long		0,256+128,256			; 	  - angles depart X,Y,Z, non modifié si =-1
@@ -4533,15 +5340,35 @@ sprite_boule_violette:
 		.p2align 3
 		
 module97:		.incbin	"97,ffa"
-				.p2align 3
+				.p2align 2
+
+; ------------------------------------------------------------------
+;
+; code principal de l'interruption FIQ
+;
+; calé entre 0x18 et 0x58
+;
+; ------------------------------------------------------------------
+
+
+
+fiqbase:              ;copy to &18 onwards, 57 instructions max
+                      ;this pointer must be relative to module
+
+		.incbin		"build\fiqrmi.bin"
+
+
+fiqend:
+		.p2align 2
+		
 
 ;.section bss,"u"
 table416negatif:
 			.skip		32*4
 table416:	.skip		260*4
 
-coordonnees_transformees:	.space nombre_de_boules_maxi*4*4
-coordonnees_projetees:		.space nombre_de_boules_maxi*4*4
+coordonnees_transformees:	.skip nombre_de_boules_maxi*4*4
+coordonnees_projetees:		.skip nombre_de_boules_maxi*4*4
 
 
 table_centrage_sprites:
@@ -4556,10 +5383,13 @@ table_centrage_sprites:
 
 ;index_et_Z_pour_tri:	.space	4*256
 	.p2align 4
-table_increments_pas_transformations:		.space			nombre_de_boules_maxi*4*4
+	
+; X,inc X,Y,inc Y,Z,inc Z, n°sprite = 7
+table_increments_pas_transformations:		.skip			nombre_de_boules_maxi*4*7
+
 ; X,Y,Z,increment pas , tout multiplié par 2^15
 		.p2align 4
-buffer_coordonnees_objet_transformees:		.space			nombre_de_boules_maxi*4*4
+buffer_coordonnees_objet_transformees:		.skip			nombre_de_boules_maxi*4*4
 	.p2align 4
 buffer_calculs_intermediaire:			.skip		nombre_de_boules_maxi*4*4
 	.p2align 4
@@ -4580,6 +5410,7 @@ buffers_variables_objets:		.skip		40*4*5
 
 	.skip		14*4*400
 pile_quick_sort:
+
 
 
 buffer_calcul1:
@@ -4637,4 +5468,149 @@ buffer_calcul1:
 
 
 ; nb_frames_total_calcul = nb_frames_rotation_classique + 
+
+
+
+	.ifeq		1
+
+	.set	numero_ligne_reflet,199
+	.set 	couleur0,0
+	.long   couleur0, 0x3620000 + (numero_ligne_reflet*104)+(104*32), 0x3640000+((200*104)-4)+(104*32)
+	
+	
+	
+	
+	.set	couleur0, couleur0+0b100000000
+	.set	numero_ligne_reflet , numero_ligne_reflet - 1
+	.rept	6
+		.rept	2
+			.long   couleur0, 0x3620000 + (numero_ligne_reflet*104)+(104*32), 0x3640000+(((numero_ligne_reflet+1)*104)+100)+(104*32)
+			.set	numero_ligne_reflet , numero_ligne_reflet - 1
+		.endr
+		.set	couleur0, couleur0+0b100000000
+	.endr
+
+; 199 -3 -(12*3)
+
+; 12+1 = 13 lignes
+; ligne 186	à 62 sur 25 lignes
+;       .long   couleur0, vstart, vend
+		.long   couleur0, 0x3620000 + (186*104)+(104*32), 0x3640000+((187*104)+100)+(104*32)
+        .long   couleur0, 0x3620000 + (178*104)+(104*32), 0x3640000+(186*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (170*104)+(104*32), 0x3640000+(178*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (162*104)+(104*32), 0x3640000+(170*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (155*104)+(104*32), 0x3640000+(162*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (147*104)+(104*32), 0x3640000+(155*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (140*104)+(104*32), 0x3640000+(147*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (133*104)+(104*32), 0x3640000+(140*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (126*104)+(104*32), 0x3640000+(133*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (119*104)+(104*32), 0x3640000+(126*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (113*104)+(104*32), 0x3640000+(119*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (106*104)+(104*32), 0x3640000+(113*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (101*104)+(104*32), 0x3640000+(106*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (95*104)+(104*32), 0x3640000+(101*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (90*104)+(104*32), 0x3640000+(95*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (85*104)+(104*32), 0x3640000+(90*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (81*104)+(104*32), 0x3640000+(85*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (77*104)+(104*32), 0x3640000+(81*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (73*104)+(104*32), 0x3640000+(77*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (70*104)+(104*32), 0x3640000+(73*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (68*104)+(104*32), 0x3640000+(70*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (65*104)+(104*32), 0x3640000+(68*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (64*104)+(104*32), 0x3640000+(65*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (62*104)+(104*32), 0x3640000+(64*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (61*104)+(104*32), 0x3640000+(62*104)+100+(104*32)
+; 25+13 = 38 lignes affichées, reste 20 lignes
+;       .long   couleur0, vstart, vend
+       .long   couleur0, 0x3620000 + (60*104)+(104*32), 0x3640000+((61*104)+100)+(104*32)
+       .long   couleur0, 0x3620000 + (55*104)+(104*32), 0x3640000+(60*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (50*104)+(104*32), 0x3640000+(55*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (45*104)+(104*32), 0x3640000+(50*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (41*104)+(104*32), 0x3640000+(45*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (37*104)+(104*32), 0x3640000+(41*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (32*104)+(104*32), 0x3640000+(37*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (28*104)+(104*32), 0x3640000+(32*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (24*104)+(104*32), 0x3640000+(28*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (21*104)+(104*32), 0x3640000+(24*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (17*104)+(104*32), 0x3640000+(21*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (14*104)+(104*32), 0x3640000+(17*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (11*104)+(104*32), 0x3640000+(14*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (8*104)+(104*32), 0x3640000+(11*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (6*104)+(104*32), 0x3640000+(8*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (4*104)+(104*32), 0x3640000+(6*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (2*104)+(104*32), 0x3640000+(4*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (1*104)+(104*32), 0x3640000+(2*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (0*104)+(104*32), 0x3640000+(1*104)+100+(104*32)
+        .long   couleur0, 0x3620000 + (0*104)+(104*32), 0x3640000+(0*104)+100+(104*32)
+; 38+20=58
+		.endif
+
+
+				.ifeq 1
+;1ere ligne : fin de l'écran du haut. : vend = 0x3640000+((200*104)-4)
+	.set	numero_ligne_reflet,199
+	.set 	couleur0,0
+	.long   couleur0, 0x3620000 + (numero_ligne_reflet*104)+(104*32)+(104*290), 0x3640000+((200*104)-4)+(104*32)+(104*290)
+	.set	couleur0, couleur0+0b100000000
+	.set	numero_ligne_reflet , numero_ligne_reflet - 1
+	.rept	6
+		.rept	2
+			.long   couleur0, 0x3620000 + (numero_ligne_reflet*104)+(104*32)+(104*290), 0x3640000+(((numero_ligne_reflet+1)*104)+100)+(104*32)+(104*290)
+			.set	numero_ligne_reflet , numero_ligne_reflet - 1
+		.endr
+		.set	couleur0, couleur0+0b100000000
+	.endr
+; 12+1 = 13 lignes
+; ligne 186	à 62 sur 25 lignes
+;       .long   couleur0, vstart, vend
+		.long   couleur0, 0x3620000 + (186*104)+(104*32)+(104*290), 0x3640000+((187*104)+100)+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (178*104)+(104*32)+(104*290), 0x3640000+(186*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (170*104)+(104*32)+(104*290), 0x3640000+(178*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (162*104)+(104*32)+(104*290), 0x3640000+(170*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (155*104)+(104*32)+(104*290), 0x3640000+(162*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (147*104)+(104*32)+(104*290), 0x3640000+(155*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (140*104)+(104*32)+(104*290), 0x3640000+(147*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (133*104)+(104*32)+(104*290), 0x3640000+(140*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (126*104)+(104*32)+(104*290), 0x3640000+(133*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (119*104)+(104*32)+(104*290), 0x3640000+(126*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (113*104)+(104*32)+(104*290), 0x3640000+(119*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (106*104)+(104*32)+(104*290), 0x3640000+(113*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (101*104)+(104*32)+(104*290), 0x3640000+(106*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (95*104)+(104*32)+(104*290), 0x3640000+(101*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (90*104)+(104*32)+(104*290), 0x3640000+(95*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (85*104)+(104*32)+(104*290), 0x3640000+(90*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (81*104)+(104*32)+(104*290), 0x3640000+(85*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (77*104)+(104*32)+(104*290), 0x3640000+(81*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (73*104)+(104*32)+(104*290), 0x3640000+(77*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (70*104)+(104*32)+(104*290), 0x3640000+(73*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (68*104)+(104*32)+(104*290), 0x3640000+(70*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (65*104)+(104*32)+(104*290), 0x3640000+(68*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (64*104)+(104*32)+(104*290), 0x3640000+(65*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (62*104)+(104*32)+(104*290), 0x3640000+(64*104)+100+(104*32)+(104*290)
+        .long   couleur0, 0x3620000 + (61*104)+(104*32)+(104*290), 0x3640000+(62*104)+100+(104*32)+(104*290)
+; 25+13 = 38 lignes affichées, reste 20 lignes
+;       .long   couleur0, vstart, vend
+       .long   couleur0, 0x3620000 + (60*104)+(104*32)+(104*290), 0x3640000+((61*104)+100)+(104*290)+(104*32)
+       .long   couleur0, 0x3620000 + (55*104)+(104*32)+(104*290), 0x3640000+(60*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (50*104)+(104*32)+(104*290), 0x3640000+(55*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (45*104)+(104*32)+(104*290), 0x3640000+(50*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (41*104)+(104*32)+(104*290), 0x3640000+(45*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (37*104)+(104*32)+(104*290), 0x3640000+(41*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (32*104)+(104*32)+(104*290), 0x3640000+(37*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (28*104)+(104*32)+(104*290), 0x3640000+(32*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (24*104)+(104*32)+(104*290), 0x3640000+(28*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (21*104)+(104*32)+(104*290), 0x3640000+(24*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (17*104)+(104*32)+(104*290), 0x3640000+(21*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (14*104)+(104*32)+(104*290), 0x3640000+(17*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (11*104)+(104*32)+(104*290), 0x3640000+(14*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (8*104)+(104*32)+(104*290), 0x3640000+(11*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (6*104)+(104*32)+(104*290), 0x3640000+(8*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (4*104)+(104*32)+(104*290), 0x3640000+(6*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (2*104)+(104*32)+(104*290), 0x3640000+(4*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (1*104)+(104*32)+(104*290), 0x3640000+(2*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (0*104)+(104*32)+(104*290), 0x3640000+(1*104)+100+(104*290)+(104*32)
+        .long   couleur0, 0x3620000 + (0*104)+(104*32)+(104*290), 0x3640000+(0*104)+100+(104*290)+(104*32)
+; 38+20=58
+
+		.endif
 
