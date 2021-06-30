@@ -1,4 +1,3 @@
-; - remettre dans sequence, -1 = infini / attente fin de calcul
 ; - plusieurs séquences en parallèle. pour pouvoir répeter les objets indépendamment. 
 
 
@@ -13,6 +12,7 @@
 
 ; DONE
 ; ------
+; OK - remettre dans sequence, -1 = infini / attente fin de calcul
 ; OK - refaire la courbe de reflet
 ; OK - effacer juste 200 lignes
 ; OK - repetition de plage = 0 => nombre alétoire de répétition entre 1 et 3
@@ -126,7 +126,7 @@
 
 main:
 
-		
+	
 	SWI		OS_ReadMonotonicTime
 ; R0=Number of centiseconds
 	ldr		R1,pointeur_compteur_aleatoire
@@ -1268,6 +1268,9 @@ retour_copie_sprite:
 			ldr		R1,sequence_infinie
 			cmp		R1,#-1
 			bne		la_sequence_en_cours_n_est_pas_infinie
+
+			; ===> ici il faudra tester la fin des calculs en parallèle
+
 			mov		R1,#0x40
 			str		R1,nb_repetition_sequence_affichage				; on force la répétition de la plage à 64 à chaque passage
 
