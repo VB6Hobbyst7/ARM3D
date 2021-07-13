@@ -1,0 +1,57 @@
+arcperiods
+
+ST : de $71 à $d60 / 113 à 3424
+QTm : de 1 à 1024
+table des notes : 28 à 1712
+
+
+
+Paula_registers_external:
+; $dff0a0
+; canal A
+AUD0LCH_L:	.long		0		; 00: Audio channel 0 location				00
+AUD0LEN:	.long		0		; 04: Audio channel 0 length word			04
+AUD0PER:	.long		0		; 06: Audio channel 0 period				08
+AUD0VOL:	.long		0		; 08: Audio channel 0 volume				0C
+AUD0DAT:	.long		0		; 0A: Audio channel 0 data					10
+; canal B
+AUD1LCH_L:	.long		0		; 10: Audio channel 1 location				14
+AUD1LEN:	.long		0		; 14: Audio channel 1 length word			18
+AUD1PER:	.long		0		; 16: Audio channel 1 period				1C
+AUD1VOL:	.long		0		; 18: Audio channel 1 volume				20
+AUD1DAT:	.long		0		; 1A: Audio channel 1 data					24
+; canal C
+AUD2LCH_L:	.long		0		; 10: Audio channel 2 location				28
+AUD2LEN:	.long		0		; 14: Audio channel 2 length word			2C
+AUD2PER:	.long		0		; 16: Audio channel 2 period				30
+AUD2VOL:	.long		0		; 18: Audio channel 2 volume				34
+AUD2DAT:	.long		0		; 1A: Audio channel 2 data					38
+; canal D
+AUD3LCH_L:	.long		0		; 10: Audio channel 3 location				3C
+AUD3LEN:	.long		0		; 14: Audio channel 3 length word			40
+AUD3PER:	.long		0		; 16: Audio channel 3 period				44
+AUD3VOL:	.long		0		; 18: Audio channel 3 volume				48
+AUD3DAT:	.long		0		; 1A: Audio channel 3 data					4C
+Paula_registers_internal:
+; canal A internal
+AUD0POSCUR:	.long		0		; current sample offset channel 0 << 12			50
+AUD0END:	.long		0		; end sample offset channel 0 				54
+AUD0FIXEDP:	.long		0		; current fixed point channel 0				58
+AUD0INC:	.long		0		; increment <<12 channel 0					5C
+; canal B internal
+AUD1POSCUR:	.long		0		; current sample offset channel 1 << 12			60
+AUD1END:	.long		0		; end sample offset channel 1				64
+AUD1FIXEDP:	.long		0		; current fixed point channel 1				68
+AUD1INC:	.long		0		; increment <<12 channel 1					6C
+; canal C internal
+AUD2POSCUR:	.long		0		; current sample offset channel 2 << 12			70
+AUD2END:	.long		0		; end sample offset channel 2				74
+AUD2FIXEDP:	.long		0		; current fixed point channel 2				78
+AUD2INC:	.long		0		; increment <<12 channel 2					7C
+; canal D internal
+AUD3POSCUR:	.long		0		; current sample offset channel 3 << 12			80
+AUD3END:	.long		0		; end sample offset channel 3				84
+AUD3FIXEDP:	.long		0		; current fixed point channel 3				88
+AUD3INC:	.long		0		; increment <<12 channel 3					8C
+
+DMACon:		.long		0		; DMA Control bits 03-00					90

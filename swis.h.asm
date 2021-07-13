@@ -13,6 +13,9 @@
 .equ OS_ReadMonotonicTime, 0x42
 .equ OS_ReadDynamicArea, 0x5c
 .equ OS_ConvertCardinal4, 0xd8	
+.equ OS_EnterOS, 0x16						; supervisor
+.equ OS_supervisor, 0x16						; supervisor
+
 
 .equ OS_Module, 0x1E
 
@@ -69,3 +72,13 @@
 
 ; XOS
 .equ	XOS_ServiceCall,		0x20030
+.equ	OS_ReadMonotonicTime,		0x42
+
+; memory management
+.equ	OS_ReadMemMapInfo,		0x51
+.equ	OS_FindMemMapEntries,		0x60
+.equ	XSound_SoundLog,		0x60181
+.equ	XSound_Volume,			0x60180
+.equ	XSound_Configure,		0x60140
+.equ	XSound_Enable,			0x60141
+

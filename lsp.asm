@@ -1717,7 +1717,7 @@ create_table_lin2log_edz:
 	mov		R2,#256
 
 boucle_table_lin2log_edz:
-	mov		R0,R1,ASL #24			; de signed 8 bits à signed 32 bits
+	mov		R0,R1,LSL #24			; de signed 8 bits à signed 32 bits
 	SWI     XSound_SoundLog		; This SWI is used to convert a signed linear sample to the 8 bit logarithmic format that’s used by the 8 bit sound system. The returned value will be scaled by the current volume (as set by Sound_Volume).
 ; résultat dans R0
 	STRB    R0,[R11],#1
@@ -1739,7 +1739,6 @@ setlinlogtab:
 
 	MOV     R0,R1,LSL#24		; R0=R1<<24 : en entrée du 8 bits donc shifté en haut, sur du 32 bits
 	SWI     XSound_SoundLog		; This SWI is used to convert a signed linear sample to the 8 bit logarithmic format that’s used by the 8 bit sound system. The returned value will be scaled by the current volume (as set by Sound_Volume).
-	;and		R0,R0,#0b11111110
 	STRB    R0,[R11,R1]			; 8 bit mu-law logarithmic sample 
 	SUBS    R1,R1,#1
 	BGE     setlinlogtab
