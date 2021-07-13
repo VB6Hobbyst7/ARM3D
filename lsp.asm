@@ -8,16 +8,23 @@
 ; OK - virer le sample 
 ; OK - initialiser les canaux avec le silence, rechecker tout.
 ; OK - mettre en place la gestion de dmacon : avant le mixage, si bit du canal =0 => initialiser vers du silence : offset du silence + increment=0 + volume=0
-; - debug : on depasse lors des repetitions, si nouveau sample il ne faut pas reprendre le depassement. A voir
+; OK - debug : on depasse lors des repetitions, si nouveau sample il ne faut pas reprendre le depassement. A voir
 ; OK - correction des frequences
-
-; faire une version avec test de bouclage pour comparer 
-
+; OK : faire une version avec test de bouclage pour comparer 
 ; OK - copier la table d'instruments intégrées dans la table instruments locale
-; faire une table de frequences calculées comme QTM
+
 ; - tester une frequence + élevée : 31250			624		32
+
+
+; faire une table de frequences calculées comme QTM
 ; utiliser les registres FIQ : + 7 registres
 ; deboucler le remplissage
+
+
+
+
+
+
 
 ; sample en 8 bits signés : The samples in a MOD file are raw, 8 bit, signed, headerless, linear digital data.
 ; donc de -128 à 127
@@ -66,7 +73,7 @@
 ; 62499,99999	1248	16
 ; 76923,07692	1536	13
 
-.equ		ecart_sample,		1024*20
+.equ		ecart_sample,		1024
 
 ; parametre de qualité
 .equ		frequence_replay,	20833							; 20833
@@ -196,7 +203,7 @@ main:
 	MOV       R2,#0
 	MOV       R3,#0
 	MOV       R4,#0
-	SWI       0x40140					; Sound_Configure
+	SWI       XSound_Configure					; Sound_Configure
 	
 	;R0=4
 	;R1=0x1A0			 	Samples per channel=416 
@@ -209,17 +216,23 @@ main:
 
 
 
-;	SWI		0x01
-;	.byte	"24KHZ signed sample mixed and played at 22Khz on 4 channels with volume control - No OS running.",0
-;	.p2align 2
+	SWI		0x01
+	.byte	"24KHZ module LSP player conversion unlooped -  No OS running.",13,10,0
+	.p2align 2
+	SWI		0x01
+	.byte	"16 to 24 pixels",13,10,0
+	.p2align 2
+	SWI		0x01
+	.byte	"24 to 32 pixels",13,10,0
+	.p2align 2
 
 ; set sound volume
-	mov		R0,#80							; maxi 127
-	SWI		0x40180	
+	mov		R0,#100							; maxi 127
+	SWI		XSound_Volume	
 
 ; read sound volume
 	mov		R0,#0							; 0=read = OK 127
-	SWI		0x40180
+	SWI		XSound_Volume
 
 
 	bl		create_table_lin2log
@@ -227,7 +240,7 @@ main:
 	mov		R0,R0
 	bl		LSP_PlayerInit_standard
 	bl		convertion_samples_instruments_en_mu_law
-	;bl		ajout_ecart_entre_instruments_et_copie_repetitions
+	bl		ajout_ecart_entre_instruments_et_copie_repetitions
 
 
 
@@ -279,16 +292,17 @@ main:
 	str		R0,fin_de_la_memoire_video
 	
 	;add		R0,R0,#4096
-	;add		R0,R0,#65536-16384-8192
+	;add		R0,R0,#65536-16384-16384
+	add		R1,R0,#16384
 	str		R0,adresse_dma1_logical
 	add		R1,R0,#16384
 	str		R1,adresse_dma2_logical	
 
-	add		R1,R0,#16384
-	str		R1,adresse_dma3_logical	
+	;add		R1,R0,#16384
+	;str		R1,adresse_dma3_logical	
 	
-	add		R1,R0,#16384
-	str		R1,adresse_dma4_logical		
+	;add		R1,R0,#16384
+	;str		R1,adresse_dma4_logical		
 
 	
 	
@@ -336,47 +350,47 @@ main:
 		STR       R1,adresse_dma1_memc ;got the correct phys addr of buf1 (R8)
 
 
-		ldr		R6,adresse_dma3_logical
-		ldr		R5,adresse_dma4_logical
+		;ldr		R6,adresse_dma3_logical
+		;ldr		R5,adresse_dma4_logical
 	
-		SWI       OS_ReadMemMapInfo 		;  read the page size used by the memory controller and the number of pages in use
-		STR       R0,pagesize
-		STR       R1,numpages
+		;SWI       OS_ReadMemMapInfo 		;  read the page size used by the memory controller and the number of pages in use
+		;STR       R0,pagesize
+		;STR       R1,numpages
 
-		SUB       R4,R0,#1			; R4 = pagesize - 1
-		BIC       R7,R5,R4          ; page for dmabuffer2 : 
-		BIC       R8,R6,R4          ; page for dmabuffer1 : and R6 & not(R4)
+		;SUB       R4,R0,#1			; R4 = pagesize - 1
+		;BIC       R7,R5,R4          ; page for dmabuffer2 : 
+		;BIC       R8,R6,R4          ; page for dmabuffer1 : and R6 & not(R4)
 
-		SUB       R5,R5,R7          ;offset into page dma2
-		SUB       R6,R6,R8          ;offset into page dma1
+		;SUB       R5,R5,R7          ;offset into page dma2
+		;SUB       R6,R6,R8          ;offset into page dma1
 
-		ADR       R0,pagefindblk
-		MOV       R1,#0
-		STR       R1,[R0,#0]
-		STR       R1,[R0,#8]
-		MVN       R1,#0
-		STR       R1,[R0,#12]
-		STR       R7,[R0,#4]
-		SWI       OS_FindMemMapEntries 		;not RISC OS 2 or earlier
-		LDR       R1,[R0,#0]
-		LDR       R4,pagesize
-		MUL       R1,R4,R1
-		ADD       R1,R1,R5
-		STR       R1,adresse_dma4_memc 			;got the correct phys addr of buf2 (R7)
-	
+		;ADR       R0,pagefindblk
+		;MOV       R1,#0
+		;STR       R1,[R0,#0]
+		;STR       R1,[R0,#8]
+		;MVN       R1,#0
+		;STR       R1,[R0,#12]
+		;STR       R7,[R0,#4]
+		;SWI       OS_FindMemMapEntries 		;not RISC OS 2 or earlier
+		;LDR       R1,[R0,#0]
+		;LDR       R4,pagesize
+		;MUL       R1,R4,R1
+		;ADD       R1,R1,R5
+		;STR       R1,adresse_dma4_memc 			;got the correct phys addr of buf2 (R7)
+	    ;
 
-		MOV       R1,#0
-		STR       R1,[R0,#0]
-		STR       R1,[R0,#8]
-		MVN       R1,#0
-		STR       R1,[R0,#12]
-		STR       R8,[R0,#4]
-		SWI       OS_FindMemMapEntries ;not RISC OS 2 or earlier
-		LDR       R1,[R0,#0]
-		LDR       R4,pagesize
-		MUL       R1,R4,R1
-		ADD       R1,R1,R6
-		STR       R1,adresse_dma3_memc ;got the correct phys addr of buf1 (R8)
+		;MOV       R1,#0
+		;STR       R1,[R0,#0]
+		;STR       R1,[R0,#8]
+		;MVN       R1,#0
+		;STR       R1,[R0,#12]
+		;STR       R8,[R0,#4]
+		;SWI       OS_FindMemMapEntries ;not RISC OS 2 or earlier
+		;LDR       R1,[R0,#0]
+		;LDR       R4,pagesize
+		;MUL       R1,R4,R1
+		;ADD       R1,R1,R6
+		;STR       R1,adresse_dma3_memc ;got the correct phys addr of buf1 (R8)
 
 	;.ifeq		1
 	; test => KO	
@@ -427,7 +441,7 @@ boucle_cls_buffer_dma:
 	MOV       R2,#0						; Sample period (in microseconds per channel) 
 	MOV       R3,#0
 	MOV       R4,#0
-	SWI       0x40140						;"Sound_Configure"
+	SWI       XSound_Configure						;"Sound_Configure"
 	
 	adr		R5,backup_params_sons
 	stmia	R5,{r0-R4}
@@ -439,7 +453,7 @@ boucle_cls_buffer_dma:
 	MOV       R2,#ms_freq_Archi				; Sample period (in microseconds per channel)  = 48  / 125 pour 8000hz
 	MOV       R3,#0
 	MOV       R4,#0
-	SWI       0x40140						;"Sound_Configure"
+	SWI       XSound_Configure						;"Sound_Configure"
 
 
 	MOV       R0,#0							;  	Channels for 8 bit sound
@@ -447,7 +461,7 @@ boucle_cls_buffer_dma:
 	MOV       R2,#0						; Sample period (in microseconds per channel) 
 	MOV       R3,#0
 	MOV       R4,#0
-	SWI       0x40140						;"Sound_Configure"
+	SWI       XSound_Configure						;"Sound_Configure"
 	MUL       R0,R1,R0
 ; R0=taille du dma 
 	
@@ -599,7 +613,7 @@ boucle_R1_compteur:
 
 ; sound volume
 	mov		R0,#127							; maxi 127
-	SWI		0x40180		
+	SWI		XSound_Volume		
 
 
 
@@ -796,7 +810,7 @@ boucle_R1_compteur:
 
 boucle:
 
-	mov		R0,#5000
+	mov		R0,#5750
 boucle_attente:
 	mov		R0,R0
 	subs	R0,R0,#1
@@ -820,9 +834,9 @@ boucle_attente:
 
 	bl		LSP_Player_standard
 
-	;bl		Paula_remplissage_DMA_416
+	bl		Paula_remplissage_DMA_416
 
-	.ifeq		0
+	.ifeq		1
 	mov		R0,#0
 	bl		mixage_DMA_1_voie
 	mov		R0,#1
@@ -884,10 +898,10 @@ exit:
 	adr		R5,backup_params_sons
 	ldmia	R5,{r0-R4}
 
-	SWI       0x40140						;"Sound_Configure"
+	SWI       XSound_Configure						;"Sound_Configure"
 	
 	mov		R0,#01								; Disable sound output 
-	SWI		0x40141								; Sound_Enable
+	SWI		XSound_Enable								; Sound_Enable
 
 
 	MOV r0,#22	;Set MODE
@@ -919,16 +933,16 @@ adresse_dma2_logical:				.long		0
 adresse_dma2_memc:					.long		0
 ;adresse_dma2_memc_courant:			.long		0
 
-adresse_dma3_logical:				.long		0
+;adresse_dma3_logical:				.long		0
 ;adresse_dma3_logical_courant:		.long		0
 ;adresse_dma3_logical_fin:			.long		0
-adresse_dma3_memc:					.long		0
+;adresse_dma3_memc:					.long		0
 ;adresse_dma3_memc_courant:			.long		0
 
-adresse_dma4_logical:				.long		0
+;adresse_dma4_logical:				.long		0
 ;adresse_dma4_logical_courant:		.long		0
 ;adresse_dma4_logical_fin:			.long		0
-adresse_dma4_memc:					.long		0
+;adresse_dma4_memc:					.long		0
 ;adresse_dma4_memc_courant:			.long		0
 
 
@@ -1795,6 +1809,7 @@ save_R14_Paula:		.long	0
 ;------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ;------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 valeur0x167a2:		.long		0x167a2+0x80*4
+pointeur_expanded_mixing:	.long		expanded_filling_routine
 ; mixage avec gestion du Paula
 Paula_remplissage_DMA_416:
 	str	R14,save_R14_Paula
@@ -1809,7 +1824,7 @@ Paula_remplissage_DMA_416:
 	adr		R14,table_volume
 
 	ldr		R1,[R0,#0x90]						; DMACon
-	mov		R1,#0b001111
+	mov		R1,#0b000001111
 
 ; canal A	
 	tst		R1,#01							; bit 0 de DMACon ?
@@ -1925,6 +1940,8 @@ continue_DMACon_Canal_D:
 	;sub		R2,R2,R1
 	;mov		R2,R2,lsl #12
 
+	ldr		pc,pointeur_expanded_mixing
+
 boucle_Paula_remplissage_DMA_416:
 	ldrb	R0,[R1,R2,lsr #12]
 	add		R2,R2,R3
@@ -1960,8 +1977,8 @@ boucle_Paula_remplissage_DMA_416:
 	subs	R10,R10,#1
 	bgt		boucle_Paula_remplissage_DMA_416
 
-;---------- Mixage
-
+;---------- FIN Mixage
+retour_mixage:
 
 ; verif fin de sample ?
 ; conserver : R2,R5,R8,R11
@@ -2763,6 +2780,42 @@ table_increments_frequence:
 	.if frequence_replay = 31250
 	.include	"table_frequences_31250.s"
 	.endif
+
+expanded_filling_routine:
+	.rept		416
+	ldrb	R0,[R1,R2,lsr #12]
+	add		R2,R2,R3
+	mov		R4,R13,lsr #24
+	subs	R0,R0,R4
+	movmi	R0,#0
+	mov		R7,R0,lsl #24
+
+	ldrb	R0,[R1,R5,lsr #12]
+	add		R5,R5,R6
+	mov		R4,R13,lsl #8
+	subs	R0,R0,R4,lsr #24
+	movmi	R0,#0
+	orr		R7,R7,R0,lsl #16
+
+	ldrb	R0,[R1,R8,lsr #12]
+	add		R8,R8,R9
+	mov		R4,R13,lsl #16
+	subs	R0,R0,R4, lsr #24
+	movmi	R0,#0
+	orr		R7,R7,R0,lsl #8
+
+	ldrb	R0,[R1,R11,lsr #12]
+	add		R11,R11,R12
+	mov		R4,R13,lsl #24
+	subs	R0,R0,R4,lsr #24
+	movmi	R0,#0
+	orr		R7,R7,R0
+
+	str		R7,[R14],#4		
+	.endr
+	ldr		pc,pointeur_retour_mixage
+
+pointeur_retour_mixage:		.long		retour_mixage
 
 
 LSPMusic:
