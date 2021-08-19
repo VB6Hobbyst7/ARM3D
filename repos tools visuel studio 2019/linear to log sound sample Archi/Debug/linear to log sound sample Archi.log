@@ -1,0 +1,3 @@
+﻿  linear to log sound sample Archi.cpp
+C:\Users\Eric\source\repos\linear to log sound sample Archi\linear to log sound sample Archi.cpp(21,13): warning C4244: 'initialisation' : conversion de 'double' en 'float', perte possible de données
+  linear to log sound sample Archi.vcxproj -> C:\Users\Eric\source\repos\linear to log sound sample Archi\Debug\linear to log sound sample Archi.exe

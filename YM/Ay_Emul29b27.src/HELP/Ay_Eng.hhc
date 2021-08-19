@@ -1,0 +1,217 @@
+<HTML>
+<!--Sitemap 1.0-->
+<OBJECT type="text/site properties">
+</OBJECT>
+<UL>
+	<LI><OBJECT type="text/sitemap">
+		<param name="Name" value="Introduction">
+		</OBJECT>
+	<UL>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="What is AY-3-8910/12 Emulator">
+			<param name="Local" value="html/ay_e0qjz.htm">
+			</OBJECT>
+			<A HREF="html/ay_e0qjz.htm">What is AY-3-8910/12 Emulator</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Whats new in this version">
+			<param name="Local" value="html/ay_e5odz.htm">
+			</OBJECT>
+			<A HREF="html/ay_e5odz.htm">Whats new in this version</A><BR>
+	</UL>
+	<LI><OBJECT type="text/sitemap">
+		<param name="Name" value="Emulator using">
+		</OBJECT>
+	<UL>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Main window elements">
+			<param name="Local" value="html/ay_e6qyb.htm">
+			</OBJECT>
+			<A HREF="html/ay_e6qyb.htm">Main window elements</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="&quot;Mixer&quot; dialog box">
+			<param name="Local" value="html/ay_e6dki.htm">
+			</OBJECT>
+			<A HREF="html/ay_e6dki.htm">&quot;Mixer&quot; dialog box</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="&quot;Tools&quot; dialog box">
+			<param name="Local" value="html/ay_e6gs3.htm">
+			</OBJECT>
+			<A HREF="html/ay_e6gs3.htm">&quot;Tools&quot; dialog box</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="&quot;Playlist&quot; window">
+			<param name="Local" value="html/ay_e03p0.htm">
+			</OBJECT>
+			<A HREF="html/ay_e03p0.htm">&quot;Playlist&quot; window</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="&quot;List's item adjusting&quot; dialog box">
+			<param name="Local" value="html/ay_e66nh.htm">
+			</OBJECT>
+			<A HREF="html/ay_e66nh.htm">&quot;List's item adjusting&quot; dialog box</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="&quot;Information in the file header&quot; dialog box">
+			<param name="Local" value="html/ay_e0che.htm">
+			</OBJECT>
+			<A HREF="html/ay_e0che.htm">&quot;Information in the file header&quot; dialog box</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Command line">
+			<param name="Local" value="html/ay_e8d7p.htm">
+			</OBJECT>
+			<A HREF="html/ay_e8d7p.htm">Command line</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Hot keys">
+			<param name="Local" value="html/ay_e3ygj.htm">
+			</OBJECT>
+			<A HREF="html/ay_e3ygj.htm">Hot keys</A><BR>
+	</UL>
+	<LI><OBJECT type="text/sitemap">
+		<param name="Name" value="Strange behaviour of Emulator">
+		</OBJECT>
+	<UL>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Playing order">
+			<param name="Local" value="html/ay_e31ki.htm">
+			</OBJECT>
+			<A HREF="html/ay_e31ki.htm">Playing order</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Looping melody">
+			<param name="Local" value="html/ay_e1xev.htm">
+			</OBJECT>
+			<A HREF="html/ay_e1xev.htm">Looping melody</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Starting time of Emulator">
+			<param name="Local" value="html/ay_e22lo.htm">
+			</OBJECT>
+			<A HREF="html/ay_e22lo.htm">Starting time of Emulator</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Files opening">
+			<param name="Local" value="html/ay_e288e.htm">
+			</OBJECT>
+			<A HREF="html/ay_e288e.htm">Files opening</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Converting from OUT and ZXAY">
+			<param name="Local" value="html/ay_e23ll.htm">
+			</OBJECT>
+			<A HREF="html/ay_e23ll.htm">Converting from OUT and ZXAY</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Seeking tunes">
+			<param name="Local" value="html/ay_e6lrm.htm">
+			</OBJECT>
+			<A HREF="html/ay_e6lrm.htm">Seeking tunes</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="How to interrupt converting">
+			<param name="Local" value="html/ay_e2qgm.htm">
+			</OBJECT>
+			<A HREF="html/ay_e2qgm.htm">How to interrupt converting</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Windows managing">
+			<param name="Local" value="html/ay_e2r72.htm">
+			</OBJECT>
+			<A HREF="html/ay_e2r72.htm">Windows managing</A><BR>
+	</UL>
+	<LI><OBJECT type="text/sitemap">
+		<param name="Name" value="Files formats">
+		</OBJECT>
+	<UL>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="OUT">
+			<param name="Local" value="html/ay_e9wok.htm">
+			</OBJECT>
+			<A HREF="html/ay_e9wok.htm">OUT</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="ZXAY">
+			<param name="Local" value="html/ay_e65a1.htm">
+			</OBJECT>
+			<A HREF="html/ay_e65a1.htm">ZXAY</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="ZX50">
+			<param name="Local" value="html/ay_e631s.htm">
+			</OBJECT>
+			<A HREF="html/ay_e631s.htm">ZX50</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="STC">
+			<param name="Local" value="html/ay_e099f.htm">
+			</OBJECT>
+			<A HREF="html/ay_e099f.htm">STC</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="ASC">
+			<param name="Local" value="html/ay_e8obn.htm">
+			</OBJECT>
+			<A HREF="html/ay_e8obn.htm">ASC</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="FXM">
+			<param name="Local" value="html/ay_e94dp.htm">
+			</OBJECT>
+			<A HREF="html/ay_e94dp.htm">FXM</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="YM">
+			<param name="Local" value="html/ay_e0625.htm">
+			</OBJECT>
+			<A HREF="html/ay_e0625.htm">YM</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="VTX">
+			<param name="Local" value="html/ay_e0irc.htm">
+			</OBJECT>
+			<A HREF="html/ay_e0irc.htm">VTX</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="PSG">
+			<param name="Local" value="html/ay_e9zqf.htm">
+			</OBJECT>
+			<A HREF="html/ay_e9zqf.htm">PSG</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="AY">
+			<param name="Local" value="html/ay_e04vt.htm">
+			</OBJECT>
+			<A HREF="html/ay_e04vt.htm">AY</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="AYM">
+			<param name="Local" value="html/ay_e8oml.htm">
+			</OBJECT>
+			<A HREF="html/ay_e8oml.htm">AYM</A><BR>
+	</UL>
+	<LI><OBJECT type="text/sitemap">
+		<param name="Name" value="Emulator support">
+		</OBJECT>
+	<UL>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Distribution">
+			<param name="Local" value="html/ay_e9kby.htm">
+			</OBJECT>
+			<A HREF="html/ay_e9kby.htm">Distribution</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Music archives">
+			<param name="Local" value="html/ay_e0luw.htm">
+			</OBJECT>
+			<A HREF="html/ay_e0luw.htm">Music archives</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Skin files">
+			<param name="Local" value="html/ay_e4vjn.htm">
+			</OBJECT>
+			<A HREF="html/ay_e4vjn.htm">Skin files</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Official Emulator Page">
+			<param name="Local" value="html/ay_e7a91.htm">
+			</OBJECT>
+			<A HREF="html/ay_e7a91.htm">Official Emulator Page</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Contact with author">
+			<param name="Local" value="html/ay_e033g.htm">
+			</OBJECT>
+			<A HREF="html/ay_e033g.htm">Contact with author</A><BR>
+	</UL>
+	<LI><OBJECT type="text/sitemap">
+		<param name="Name" value="Authors and other peoples">
+		</OBJECT>
+	<UL>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Message of thanks">
+			<param name="Local" value="html/ay_e5okv.htm">
+			</OBJECT>
+			<A HREF="html/ay_e5okv.htm">Message of thanks</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Authors">
+			<param name="Local" value="html/ay_e3wmr.htm">
+			</OBJECT>
+			<A HREF="html/ay_e3wmr.htm">Authors</A><BR>
+	</UL>
+</UL>
+</HTML>

@@ -1,0 +1,37 @@
+﻿  Source1.cpp
+  C:/Users/Eric/source/repos/Project1/source/Source1.cpp: In function 'int main(int, char**)':
+C:/Users/Eric/source/repos/Project1/source/Source1.cpp(66,32): warning G479D744D: format '%x' expects argument of type 'unsigned int', but argument 2 has type 'void*' [-Wformat=]
+     66 |     printf("pointeur buffer : %x\n", out_buf_data1);
+        |                               ~^     ~~~~~~~~~~~~~
+        |                                |     |
+        |                                |     void*
+        |                                unsigned int
+        |                               %p
+C:/Users/Eric/source/repos/Project1/source/Source1.cpp(67,37): warning G479D744D: format '%x' expects argument of type 'unsigned int', but argument 2 has type 'YMMUSIC*' {aka 'void*'} [-Wformat=]
+     67 |     printf("pointeur struc music : %x\n", pMusic);
+        |                                    ~^     ~~~~~~
+        |                                     |     |
+        |                                     |     YMMUSIC* {aka void*}
+        |                                     unsigned int
+        |                                    %p
+C:/Users/Eric/source/repos/Project1/source/Source1.cpp(75,22): warning G9AB12468: 'void hidScanInput()' is deprecated [-Wdeprecated-declarations]
+     75 |         hidScanInput();
+        |                      ^
+  In file included from C:/devkitPro/libnx/include/switch.h:79,
+                   from C:/Users/Eric/source/repos/Project1/source/Source1.cpp:19:
+  C:/devkitPro/libnx/include/switch/services/hid.h:1329:17: note: declared here
+   1329 | void DEPRECATED hidScanInput(void); ///< \deprecated
+        |                 ^~~~~~~~~~~~
+C:/Users/Eric/source/repos/Project1/source/Source1.cpp(79,51): warning G3D7BEE2C: 'u64 hidKeysDown(HidControllerID)' is deprecated [-Wdeprecated-declarations]
+     79 |         u64 kDown = hidKeysDown(CONTROLLER_P1_AUTO);
+        |                                                   ^
+  In file included from C:/devkitPro/libnx/include/switch.h:79,
+                   from C:/Users/Eric/source/repos/Project1/source/Source1.cpp:19:
+  C:/devkitPro/libnx/include/switch/services/hid.h:1592:16: note: declared here
+   1592 | u64 DEPRECATED hidKeysDown(HidControllerID id); ///< \deprecated
+        |                ^~~~~~~~~~~
+C:/Users/Eric/source/repos/Project1/source/Source1.cpp(63,9): warning G7C671A4C: unused variable 'nbSample' [-Wunused-variable]
+     63 |     int nbSample = buffer_size / sizeof(ymsample);
+        |         ^~~~~~~~
+  linking Project1.elf
+  built ... Project1.nro

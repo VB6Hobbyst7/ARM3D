@@ -1,0 +1,6 @@
+|
+| QTMv1.45 32bit/ARMv7 compatibility + full source code release, xx/12/2013
+|
+Wimpslot -min 320K -max 320K
+Set QTMAssemble$Dir <Obey$Dir>
+Run <QTMAssemble$Dir>.QTMv1·45

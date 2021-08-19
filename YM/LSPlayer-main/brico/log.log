@@ -1,0 +1,143 @@
+Light Speed Player Converter v1.03
+Fastest AMIGA music player ever!
+Written by Leonard/Oxygene (@leonard_coder)
+
+Loading knullakuk.mod...
+MOD Instr # 1: start=$000000 len=$01150, repstart=$00000 replen=00002 | 00 00 00 00 f0 04 e0 ec ...
+MOD Instr # 2: start=$001150 len=$04ea6, repstart=$04d9a replen=0010c | 00 00 00 00 07 07 0a 0a ...
+MOD Instr # 3: start=$005ff6 len=$01102, repstart=$00000 replen=00002 | 00 00 00 00 f5 f9 b2 80 ...
+MOD Instr # 4: start=$0070f8 len=$00cc4, repstart=$00000 replen=00002 | 00 00 00 00 f7 08 e5 f0 ...
+MOD Instr # 5: start=$007dbc len=$01a72, repstart=$00000 replen=00002 | 00 00 00 00 fc fc fc fd ...
+MOD Instr # 6: start=$00982e len=$01720, repstart=$00000 replen=00002 | 00 00 00 00 f3 ed f3 d8 ...
+MOD Instr # 7: start=$00af4e len=$02310, repstart=$021e2 replen=0012c | 00 00 00 00 11 13 17 19 ...
+MOD Instr # 8: start=$00d25e len=$00cc8, repstart=$00000 replen=00002 | 00 00 00 00 f5 f7 f6 f7 ...
+MOD Instr # 9: start=$00df26 len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #10: start=$00df26 len=$01f0a, repstart=$00000 replen=00002 | 00 00 00 00 fd fd fd 00 ...
+MOD Instr #11: start=$00fe30 len=$029fa, repstart=$00000 replen=00002 | 00 00 00 00 ea 3e 7f 6d ...
+MOD Instr #12: start=$01282a len=$01774, repstart=$016f4 replen=00080 | 00 00 00 00 00 5c 12 18 ...
+MOD Instr #13: start=$013f9e len=$0144c, repstart=$00000 replen=00002 | 00 00 00 00 65 00 cb c6 ...
+MOD Instr #14: start=$0153ea len=$026ac, repstart=$00000 replen=00002 | 00 00 00 00 fc fa f9 f9 ...
+MOD Instr #15: start=$017a96 len=$0323a, repstart=$00000 replen=00002 | 00 00 00 00 fa fe fd fd ...
+MOD Instr #16: start=$01acd0 len=$000ce, repstart=$000b0 replen=0001e | 00 00 00 00 00 00 01 ff ...
+MOD Instr #17: start=$01ad9e len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #18: start=$01ad9e len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #19: start=$01ad9e len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #20: start=$01ad9e len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #21: start=$01ad9e len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #22: start=$01ad9e len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #23: start=$01ad9e len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #24: start=$01ad9e len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #25: start=$01ad9e len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #26: start=$01ad9e len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #27: start=$01ad9e len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #28: start=$01ad9e len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #29: start=$01ad9e len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #30: start=$01ad9e len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #31: start=$01ad9e len=$00000, repstart=$00000 replen=00000 | 
+00:07 | Seq # 1: frame 384
+00:15 | Seq # 2: frame 768
+00:23 | Seq # 3: frame 1152
+00:30 | Seq # 4: frame 1536
+00:38 | Seq # 5: frame 1920
+00:46 | Seq # 6: frame 2304
+00:53 | Seq # 7: frame 2688
+01:01 | Seq # 8: frame 3072
+01:09 | Seq # 9: frame 3456
+01:16 | Seq #10: frame 3840
+01:24 | Seq #11: frame 4224
+01:32 | Seq #12: frame 4608
+01:39 | Seq #13: frame 4992
+01:47 | Seq #14: frame 5376
+01:55 | Seq #15: frame 5760
+02:02 | Seq #16: frame 6144
+02:10 | Seq #17: frame 6528
+02:18 | Seq #18: frame 6912
+02:25 | Seq #19: frame 7296
+02:33 | Seq #20: frame 7680
+02:41 | Seq #21: frame 8064
+02:48 | Seq #22: frame 8448
+02:56 | Seq #23: frame 8832
+03:04 | Seq #24: frame 9216
+03:12 | Seq #25: frame 9600
+03:19 | Seq #26: frame 9984
+03:27 | Seq #27: frame 10368
+03:35 | Seq #28: frame 10752
+03:42 | Seq #29: frame 11136
+03:50 | Seq #30: frame 11520
+03:58 | Seq #31: frame 11904
+04:06 | Seq #32: frame 12305
+04:11 | Seq #33: frame 12561
+04:16 | Seq #34: frame 12817
+04:21 | Seq #35: frame 13073
+04:26 | Seq #36: frame 13329
+04:31 | Seq #37: frame 13585
+04:36 | Seq #38: frame 13841
+04:41 | Seq #39: frame 14097
+04:47 | Seq #40: frame 14353
+04:52 | Seq #41: frame 14609
+04:57 | Seq #42: frame 14865
+05:02 | Seq #43: frame 15121
+05:07 | Seq #44: frame 15377
+05:12 | Seq #45: frame 15633
+05:17 | Seq #46: frame 15889
+05:22 | Seq #47: frame 16145
+05:28 | Seq #48: frame 16401
+05:33 | Seq #49: frame 16657
+05:38 | Seq #50: frame 16913
+05:45 | Seq #51: frame 17297
+05:53 | Seq #52: frame 17681
+06:01 | Seq #53: frame 18065
+06:08 | Seq #54: frame 18449
+06:16 | Seq #55: frame 18833
+06:24 | Seq #56: frame 19217
+06:32 | Seq #57: frame 19601
+06:39 | Seq #58: frame 19985
+06:41 | Seq #59: frame 20083
+06:46 | Seq #60: frame 20339
+06:51 | Seq #61: frame 20595
+06:57 | Seq #62: frame 20851
+07:02 | Seq #63: frame 21107
+07:07 | Seq #64: frame 21363
+07:12 | Seq #65: frame 21619
+07:17 | Seq #66: frame 21875
+07:22 | Seq #67: frame 22131
+07:27 | Seq #68: frame 22387
+07:32 | Seq #69: frame 22643
+07:37 | Seq #70: frame 22899
+07:43 | Seq #71: frame 23155
+07:48 | Seq #72: frame 23411
+Loop, seq=12 (frame=4608)
+Instrument # 1: max replay rate = 19704Hz
+Instrument # 2: max replay rate = 28800Hz
+Instrument # 3: max replay rate = 19704Hz
+Instrument # 4: max replay rate = 19704Hz
+Instrument # 5: max replay rate = 19704Hz
+Instrument # 6: max replay rate = 19704Hz
+Instrument # 7: max replay rate = 28800Hz
+Instrument # 8: max replay rate = 27928Hz
+Instrument #10: max replay rate = 18667Hz
+Instrument #11: max replay rate = 20864Hz
+Instrument #12: max replay rate = 15834Hz
+Instrument #13: max replay rate = 10462Hz
+Instrument #14: max replay rate = 28800Hz
+Instrument #15: max replay rate = 23334Hz
+Instrument #16: max replay rate = 22736Hz
+MOD File........: 157 KiB
+  MOD Samples...: 109982 bytes
+  MOD Score.....: 50236 bytes
+  Main BPM......: 125 (50Hz)
+  Sample offset: No
+NOTE: extending micro-sample #16 from 206 to 506 bytes
+Writing LSP insane player source code (knullakuk_insane.asm)
+LSP File........: 189 KiB
+  LSP Samples...: 110286 bytes
+  LSP Score.....: 83179 bytes
+  Duration......: 07:59
+  LSP Frames....: 23917
+  LSP Instruments: 15
+  Cmd count......: 449
+  Stream details:
+    commands: 24273 bytes
+    volume..: 8712 bytes
+    periods.: 36186 bytes
+    note on.: 12898 bytes

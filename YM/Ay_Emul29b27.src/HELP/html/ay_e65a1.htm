@@ -1,0 +1,25 @@
+<!doctype html><HTML><HEAD><META HTTP-EQUIV="Content-Type" Content="text/html; charset=Windows-1251"><LINK REL="stylesheet" TYPE="text/css" HREF="Ay_Emul.css"></HEAD><BODY>
+
+<H1><A NAME="zxay"></A>ZXAY</H1>
+
+<P>ZXAY file can be converted from any OUT, EPSG, AY and AYM file. This is more optimal format than OUT for storing AY outing. ZXAY file structure is also regular: sequences of 4 bytes blocks. First block of ZXAY file is ASCII string 'ZXAY'. All other blocks have next structure.</P>
+
+<P>Bit numbersName</P>
+<pre>
+Bit numbers	Name
+0–19            Time
+20–23           Register
+24–31           Data
+</pre>
+<P><I>Time</I> is time of outing in Z80 processor tacts in range 0–0FFFFFh during of which was outing <I>Data </I>to <I>Register</I>. Range of register field is 0–13. If during <I>Time</I> = 0 was no outing then block is writes into ZXAY file and field <I>Register</I> = 15. Available range of <I>Data </I>filed:</P>
+<pre>
+if Register =   then available range of Data
+1, 3, 5 or 13   0–15
+6, 8, 9 or 10   0–31
+7               0–63
+other           0–255.
+</pre>
+<P>If previous value of registers from 0 to 12 is equal to value of current outing, then current block is not wrote to ZXAY file. Outing to register 13 is always written. As you can see, ZXAY structure is analog of OUT structure.</P>
+
+</BODY>
+</HTML>

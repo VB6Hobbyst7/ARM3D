@@ -1,0 +1,7 @@
+| QTM Tracker Display v0.60 (c) S. Harrison Jun '97-Dec '13
+|
+RMEnsure QTMTracker 1.45 Error QTM Display requires QTM v1.45, and some music playing
+|
+Set QTMDisplay$Dir <Obey$Dir>
+IconSprites <QTMDisplay$Dir>.!Sprites
+Run <QTMDisplay$Dir>.!RunImage

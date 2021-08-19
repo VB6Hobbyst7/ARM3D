@@ -1,0 +1,71 @@
+QTM v1.45 Source code information                 © Steve Harrison, 1993-2013
+-----------------------------------------------------------------------------
+
+This file **briefly** details the content of the QTM v1.45 source code files.
+
+To assemble the current release version of the QTM module, just run the file
+'Assemble'. This will assemble the code and check whether or not it matches
+the current release version of QTM by running a 32bit CRC check on the
+output. Feel free to edit and experiment with changes to the QTM code. If you
+do make adjustments, the assemebler code will add a 'c' at the end of the
+version number, to signify a 'custom' version has been created.
+
+The source code should assemble with no problems on all computers with
+running RISC OS 3.1 or later. The assembled module itself will work fine on
+all versions of RISC OS, from Arthur 0.30 to 32-bit RISC OS 5.
+
+Most of the source code contains comments throughout the assembler code,
+detailing what each part does. Where comments are missing, you might find it
+useful to refer to the QTM_Data file, which has exhaustive comments on what
+parts of QTM's memory hold which variables, and what they do.
+
+The source files are laid out as follows:
+
+ Filename     Type    Description
+
+ Assemble   - Obey  - Sets the OS variable <QTMCompile$Dir> and runs QTMv1.45
+
+ Copyright  - Text  - Remember, the source code is © Steve Harrison 1993-2013
+
+ LOGdata    - Data  - Conversion table for 8-bit log to 8-bit linear samples
+                      (as a file because it's slow to build on old comps)
+
+ LOGtable   - BASIC - Builds 'LOGdata' table, note this program has remained
+                      unchanged since 31st July 1993!
+
+ QTMv1.45   - BASIC - Links together remaining files as 'Libraries' and calls
+                      procedures to set up tables/defaults then assemble code
+
+ QTM_Data   - BASIC - This file sets the layout of all variables used in QTM,
+                      and contains details of what each variable does/when
+
+ QTM_DMA    - BASIC - Contains all code used during the SoundDMA interrupts,
+                      to take the sample data, volume/pitch scale, and output
+
+ QTM_Mod    - BASIC - Module shell code, all headers/entry points for QTM
+                      module are here, along with most SWI routines
+
+ QTM_Play   - BASIC - The heart of QTM, the optimised Protracker play routine
+                      called on the 100Hz int. - interprets/plays the music!
+
+ QTM_Song   - BASIC - Initialise song/sample conversion routines for
+                      Protracker songs once loaded (inc. 'Author detector')
+
+ QTM_Timer  - BASIC - The code for SWI QTM_ReadPlayingTime, which rapidly
+                      scans the whole song data to work out how long it lasts
+
+ QTM_VUcode - BASIC - The code for SWI QTM_VUBarControl/QTM_ReadVULevels, the
+                      VU bar system of QTM. Also contains QTM_DMABuffer code.
+
+ ResetSound - Obey  - Useful when editing the DMA section of QTM, and the
+                      RISC OS sound system crashes!
+
+ SourceInfo - Text  - This file
+
+ TextComprs - BASIC - A nifty routine to compress module help syntax/text to
+                      make use of the OS_PrettyPrint known words
+
+That's it, if you decide to alter the code and get stuck somewhere where you
+really can't work out what I've done, drop me an email (see 'Contacts' file),
+and I'll try to remember for you...!
+                                                   Steve Harrison, 22/12/2013

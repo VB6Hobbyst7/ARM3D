@@ -1,0 +1,224 @@
+Technical information for QTM v1.27              © Steve Harrison, 1993-2013
+----------------------------------------------------------------------------
+
+Note: This file is now OUT OF DATE and is not being maintained. It documents
+changes and features of QTM up to version v1.27, and is provided for
+historical interest.
+
+
+Programmers information on QTM
+------------------------------
+
+This help file has been rearranged for ease of use with version 1.27+ of QTM,
+but contains no new programming details since those of version 1.25. This is
+because QTM's latest improvements are covered in their own separate help
+files 'UserLoad' and 'MusicInts'.
+
+If you missed one of the earlier releases of QTM, scan through the following
+sections. The version number in brackets at the end of each title, eg.
+(v1.27), shows in which release of QTM that information was last updated.
+
+
+General information on QTM (v1.24)
+----------------------------------
+
+Programmers will be glad to know that this is the FASTEST ever version of
+QTM, clocking in at 8.4% on average of Arm3 processor time at 32µS sample
+speed! This percentage will be lower still on 33MHz A5000's and RiscPCs!
+
+Independent speed tests on QTM have confirmed that it is currently the
+fastest Tracker-type music player available for Acorn RISC OS computers.
+
+The table below was taken from the January '95 Archive magazine.
+
+   Player module    |  Version tested  |  ARM600 time   |  ARM2 time
+   -----------------+------------------+----------------+-----------
+   TrackerModule    |  4.00            |  12%           |  20%
+** QTMTracker       |  1.20            |  8%            |  12%
+   Digital Symphony |  1.30            |  9%            |  22%
+   Desktop Tracker  |  1.11            |  incompatible  |  29%
+   HQ-Tracker       |  1.00            |  9%            |  25%
+
+Note the above timings used QTM v1.20, later versions especially those since
+v1.24 will have dramatically lower Arm600 timings, see below for reasons.
+
+QTM has two sets of sound buffer filling routines, one set for use by Arm 2
+(non-cached) computers, and the other for use by cached-processor eg. Arm 600
+computers. If you are using an *Arm 3* computer with cache on, and switch the
+cache off, QTM will detect this change, and automatically switch over to
+using the Arm 2 routines (you will not notice any change in sound). Arm 600
+and later processors do not allow reading of the cache status register, so
+this automatic switch-over is not possible. On these machines QTM always uses
+it's cache-optimised routines.
+
+
+RiscPC/A7000 update (v1.24)
+---------------------------
+
+As mentioned in the update file, versions of QTM prior to v1.24 had a
+(non-fatal) bug which seemed only to be present when run on Arm 600 and later
+machines. This was in fact due to the change in internal register layout from
+the Arm 3 to the Arm 600. The problem was that QTM was checking the cache
+status register every DMA call, to detect if the cache had been switched off
+and if so use an optimised non-cache routine. Unfortunately the cache status
+register is write-only on post-Arm 3 processors, this resulted in QTM not
+detecting the cache on the Arm 600, and so using its optimised non-cache code
+(...but still ending up the fastest player around!).
+
+QTM version 1.24 and greater use only cache-optimised code on Arm 600+
+machines, giving a massive speed improvement to these machines if the cache
+is on, but a less good result if the cache is turned off. Arm 3 machines
+still get the best of both worlds - with cache detection being used to select
+the best DMA routine.
+
+If you are making use of the cache status or chip id registers in your own
+programs, you should note that a further change has been made on the Arm
+7500 (as used in the A7000). With this processor the chip id register has
+been removed (according to the Arm Ltd. documentation) so if you need to
+differentiate between processors, you should opt for testing the presence of
+Arm 7500-only instructions, rather than use the chip id register.
+
+
+Other improvements & additions in QTM (v1.22)
+---------------------------------------------
+
+As well as this large speed increase over version 1.01 of QTM, several other
+important improvements have been made to the sound DMA routines.
+
+First is the unique 'Transparent Sound System' (TSS), this enables joint
+control over the sound channels, by QTM and any other 'Channel handler'.
+After enabling the TSS, using SWI QTM_SoundControl, the default action is to
+give the RISC OS channel handler joint sound control. This allows any
+OS-compatible voice modules to be used along with QTM. For example, the
+system 'Beep' can then be heard, while QTM is still playing a song.
+
+For more advanced uses, a channel handler block can be passed to QTM, via
+SWI QTM_SoundControl, to enable a specific program to take up joint sound
+control. This would allow, for example, QTM to be used along with a
+specially written sound effects generator for games or demos. The channel
+handler block required by QTM is identical to that required by RISC OS and is
+described on page 4-10 of the RISC OS 3 PRMs or page 1578 of the RO 2 PRMs.
+
+In version 1.22 of QTM, the control routines for the sound system were
+completely re-written and this has resulted in a great improvement to the
+TSS. The TSS now works correctly with many games, both PD and commercial,
+allowing the playing of your favourite music by QTM, along with the game's
+sound FX handled by the operation system.
+
+To aid playing of sound effects and running music at the same time, QTM also
+allows you to change the number of channels used by the QTM player. These can
+be either 4 or 8 channels. In 8 channel mode, the first 4 channels are used
+to play the song, while the remaining 4 can be used for playing sound
+effects, using either QTM's greatly improved sample playing SWIs, or using
+your own routines - via the 'Transparent Sound System'.
+
+One point to take note of, concerning QTM's new sample playing SWIs, is that
+the register layout of SWI QTM_PlaySample has changed slightly since version
+1.01, to allow control over the volume of the sample. Unfortunately this
+means compatibility with programs using the previous register layout for
+this SWI cannot be guaranteed. This is probably not of great concern though,
+because the original v1.01 release of QTM contained a bug in it's PlaySample
+SWI, which greatly limited its potential uses.
+
+Games programmers, or anyone wishing to create sound effects using QTM,
+should note that QTM can now handle up to 64 samples, an increase of 33 over
+the original release. To make use of these extra sample 'slots', programs can
+register areas of memory as samples with QTM, using SWI QTM_RegisterSample,
+so that QTM holds details such as length, volume, etc. and the program can
+play these samples using SWI QTM_PlaySample. The only restriction is that the
+samples numbered 1-31 are also used by the current loaded song, and that when
+a new song is loaded, the samples in this range will reset to allow space for
+the new song's samples.
+
+If a program should require a more general sample playing SWI, QTM now
+provides SWI QTM_PlayRawSample, which plays the specified area of memory as
+if it were a registered sample, though more registers are required to set up
+the calling parameters for this SWI.
+
+
+Notes for programmers (v1.22)
+-----------------------------
+
+Future versions of QTM are intended to be fully backwards compatible with
+programs written for previous releases since version 1.00. This version is,
+with the exception of the PlaySample SWI, fully compatible with programs
+written for version 1.00 of QTM. However there is a high possibility that
+future releases of QTM shall provide support for 8 channel, and other song
+formats, apart from the current ProTracker 4 channel format. This will mean
+that editors and display programs could fail if they assume that a
+ProTracker 4 channel song is loaded into QTM.
+
+To avoid problems like this occurring, any programs which rely on a certain
+format of song being loaded into QTM, should call SWI QTM_Info, and examine
+the 'song origin' number, returned in R2. If this is less than &10 (16), the
+current song will be stored in memory as a ProTracker compatible, 4 channel
+song. The exact number returned (currently 0-3) corresponds to the original
+format of the song, NOT to the current format in memory. For example, a 15
+inst. Sound Tracker song (type 0) is converted, by QTM, into a 31 inst.
+ProTracker song, after loading.
+
+
+Tracker converters for QTM (v1.22)
+----------------------------------
+
+QTM now provides better support for 'real-time' Tracker converters, to
+convert different formats of music into Protracker format, for playing on
+QTM. This support comes in the form of the new SWI QTM_Load type, R0=-1,
+which enables converter programs to pass the address of the converted
+Protracker song to QTM, so QTM will copy the song from this address, to its
+own memory and run the song from there. This leaves the original memory free
+for the next song, thus avoiding lots of tedious messing around with
+<Wimp$Scrap> files, and it works fine on disc-based systems.
+
+In addition to this, if the memory address passed to QTM was the start of an
+RMA reserved memory block, QTM will 'take over' control of this memory
+block, possibly moving or altering it in the process, and run the song
+straight from there. The RMA block will then be released when SWI QTM_Clear
+is called. This is required to avoid major fragmentation of the RMA, but it
+also provides a very useful system for '1-shot' tracker converters to use.
+By this method, a converter program could load a song file into an RMA
+block, convert it as required, and pass the address straight to QTM, without
+needing to release the memory afterwards.
+
+In future versions of QTM, look out for an even better conversion support
+system, allowing converters to get their hands on ANY song that SWI QTM_Load
+doesn't understand!
+
+
+New volume system (v1.25)
+-------------------------
+
+Instead of scaling both the music and sound effects (from SWIs QTM_PlaySample
+and QTM_PlayRawSample) to the same volume scaler, QTM now handles their
+volumes separately allowing these to be scaled to different values. This
+enables music in/out fades to be carried out without affecting any sound
+effects being played.
+
+Two new SWIs have been added to control the separate volumes. These are SWIs
+QTM_MusicVolume, and QTM_SampleVolume. For compatibility, and because it is
+still very useful, the original SWI QTM_Volume remains to set both the music
+and sound effects volume to the same scaler. Details on the new volume
+handling 'SWIs' can be found in the SWIs help file.
+
+
+The future... is QTMTurbo! (v1.30 ;-)
+-------------------------------------
+
+The time of QTM Turbo is nearing...
+
+QTM Turbo will be a complete re-write of QTM, featuring some amazingly fast
+methods of transferring music from the computer, to your ears! The aim of QTM
+Turbo is to half the current time taken to process the music, reducing it
+from about 8% to, hopefully to 4% or less of the processor time, while
+keeping the same music quality you are use to from QTM.
+
+Among the host of new, original, features in QTM Turbo shall be a multi-type
+tracker support system, where external modules will enable QTM to request
+decoding of non-ProTracker music formats while loading. This will give QTM
+access to other popular song formats, such as Coconizer and Symphony music.
+Full 8 channel song support is also on the cards, as well as a unique
+multi-user handling system, where different programs can request control of
+QTM when necessary, without needing to reload songs and samples each time QTM
+is accessed.
+
+QTM Turbo shall be available, with a sparkling new desktop interface... Soon!

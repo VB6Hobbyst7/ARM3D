@@ -1,0 +1,94 @@
+<!doctype html><HTML><HEAD><META HTTP-EQUIV="Content-Type" Content="text/html; charset=Windows-1251"><LINK REL="stylesheet" TYPE="text/css" HREF="Ay_Emul.css"></HEAD><BODY>
+
+<H1><A NAME="tools"></A>"Tools" dialog box</H1>
+
+<P>Hot key is <B>P</B>. This box contains emulator parameters and tools are not placed in other boxes and windows.</P>
+
+<P><B><I>Tab sheet General.</I></B></P>
+
+<P><B>Current Skin.</B> Here current skin information is showing. By pushing <I>Choose…</I> button you can load new skin for main Emulator window (skin files has extension AYS). By pushing <I>Standard</I> button you can set original skin.</P>
+
+<P><B>Language.</B> Choose interface language: <I>Russian</I> or <I>English</I>.</P>
+
+<P><B>Folder with music.</B> You can to type path to default folder and save it by pressing <I>Save</I> button. Emulator automatically will switch to this folder after its each starting. If you want automatically save last used path, check <I>Automatically save current</I> option.</P>
+
+<P><B>'Start' menu.</B> Add or remove Windows Start menu item "AY Emulator".</P>
+
+<P><B>Icon on system tray. </B>You can choose <I>never </I>to remove icon from system tray and <I>always</I> to add. If you choose <I>minimize</I> option then icon would be placed on tray during minimizing Emulator window. Double click icon on tray to restore window.</P>
+
+<P><B>Priority.</B> Choose application priority. <I>High </I>priority is recommended for Windows 9x/ME.</P>
+
+<P><B>Other.</B> Check <I>Save windows coords</I> if you want to save windows positions during closing Ay_Emul.</P>
+
+<P><B>Playlist colors.</B> Click on described elements to define its colors.</P>
+
+<P><B>'Start' menu icon. </B>You can see icon picture and its author name. Selected icon is used during creating link at 'Start' menu. If link is already created, its icon will be changed automatically.</P>
+
+<P><B>Tray icon. </B>This icon would be shown at system tray area.</P>
+
+<P><B>Application icon. </B>This icon is shown on task bar and in some emulator windows title.</P>
+
+<P><B><I>Tab sheet Files registration.</I></B></P>
+
+<P>Allow you to associate supported files with Ay_Emul in system registry. Ay_Emul saves previous associations, so you can restore it when need. All file types is divided to groups (Music files, BASS files, Playlists and Skin files), each group can be represented by own icon picture. If information about association in registry was edited manually or by previous Ay_Emul version, you can reregister association by pressing <I>Reregister</I> button. To restore previous associations press <I>Restore</I> button.</P>
+
+<P><B><I>Tab sheet Searching for tunes in files.</I></B></P>
+
+<P>This is powerful tool for ripping music from Speccy data files and memory dumps. In field <I>Source files</I> enter names of files (one name on one line) or click on <I>Choose...</I> button. After using <I>Choose…</I> button selected files replace previously typed <I>Source files</I> list. In field <I>Work folder</I> enter name of temporary folder for storing found files or click on <I>Choose...</I> button. Name of new files is XXX_XXXXXXXX.ext, where XXX is source file number (hex), XXXXXXXX is offset from beginning of source file to found data, ext is a standard Emulator file extension (SQT, PT2 and so on). Check desired modules for searching in field <I>Search for tunes</I>. Flash tracker searching algorithm is very slow and not reliable and corresponding option is unchecked by default. If searching will produce wrong (not music) file, then uncheck corresponding option in field <I>Search for tunes</I> and repeat process. To decrease number of mistakes, don't check “<I>Do not check modules integrity (faster)</I>” option (unchecked by default). Start searching process by clicking <I>Begin</I> button, to stop click it one more time.</P>
+
+<P><B><I>Tab sheet Track descriptor.</I></B></P>
+
+<P>You can adjust feature “Ay_Emul Track Descriptor” for saving current Ay_Emul status in text file. Good tradition exists among FIDO users. They like to design their letters and conference messages with some original texts. Many message editors allow adding text from file automatically. So, you can insert cool strings of text into your letters (for example, as signature). One of these strings can be Ay_Emul status string. What you need that simply adjust Ay_Emul and your post program:</P>
+
+<P><I>File Name</I> – file name with path of text file for storing Ay_Emul current status.</P>
+
+<P><I>Prefix </I>– piece of text, which will be placed at the beginning of status string.</P>
+
+<P><I>Suffix</I> – text, which will be placed at the end of status string, in case of Ay_Emul is playing now.</P>
+
+<P><I>Nothing </I>– text, which will be placed after the <I>Prefix</I>, in case of Ay_Emul is silent now.</P>
+
+<P><I>Enabled </I>– turn on the feature.</P>
+
+<P><I>Kill on exit</I> – if checked, then file will be erased after closing Ay_Emul.</P>
+
+<P><I>Kill on nothing</I> – if checked, then file will be erased each time, when Ay_Emul is not playing.</P>
+
+<P><I>Windows encoding</I> – if checked, then text will be saved in Windows encoding, otherwise in MS-DOS one.</P>
+
+<P>If you are using mail client The Bat!, then for adding string into your letter make next.</P>
+
+<P>1. Open “Account Properties” dialog (Account-&gt;Properties…).</P>
+
+<P>2. Click on “+” near of “Templates” option.</P>
+
+<P>3. Chose needed template (for example, “New message”).</P>
+
+<P>4. Somewhere in template text (usually at the end) add next string:</P>
+
+<P>%PUT="C:\Ay_Emul\AYSTATUS.TXT"</P>
+
+<P>where in quotes type same string as in <I>File Name </I>field of “FIDO Tools” dialog.</P>
+
+<P>5. Insert this string into other templates, if you want.</P>
+
+<P>Fidolook Express 2001 (plug-in for Outlook Express) can be adjusted too. Press “Templates” button and choose page “New Post”. In field “Signature” add string</P>
+
+<P>%file(c:\Ay_Emul\AYSTATUS.TXT).</P>
+
+<P>If you want, add the string into other templates. Both described programs are for Windows, so check option <I>Windows encoding</I> of “FIDO Tools” dialog. Fidolook SL can be adjusted in same way.</P>
+
+<P>String format:</P>
+
+<P><I>&lt;Prefix&gt;&lt;String “Author-Title” from main window&gt;&lt;Suffix&gt;</I></P>
+
+<P>if Ay_Emul is playing something, otherwise</P>
+
+<P><I>&lt;Prefix&gt;&lt;Nothing&gt;</I></P>
+
+<P><B>Uninstall</B> button allows remove both emulators settings and files associations from system registry. Use it before deleting Ay_Emul from system.</P>
+
+<P><B>Close</B> button is used for closing "Tools" box.</P>
+
+</BODY>
+</HTML>

@@ -1,0 +1,202 @@
+analyse LSP
+74 routines
+- byte stream en premier
+	- v : volume : D puis C puis B puis A
+	- 
+
+- word stream en second:
+	- note / period : D puis C puis B puis A
+	- instrument : D puis C puis B puis A
+	- repetition 
+
+codes:
+	v = volume
+	p = note / period
+	r = repetition du sample
+	i = instrument : joue un instrument et remplis la table de repetition
+
+
+bpm:
+1773447 / BPM
+
+
+- lecture de word:
+12 avant instrument
+
+
+pointeur sur les codes = 
+
+009E = 0FFF = 0000 1111 1111 1111 = ABCD:v ABCD:note ABCD:instrument
+4016
+163E
+0C01
+0101
+
+
+$24 = 36 / 12 = 3 => 3*16 = 48
+
+36/4 = 9
+
+
+note : $BF : inc=$E65
+-------------------------------
+- gestion de dmacon:
+en entrée : nouveau dmacon
+si bit 15 = 1 => on met des bits DMA à 1, or sur le dmacon existant, on remplit l'internal correspondant
+si bit 15 = 0 : on met à 0 les bits qui sont à 1 dans la valeur d'entrée
+
+au remplissage, si dmacon bit = 0 => on remplit avec du silence
+
+
+
+- gestion internal / external :
+	OK : - initialisation à : silence dans internal sample address, internal sample end address, internal virgule, external sample/length/period/volume
+	OK : - convertir note en increment à chaque mixage
+	OK : - utilise l'internal pour remplir le buffer
+	OK : - test la fin en utilisant internal
+	OK : - bascule lors du bouclage sur external
+
+bouclage :
+	d3 remplace a0 = a0=source du sample/instrument      /  d3=paula external sample address 
+	d4 remplace a1 = a1 = fin du sample/instrument       /  d4=paula external sample length => sample end address
+
+
+pour le DMACon : 
+- dans lsp amiga : coupe les voies sur lesquelles il va remettre un instrument, puis les active dans la meme vbl => prise en compte directement des nouvelles valeurs de sample + longueur de sample 
+
+
+-----------------------------
+debug:
+
+canal 1/A uniquement
+instrument : 0 
+début avant recalcul = AF52
+debut recalculé = C752
+longeur=1188
+debut repet avant reloc = d134
+debut repetition apres reloc = ea62 
+longeur repetition=96
+
+lspbank=21400
+debut sample avant reloc = 2c352 : OK
+fin avant reloc = 2E662 : OK ( offset +$d262)
+debut repetition avant reloc = d134 = 21400+d134 = 2e534 : contenu : F7 F8 F9 FB FC FD FF FF - 00 01 02 03 03 04 05 04 -
+
+
+OK : MOD Instr # 7: start=$00af4e len=$02310, repstart=$021e2 replen=0012c | 00 00 00 00 11 13 17 19 ...
+
+apres mu-law : 87 83 7d 6d 65 59 31 31    00 30 48 58 58 64 6c 64
+
+21400 + offset recalculé = 2db52
+diff offset recalculé = +$1800 ( 6*$400)
+nouvel offset boucle = $d134+$1800=E934
+21400+e934 = 
+
+21400 + 
+
+début boucle = 2FE62
+------------
+premier code = 0FFF
++ volume A B C D : 3E ( volume par defaut du sample) 16 16 64 ( volume par defaut du sample) 
++ note A B C D : BF 358 1AC B4
++ instrument A B C D : 1 2 2 3
+
+deuxieme code :
+F000 : mise en place des repetitions : A B C D 
+A : EA62, 96
+
+3eme code:
+0FFF volume+note+instruments sur A B C D
+
+F000 : repetition
+0
+0
+0
+0
+0
+0
+0
+puis
+
+808 = 0000 1000 0000 1000
+volume D + instrument D
+volume = 25, instrument = 3
+
+
+8010 = 1000 0000 0001 0000
+repetition D, note A
+note A = C1
+
+10 = note A = C2
+
+10 note A = C1
+
+=> vibrato
+
+-----------------------------------
+base soudnbank 21550
+
+37cf2 => 37d72
+
+
+BEBE BEBE BEBE BEBE
+BEBE 5C2F 5D77 8B91
+9191 ABB3 B7BD BFBF
+BFBF BFBF 8F2E 2EA5
+
+BFBF BFBF BFBF AF69
+2E60 7688 949C A6AC
+B0B6 BABA 9099 9B9D
+A1A3 A1B8 BCBE BC7D
+
+9DA3 A7AD AD98 B4B6
+B6BA BAB6 37A3 A7A9
+ADB1 B5B7 BBBD BFBF
+BFB1 2F92 969A 3EBD
+
+BDBF BFBF BFB5 98A0
+A8A2 B3B3 B3B5 B5AD
+A8B4 B6BA BEB4 5995
+9999 91A6 BEBE BEBE
+
+
+
+sample suivant :
++$16ba2 = 380f2
+
+fin du repet = +$16822
+
+1691e - 167a2 = 
+
+
+------------------
+Elysium
+canal 3 C
+sample 19
+instrument 2 dans lspbanks
+infos avant modif:
+offset debut :$013544			devient : $01AD44		+$7800
+$332D = $665A
+offset repeat : $0170E8			devient : $01E8E8
+len repeat : $15B5=$2B6A
+
+début samples : 0000 0000 2F51 6F51
+		3F5D 652F 0051 7365
+
+puis 
+4 secondes : sample 18
+
+offset en cours = 22092  200
+volume à 64 OK
+lspbank = 16520
+test de bouclage C : sur offset 22164
+$74 = end sample offset C : 23e54
+
+sample location : 0002319E
+longueur = 155B = 2ab6
+repeat pos = $3BA4
+repat length = $2AB6 
+current location = 22092 200
+end sample = 0023E54
+
+c

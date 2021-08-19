@@ -1,0 +1,139 @@
+                           .data:00000000 00 00 00 00                      andeq	r0, r0, r0									Offset to Start code (or Branch instruction) 0x0000
+                           .data:00000004 f0 00 00 00                      strdeq	r0, [r0], -r0	; <UNPREDICTABLE>			Offset to Initialisation code = 0x00F0 = RIEN
+                           .data:00000008 f8 00 00 00                      strdeq	r0, [r0], -r8								Offset to Finalisation code (and b31 flag)  = RIEN
+                           .data:0000000c 00 01 00 00                      andeq	r0, r0, r0, lsl #2							Offset to Service Call handler : 0x0100
+                           .data:00000010 34 00 00 00                      andeq	r0, r0, r4, lsr r0							Unaligned offset to Title string : 0x0034 : "Mode97"
+                           .data:00000014 3b 00 00 00                      andeq	r0, r0, fp, lsr r0							Unaligned offset to Help string : 0x003B : ; "Mode97	0.04 (20 Aug 2019) й Stephen Harrison"
+                           .data:00000018 68 00 00 00                      andeq	r0, r0, r8, rrx								Unaligned offset to Help and Command Keyword table : 0x0068 : "Mode97"
+                           .data:0000001c 00 00 00 00                      andeq	r0, r0, r0
+                           .data:00000020 00 00 00 00                      andeq	r0, r0, r0
+                           .data:00000024 00 00 00 00                      andeq	r0, r0, r0
+                           .data:00000028 00 00 00 00                      andeq	r0, r0, r0
+                           .data:0000002c 00 00 00 00                      andeq	r0, r0, r0
+                           .data:00000030 01 00 00 00                      andeq	r0, r0, r1									Offset to Module flags : 0x0001 = Module is 32 bit compatible 
+                           .data:00000034 4d 6f 64 65                      ; Mode97  
+                           .data:00000038 39 37 00
+						   
+						   .data:0000003B 4d                    		   ; Mode97	0.04 (20 Aug 2019) й Stephen Harrison Mode97
+                           .data:0000003c 6f 64 65 39                      
+                           .data:00000040 37 09 30 2e                      
+                           .data:00000044 30 34 20 28                      
+                           .data:00000048 32 30 20 41                      
+                           .data:0000004c 75 67 20 32                      
+                           .data:00000050 30 31 39 29                      
+                           .data:00000054 20 a9 20 53                      
+                           .data:00000058 74 65 70 68                      
+                           .data:0000005c 65 6e 20 48                      
+                           .data:00000060 61 72 72 69                      
+                           .data:00000064 73 6f 6e 00
+						   
+                           .data:00000068 4d 6f 64 65                     ; Mode97 
+                           .data:0000006c 39 37 00 00                      
+                           .data:00000070 00 00 00 00                      
+                           .data:00000074 00 00 00 00                      
+                           .data:00000078 00 00 00 00                      
+						   
+                           .data:0000007c 84 00 00 00                      ; point to 0x0084 
+                           .data:00000080 00 00 00 00                      
+                           .data:00000084 4d 6f 64 65                      ; Mode97 v0.04 adds a 416x258 screen mode, with L/R 32 pixel overhanging borders for TV-res (50Hz) monitors.
+                           .data:00000088 39 37 20 76                      
+                           .data:0000008c 30 2e 30 34                      
+                           .data:00000090 20 61 64 64                      
+                           .data:00000094 73 20 61 20                      
+                           .data:00000098 34 31 36 78                      
+                           .data:0000009c 32 35 38 20                      
+                           .data:000000a0 73 63 72 65                      
+                           .data:000000a4 65 6e 20 6d                      
+                           .data:000000a8 6f 64 65 2c                      
+                           .data:000000ac 20 77 69 74                      
+                           .data:000000b0 68 20 4c 2f                      
+                           .data:000000b4 52 20 33 32                      
+                           .data:000000b8 20 70 69 78                      
+                           .data:000000bc 65 6c 20 6f                      
+                           .data:000000c0 76 65 72 68                      
+                           .data:000000c4 61 6e 67 69                      
+                           .data:000000c8 6e 67 20 62                      
+                           .data:000000cc 6f 72 64 65                      
+                           .data:000000d0 72 73 20 66                      
+                           .data:000000d4 6f 72 20 54                      
+                           .data:000000d8 56 2d 72 65                      
+                           .data:000000dc 73 20 28 35                      
+                           .data:000000e0 30 48 7a 29                      
+                           .data:000000e4 20 6d 6f 6e                      
+                           .data:000000e8 69 74 6f 72                      
+                           .data:000000ec 73 2e 00 00    					; <=                  
+						   
+initialization:
+On entry:
+=> 	R0 	Pointer to the environment string (any initialisation parameters given when the module was loaded)
+	R11 	I/O base or instantiation number (see below)
+	R12 	Private word for this instantiation (see below)
+	R13 	SVC stack
+	R14 	return address 
+                           .data:000000f0 7f 40 2d e9                      push	{r0, r1, r2, r3, r4, r5, r6, lr}
+                           .data:000000f4 7f 80 bd e8                      pop	{r0, r1, r2, r3, r4, r5, r6, pc}
+
+                           .data:000000f8 7f 40 2d e9                      push	{r0, r1, r2, r3, r4, r5, r6, lr}
+                           .data:000000fc 7f 80 bd e8                      pop	{r0, r1, r2, r3, r4, r5, r6, pc}
+
+Service Call handler:
+=> 	R0-R9 	the caller’s registers – your parameters
+	R11 	sub-chunk number (SWI index) 0-63, no other values possible
+	R12 	private word
+	R13 	SVC stack
+	R14 	return address 						   
+                           .data:00000100 50 00 51 e3                      cmp		r1, #80	; 0x50
+                           .data:00000104 61 00 52 03                      cmpeq	r2, #97	; 0x61				; mode 97 ?
+                           .data:00000108 0e f0 a0 11                      movne	pc, lr						; on quitte
+                           .data:0000010c 01 00 73 e3                      cmn		r3, #1
+                           .data:00000110 00 00 53 13                      cmpne	r3, #0
+                           .data:00000114 01 00 53 13                      cmpne	r3, #1
+                           .data:00000118 00 10 a0 03                      moveq	r1, #0
+                           .data:0000011c 78 30 8f 02                      addeq	r3, pc, #120	; 0x78			R3 = 120+pc = 0x019c
+                           .data:00000120 00 40 8f 02                      addeq	r4, pc, #0		; 				R4 = 0x0128 ?
+                           .data:00000124 0e f0 a0 e1                      mov		pc, lr			; retour
+						   
+                           .data:00000128 00 00 00 00                      table 1
+                           .data:0000012c 0f 00 00 00                      
+                           .data:00000130 00 00 00 00                      
+                           .data:00000134 00 00 00 00                      
+                           .data:00000138 01 00 00 00                      
+                           .data:0000013c 33 00 00 00                      
+                           .data:00000140 02 00 00 00                      
+                           .data:00000144 1f 00 00 00                      
+                           .data:00000148 03 00 00 00                      
+                           .data:0000014c 3f 00 00 00                      
+                           .data:00000150 04 00 00 00                      
+                           .data:00000154 02 00 00 00                      
+                           .data:00000158 05 00 00 00                      
+                           .data:0000015c 02 00 00 00                      
+                           .data:00000160 06 00 00 00                      
+                           .data:00000164 a0 01 00 00                     	; 416 
+                           .data:00000168 07 00 00 00                      
+                           .data:0000016c 00 a0 01 00  						; 416                    
+                           .data:00000170 08 00 00 00                      
+                           .data:00000174 a0 01 00 00                      	; 416
+                           .data:00000178 09 00 00 00                      
+                           .data:0000017c 03 00 00 00                      
+                           .data:00000180 0a 00 00 00                      
+                           .data:00000184 03 00 00 00                      
+                           .data:00000188 0b 00 00 00                      
+                           .data:0000018c 9f 01 00 00                      
+                           .data:00000190 0c 00 00 00                      
+                           .data:00000194 01 01 00 00                      
+						   .data:00000198 ff ff ff ff
+																			table 2
+                           .data:0000019c 00 00 00 00                      				
+                           .data:000001a0 0f 00 00 00                      				
+                           .data:000001a4 00 c0 3f 80                      		0x803FC000 : Horizontal Cycle Register =        1000 0000 0011 1111 1100 0000 0000 0000 = Data = 0011 1111 11 = 255 * 2 = 510
+                           .data:000001a8 00 80 04 84                      		0x84048000 : Horizontal Sync Width Register =   1000 0100 0000 0100 1000 0000 0000 0000 = Data = 0000 0100 10 = 18
+                           .data:000001ac 00 c0 0e 88                      		0x880EC000 : Horizontal Border Start Register = 1000 1000 0000 1110 1100 0000 0000 0000 = Data = 0000 1110 11 = 59 => (M-1)/2=59 => M = 120
+                           .data:000001b0 00 40 0a 8c                      		0x8C0A4000 : Horizontal Display Start Register= 1000 1100 0000 1010 0100 0000 0000 0000 = Data = 0000 1010 01 = 41 => (M-5)/2=41 => M = 92
+                           .data:000001b4 00 40 3e 90                      		0x903E4000 : Horizontal Display End Register = 
+                           .data:000001b8 00 c0 3a 94                      		0x943AC000 : Horizontal Border End Register = 
+                           .data:000001bc 00 40 09 a8                      		0xA8094000 : Vertical Border Start Register = 1010 1000 0000 1001 0100 0000 0000 0000 = Data = 00 1001 01 = 0x25
+                           .data:000001c0 00 40 09 ac                      		0xAC094000 : Vertical Display Start Register = Data = 00 1001 01 = 0x25
+                           .data:000001c4 00 c0 49 b0                      		0xB049C000 : Vertical Display End Register =  1011 0000 0100 1001 1100 0000 0000 0000 = Data = 00 0100 1001 11 = 295 / 
+                           .data:000001c8 00 c0 49 b4                      		0xB449C000 : Vertical Border End Register = 
+                           .data:000001cc 0c 00 00 e0                      		0xE000000C : Control Register = 1110 0000 0000 0000 0000 0000 0000 1100 = Pixel Rate : 8Mhz, Bits Per Pixel : 8 Bits Per Pixel
+                           .data:000001d0 ff ff ff ff                      	

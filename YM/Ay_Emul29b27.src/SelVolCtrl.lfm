@@ -1,0 +1,49 @@
+object FrmSelVolCtrl: TFrmSelVolCtrl
+  Left = 274
+  Height = 186
+  Top = 174
+  Width = 281
+  HorzScrollBar.Page = 218
+  HorzScrollBar.Range = 217
+  VertScrollBar.Page = 185
+  VertScrollBar.Range = 164
+  BorderStyle = bsDialog
+  Caption = 'FrmSelVolCtrl'
+  ClientHeight = 186
+  ClientWidth = 281
+  Font.Height = -11
+  OnShow = FormShow
+  Position = poDesktopCenter
+  LCLVersion = '2.0.12.0'
+  object ListBox1: TListBox
+    Left = 0
+    Height = 137
+    Top = 0
+    Width = 281
+    Align = alTop
+    ItemHeight = 0
+    OnClick = ListBox1Click
+    ScrollWidth = 279
+    TabOrder = 0
+  end
+  object Button1: TButton
+    Left = 56
+    Height = 20
+    Top = 152
+    Width = 75
+    Caption = 'OK'
+    Default = True
+    ModalResult = 1
+    TabOrder = 1
+  end
+  object Button2: TButton
+    Left = 152
+    Height = 20
+    Top = 152
+    Width = 75
+    Cancel = True
+    Caption = 'Cancel'
+    ModalResult = 2
+    TabOrder = 2
+  end
+end

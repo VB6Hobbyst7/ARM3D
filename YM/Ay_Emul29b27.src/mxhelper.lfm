@@ -1,0 +1,95 @@
+object FrmMxHlp: TFrmMxHlp
+  Left = 175
+  Height = 226
+  Top = 247
+  Width = 370
+  BorderIcons = []
+  BorderStyle = bsDialog
+  Caption = 'Mixer Amplifier Helper'
+  ClientHeight = 226
+  ClientWidth = 370
+  LCLVersion = '1.6.0.4'
+  object ChansRG: TRadioGroup
+    Left = 10
+    Height = 129
+    Top = 11
+    Width = 350
+    AutoFill = True
+    Caption = 'AY-3-8910/YM2149F Channels Allocation'
+    ChildSizing.LeftRightSpacing = 6
+    ChildSizing.EnlargeHorizontal = crsHomogenousChildResize
+    ChildSizing.EnlargeVertical = crsHomogenousChildResize
+    ChildSizing.ShrinkHorizontal = crsScaleChilds
+    ChildSizing.ShrinkVertical = crsScaleChilds
+    ChildSizing.Layout = cclLeftToRightThenTopToBottom
+    ChildSizing.ControlsPerLine = 3
+    ClientHeight = 109
+    ClientWidth = 346
+    Columns = 3
+    ItemIndex = 6
+    Items.Strings = (
+      'AY ABC Stereo'
+      'AY ACB Stereo'
+      'AY BAC Stereo'
+      'AY BCA Stereo'
+      'AY CAB Stereo'
+      'AY CBA Stereo'
+      'YM ABC Stereo'
+      'YM ACB Stereo'
+      'YM BAC Stereo'
+      'YM BCA Stereo'
+      'YM CAB Stereo'
+      'YM CBA Stereo'
+      'Mono'
+    )
+    TabOrder = 0
+  end
+  object TSDMAChG: TCheckGroup
+    Left = 10
+    Height = 73
+    Top = 144
+    Width = 214
+    AutoFill = True
+    Caption = 'Leave space for additional device'
+    ChildSizing.LeftRightSpacing = 6
+    ChildSizing.TopBottomSpacing = 6
+    ChildSizing.EnlargeHorizontal = crsHomogenousChildResize
+    ChildSizing.EnlargeVertical = crsHomogenousChildResize
+    ChildSizing.ShrinkHorizontal = crsScaleChilds
+    ChildSizing.ShrinkVertical = crsScaleChilds
+    ChildSizing.Layout = cclLeftToRightThenTopToBottom
+    ChildSizing.ControlsPerLine = 1
+    ClientHeight = 53
+    ClientWidth = 210
+    Items.Strings = (
+      'ZX Turbo-Sound'
+      'STe DMA-Sound'
+    )
+    TabOrder = 1
+    Data = {
+      020000000303
+    }
+  end
+  object Button1: TButton
+    Left = 231
+    Height = 32
+    Top = 185
+    Width = 129
+    Caption = 'Set'
+    Default = True
+    ModalResult = 1
+    ParentFont = False
+    TabOrder = 3
+  end
+  object Button2: TButton
+    Left = 231
+    Height = 32
+    Top = 147
+    Width = 128
+    Cancel = True
+    Caption = 'Cancel'
+    ModalResult = 2
+    ParentFont = False
+    TabOrder = 2
+  end
+end

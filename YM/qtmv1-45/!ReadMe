@@ -1,0 +1,90 @@
+Release notes for QTM v1.45            © Steve Harrison (Quantum), 1993-2013
+----------------------------------------------------------------------------
+
+
+          >>>>>> QTheMusic (QTM) v1.45, 27th December 2013 <<<<<<
+
+
+Welcome to QTheMusic (QTM), the ProTracker / FastTracker / StarTrekker music
+module player for RISC OS computers.
+
+QTM will play music from any 4, 6 or 8 channel ProTracker/FastTracker
+compatible music module, in the background, while you use Risc OS. To use,
+simply load !QTMmini, or double click a ProTracker/StarTrekker file, such as
+the supplied music 'exelrelax1' (written by exel of quantum).
+
+QTM v1.45 introduces support for more music module formats including
+FastTracker (thanks to Zarchos for bringing this popular PC format to my
+attention!), as well as several new features (including '*QTMTransparent'
+command), more SWIs and a number of bug fixes. Also included for the first
+time with QTM v1.45 is a full featured tracker display programme
+'!QTMDisply', just load some music into QTM, and run '!QTMDisply' to use.
+Additionally, a much smaller, much simpler, BASIC display programme
+'QTMviewer' is also included. For a full list of what's new in v1.45, see the
+'History' file in 'Documents'.
+
+See the file 'Links' for web links to sources of ProTracker/FastTrekker
+compatible music tracks (often also called 'MODs' or 'modules' on the Amiga).
+If you download from these sources, just make sure the music module has its
+RISC OS 'FileType' set to 'STModule' (or &CB6) by selecting 'Set Type' from
+the filer menu (or using "*Settype <filename> CB6" from the command line),
+before double-clicking the music file to play in QTM.
+
+For programmers, QTM contains a full API for use playing music and sound
+effects in games/apps. See the file 'SWIs' in 'Documents' for more
+information.
+
+
+A brief reminder of where it all came from...
+---------------------------------------------
+
+QTM was originally written (in 1993) to faithfully reproduce Protracker 2.0
+music (created on the Amiga) - under RISC OS. It succeeded in doing so, its
+play routines accurately reproduced even the trickiest of effects
+combinations used on the Amiga, which often confused other RISC OS Protracker
+players (and even confused later Amiga players).
+
+With this aim completed, QTM was repeatedly optimised - and succeeded in
+becoming one of the fastest music play-routines for RISC OS computers. This
+furthered its use in graphics demos, such as Quantum's own 'Liquid Dreams',
+where it allowed the maximum possible processor time to be used by the demo
+code.
+
+But at the heart of QTM lies it's compatibility - it successfully runs on all
+RISC OS-based computers ever built(!), from the first 512 kb, 8MHz, Arthur
+0.30 A305, back in 1987, to the latest 1GB, 1.2GHz, RISC OS 5 PandaBoard.
+
+
+How to contact us
+-----------------
+
+If you wish to contact the current maintainer for any reason, see the 'Contact'
+help file supplied with this release of QTM.
+
+
+Credits for QTM, Q The Music
+----------------------------
+
+Q The Music (QTM), was written by Steve Harrison, one-time known as Phoenix.
+
+The QTM module (QTMTracker) and applications !QTMmini and !MiniVUBrs are
+copyright © Steve Harrison, 1993-2013
+
+QTM v1.41 and later are 32 bit RISC OS compatible thanks to the development
+and work of Jeffrey Lee. Jeffrey is the current curator of QTM and hosts the
+latest release on his website http://www.phlamethrower.co.uk/riscos/qtm.php
+
+QTM was written in 279K of ARM assembler, which assembles down to 62K!
+
+****************************************************************************
+*** Thanks to everyone who has contacted me about QTM over the years,    ***
+*** thanks especially to everyone who has taken time to test QTM, and to ***
+*** everyone who has waited patiently while I have repeatedly missed     ***
+*** release deadlines and failed to reply to emails!                     ***
+***                                                                      ***
+*** Special thanks goes to Paul Wheatley for originally forming Quantum  ***
+*** and encouraging the first release of what then became Q The Music!   ***
+****************************************************************************
+
+...hope you like it, enjoy!                       Steve Harrison, 27/12/2013
+                                                     Jeffrey Lee, 12/2013

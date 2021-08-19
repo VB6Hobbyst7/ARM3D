@@ -17,7 +17,7 @@
 
 .equ		taille_dma,					83200
 .equ		longueur_du_sample,				75851
-.equ		ms_freq_Archi,					125				; 8000hz
+.equ		ms_freq_Archi,					32				; 125=8000hz 32=31250
 ;.equ		nb_octets_par_vbl,				416
 
 
@@ -284,11 +284,17 @@ copie_sample_dans_buffer_dma_en_entier:
 		ldr		R2,adresse_dma1_logical
 		ldr		R3,adresse_dma2_logical
 
-		mov		R11,#longueur_du_sample
+		mov		R11,#longueur_du_sample/4
 		
 boucle_copie_sample_en_entier:
 		ldrb	R0,[R1],#1
 		strb	R0,[R2],#1
+		strb	R0,[R3],#1
+		strb	R0,[R2],#1
+		strb	R0,[R3],#1
+	strb	R0,[R2],#1
+		strb	R0,[R3],#1
+	strb	R0,[R2],#1
 		strb	R0,[R3],#1
 
 		subs	R11,R11,#1

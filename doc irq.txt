@@ -1,0 +1,55 @@
+IRQ A
+IRQ B
+PC
+
+carte de la mémoire:
+	0x18	:	IRQ
+	0x1C	:	FIRQ
+
+
+PC:
+	- bit 27 = IRQ Disable : 1=disable
+	- bit 26 = FIRQ Disable : 1 = disable
+	- bits 1 & 0 : 00 = user, 01 = FIRQ mode, 10=IRQ mode, 11 = SVC Supervisor mode
+
+IRQ A + B : 
+	- controle		: 0x14		: bit 2=IF, bit 3 = IR : activation d'une interruption, bit 5= Timer 0, bit 6 = timer 1
+
+IRQ A:				:	Timer 0, Timer 1, 
+	- status
+	- request / clear
+	- mask			:  0x18:	bit 6=Timer 1, bit 5=Timer 0, bit 3=vsync
+
+IRQ B:				: Keyboard, 
+	- status			0x20
+	- request / clear
+	- mask			: 0x28:		bit 6&7=Keyboard, bit 1=DMA mise à jour du buffer Son
+
+FIRQ:
+	- status			0x30
+	- request / clear
+	- mask				0x38:	????
+
+IOC control register 			0x00:		bit 7 = vsync
+	
+
+T0:
+	- latch low			: counter octet bas : lecture = valeur en cours, ecriture = forcer la valeur verrou
+	- latch high			: compteur octet haut : lecture = valeur en cours, ecriture = forcer la valeur verrou
+	- go command			: remet le compteur a la valeur latch (verrou)
+	- latch command			: le compteur est copié dans le latch (verrou)
+T1:
+	- latch low
+	- latch high
+	- go command
+	- latch command
+T2:					external baud rate
+	- latch low
+	- latch high
+	- go command
+	- latch command
+T3:					keyboard
+	- latch low
+	- latch high
+	- go command
+	- latch command

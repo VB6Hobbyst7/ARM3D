@@ -1,0 +1,33 @@
+﻿La génération a démarré 17/01/2021 09:19:28.
+     1>Projet "C:\Users\Eric\Documents\Visual Studio 2010\StSoundPackage\StSoundLibrary\StSoundLibrary.vcxproj" sur le nœud 2 (build cible(s)).
+     1>InitializeBuildStatus:
+         Création de ".\Debug\StSoundLibrary.unsuccessfulbuild", car "AlwaysCreate" a été spécifié.
+       ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _DEBUG /D _LIB /D _VC80_UPGRADE=0x0600 /D _MBCS /Gm /EHsc /RTC1 /MTd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo".\Debug/" /Fd".\Debug/vc100.pdb" /Gd /TP /analyze- /errorReport:prompt digidrum.cpp Ym2149Ex.cpp Ymload.cpp YmMusic.cpp YmUserInterface.cpp LZH\LzhLib.cpp
+         LzhLib.cpp
+         YmUserInterface.cpp
+         YmMusic.cpp
+         Ymload.cpp
+     1>c:\users\eric\documents\visual studio 2010\stsoundpackage\stsoundlibrary\ymload.cpp(65): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 10.0\vc\include\string.h(105) : voir la déclaration de 'strcpy'
+     1>c:\users\eric\documents\visual studio 2010\stsoundpackage\stsoundlibrary\ymload.cpp(581): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 10.0\vc\include\stdio.h(234) : voir la déclaration de 'fopen'
+         Ym2149Ex.cpp
+         digidrum.cpp
+         Génération de code en cours...
+       Lib:
+         C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\Lib.exe /OUT:".\Debug\StSoundLibrary.lib" /NOLOGO .\Debug/digidrum.obj
+         .\Debug/Ym2149Ex.obj
+         .\Debug/Ymload.obj
+         .\Debug/YmMusic.obj
+         .\Debug/YmUserInterface.obj
+         .\Debug/LzhLib.obj
+         StSoundLibrary.vcxproj -> C:\Users\Eric\Documents\Visual Studio 2010\StSoundPackage\StSoundLibrary\.\Debug\StSoundLibrary.lib
+       FinalizeBuildStatus:
+         Suppression du fichier ".\Debug\StSoundLibrary.unsuccessfulbuild".
+         Mise à jour de l'horodatage ".\Debug\StSoundLibrary.lastbuildstate".
+     1>Génération du projet "C:\Users\Eric\Documents\Visual Studio 2010\StSoundPackage\StSoundLibrary\StSoundLibrary.vcxproj" terminée (build cible(s)).
+
+La génération a réussi.
+
+Temps écoulé 00:00:01.23

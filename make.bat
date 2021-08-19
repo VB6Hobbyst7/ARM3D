@@ -13,10 +13,11 @@ vasmarm_std_win32.exe -L compileFIQ2.txt -linedebug -m250 -Fbin -o build\fiqrmi2
 rem vasmarm_std_win32.exe -L compileRMI.txt -linedebug -m250 -Fbin -o build\rmi.bin rmrebuild.asm
 
 vasmarm_std_win32.exe -L compiletest.txt -linedebug -m250 -Fbin -opt-adr  -o build\test.bin lsp.asm
-rem vasmarm_std_win32.exe -L compiletest.txt -linedebug -m250 -Fbin -opt-adr  -o build\test.bin playsample.asm
+vasmarm_std_win32.exe -L compiletest.txt -linedebug -m250 -Fbin -opt-adr  -o build\playsample.bin playsample.asm
 
 rem vasmarm_std_win32.exe -L compileelf.txt -m250 -Felf -opt-adr -o build\test.elf test.asm
 copy build\test.bin "C:\Archi\Arculator_V2.0_Windows\hostfs\test,ff8"
 rem copy build\test.bin "C:\Archi\Arculator_V2.0_Windows\hostfs\test"
 copy build\rmi.bin "C:\Archi\Arculator_V2.0_Windows\hostfs\rmi,ff8"
+copy build\\playsample.bin  "C:\Archi\Arculator_V2.0_Windows\hostfs\psa,ff8"
 rem copy build\rmi.bin "C:\Archi\Arculator_V2.0_Windows\hostfs\rmi"

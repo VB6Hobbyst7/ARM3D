@@ -1,0 +1,37 @@
+QTMDisplay v0.65b (c) Stephen Harrison 2013
+
+Christmas 2013 - FIRST RELEASE
+
+
+Welcome to QTMDisplay, a full 4/6/8 channel tracker-style display for QTM.
+
+Based on the layout of the 1990's Amiga tracker programme 'ProTracker 2.3D',
+this tracker display shows the music patterns in real time, as the track
+plays in QTM, along with 8-channel sample scopes, VU bars and additional
+track information. Also a selection of control buttons are provided, just
+click to use: Play/Pause/Stop/FF/RW and EXIT.
+
+The base (4 channel) outline code for this was actually written back in 1997,
+as part of the never-finished QTMEditor and has laid dormant on my old Risc
+PC HDD until only a few months ago. The code has now been updated and
+improved to work with the latest QTM v1.45, supporting 4/6/8 channel tracks
+and run full speed (50+ fps) on all versions of RISC OS from 3.1 to the
+latest 32bit RISC OS 5.21.
+
+This is easy to use: Just load QTMv1.45, load some music, then run
+QTMDisplay!
+
+
+32bit colour...
+
+Owners of Raspberry Pis will see QTMDisplay with improved full 32bit colour
+display by default. When run on other modern RISC OS hardware, an option for
+full colour will appear briefly on loading - just answer 'Y' to use full
+colour. Note: RiscPCs will also see this option, and can display the full
+colour version, although not even a StrongArm RiscPC is fast enough to keep
+up with the memory bandwidth required, so the display will be slightly jerky.
+
+
+Enjoy!
+
+all code (c) S.Harrison 1997-2013     sah3000@yahoo.com

@@ -17,50 +17,117 @@
 ;au début : 
 ;	- nb_frames_total_calcul=0
 
-; 1 - flag rotation classique objet normal en cours 										: flag_classique_en_cours
-: 1 - pointeur vers objet classique												: pointeur_objet_source_transformation, pointeur_objet_en_cours
-; 1 - pointeur vers les coordonnées de l'objet											: pointeur_points_objet_classique, pointeur_coordonnees_objet_source_transformation										
-; 1 - nb points objet classique													: nb_points_objet_en_cours_objet_classique, nb_points_objet_en_cours, - nb_sprites_en_cours_calcul -
-; 3 - X, Y , Z de l'objet													: position_objet_en_cours_X, position_objet_en_cours_Y , position_objet_en_cours_Z
-; 3 - increments X , Y et Z de l'objet en 3D											: increment_position_X, increment_position_Y, increment_position_Z
-; 3 - angles actuels X , Y , Z de l'objet											: increment_angle_X, increment_angle_Y, increment_angle_Z
-; 3 - increments angles sur axes X, Y , Z											: angleX, angleY, angleZ
-; 1 - nombre frames de rotation classique, initial										: nb_frames_rotation_classique, - nb_frame_en_cours -
-; 1 - nombre frames de rotation classique, en cours
+;    0:1 - flag rotation classique objet normal en cours 										: flag_classique_en_cours
+: +  4:1 - pointeur vers objet classique												: pointeur_objet_source_transformation, pointeur_objet_en_cours
+; +  8:1 - pointeur vers les coordonnées de l'objet											: pointeur_points_objet_classique, pointeur_coordonnees_objet_source_transformation										
+; +012:1 - nb points objet classique													: nb_points_objet_en_cours_objet_classique, nb_points_objet_en_cours, - nb_sprites_en_cours_calcul -
+; +016,+20,+24:3 - X, Y , Z de l'objet													: position_objet_en_cours_X, position_objet_en_cours_Y , position_objet_en_cours_Z
+; +028,+32,+36:3 - increments X , Y et Z de l'objet en 3D										: increment_position_X, increment_position_Y, increment_position_Z
+; +040,+44,+48:3 - angles actuels X , Y , Z de l'objet											: increment_angle_X, increment_angle_Y, increment_angle_Z
+; +052,+56,+60:3 - increments angles sur axes X, Y , Z											: angleX, angleY, angleZ
+; +064:1 - nombre frames de rotation classique, initial											: nb_frames_rotation_classique, - nb_frame_en_cours -
+; +068:1 - nombre frames de rotation classique, en cours
 18
 ; -- transformation : se fait de pointeur_table_increments_pas_transformations vers pointeur_buffer_coordonnees_objet_transformees
-; 1 - pointeur vers objet de destination de la transformation									: pointeur_coordonnees_objet_destination_transformation
-; 1 - flag transformation en cours ?												: flag_transformation_en_cours
-; 1 - pointeur vers tableau points actuels ( transformation donc points dynamiques)						: pointeur_buffer_coordonnees_objet_transformees => pointeur_points_objet_en_cours
-; 1 - nb étapes actuel de transformation											: nb_etapes_transformation
-; 1 - numero de l'etape en cours de la transformation										: numero_etape_en_cours_transformation
+; +072:1 - pointeur vers objet de destination de la transformation									: pointeur_coordonnees_objet_destination_transformation
+; +076:1 - flag transformation en cours ?												: flag_transformation_en_cours
+; +080:1 - pointeur vers tableau points actuels ( transformation donc points dynamiques)						: pointeur_buffer_coordonnees_objet_transformees => pointeur_points_objet_en_cours
+; +084:1 - nb étapes actuel de transformation												: nb_etapes_transformation
+; +088:1 - numero de l'etape en cours de la transformation										: numero_etape_en_cours_transformation
 5
 ; -- animation d'une partie de l'objet
-; 1 - flag animation en cours 													: flag_animation_en_cours
-; 1 - pointeur vers coordonnées actuel animé, initial										: pointeur_vers_coordonnees_points_animation_original
-; 1 - pointeur vers coordonnées actuel animé, actuel										: pointeur_vers_coordonnees_points_animation_en_cours
-; 1 - nombre de points à animer													: nb_points_animation_en_cours_objet_anime, nb_points_objet_en_cours_objet_anime, - nb_sprites_en_cours_calcul -
-; 1 - nb étapes de l'animation, initial												: nb_frame_animation
-; 1 - nb étapes de l'animation, actuel												: nb_frame_animation_en_cours
+; +092:1 - flag animation en cours 													: flag_animation_en_cours
+; +096:1 - pointeur vers coordonnées actuel animé, initial										: pointeur_vers_coordonnees_points_animation_original
+; +100:1 - pointeur vers coordonnées actuel animé, actuel										: pointeur_vers_coordonnees_points_animation_en_cours
+; +104:1 - nombre de points à animer													: nb_points_animation_en_cours_objet_anime, nb_points_objet_en_cours_objet_anime, - nb_sprites_en_cours_calcul -
+; +108:1 - nb étapes de l'animation, initial												: nb_frame_animation
+; +112:1 - nb étapes de l'animation, actuel												: nb_frame_animation_en_cours
 6
 ; -- mouvement de l'objet en 2D
-; 1 - flag mouvement en cours ?													: flag_mouvement_en_cours
-; 1 - pointeur table de mouvement, initial											: pointeur_debut_mouvement
-; 1 - pointeur table de mouvement, actuel											: pointeur_index_actuel_mouvement
-; 1 - nombre étapes du mouvement, initial											: nombre_etapes_du_mouvement_initial
-; 1 - nombre étapes du mouvement, actuel											: nombre_etapes_du_mouvement_en_cours
-; 1 - flag si repetition du mouvement												: flag_repetition_mouvement_en_cours
-; 1 - pointeur vers table de mouvement pour repetition, initial, -1 = pas de repetition du mouvement				: pointeur_initial_repetition_mouvement
-; 1 - pointeur vers table de mouvement pour repetition, actuel									: pointeur_actuel_repetition_mouvement
-; 1 - nombre étapes du mouvement de répétition, initial										: nombre_etapes_repetition_du_mouvement_initial
-; 1 - nombre étapes du mouvement de répétition, actuel										: nombre_etapes_repetition_du_mouvement_en_cours
+; +116:1 - flag mouvement en cours ?													: flag_mouvement_en_cours
+; +120:1 - pointeur table de mouvement, initial												: pointeur_debut_mouvement
+; +124:1 - pointeur table de mouvement, actuel												: pointeur_index_actuel_mouvement
+; +128:1 - nombre étapes du mouvement, initial												: nombre_etapes_du_mouvement_initial
+; +132:1 - nombre étapes du mouvement, actuel												: nombre_etapes_du_mouvement_en_cours
+; +136:1 - flag si repetition du mouvement												: flag_repetition_mouvement_en_cours
+; +140:1 - pointeur vers table de mouvement pour repetition, initial, -1 = pas de repetition du mouvement				: pointeur_initial_repetition_mouvement
+; +144:1 - pointeur vers table de mouvement pour repetition, actuel									: pointeur_actuel_repetition_mouvement
+; +148:1 - nombre étapes du mouvement de répétition, initial										: nombre_etapes_repetition_du_mouvement_initial
+; +152:1 - nombre étapes du mouvement de répétition, actuel										: nombre_etapes_repetition_du_mouvement_en_cours
 10
 ; ---
-; 1 - zoom / position observateur en Z												: distance_z
+; +156:1 - zoom / position observateur en Z												: distance_z
 1
 
-= 40
+= 40 / 160 octets
 
 
 ; nb_frames_total_calcul = nb_frames_rotation_classique + 
 
+-------------
+quelles sont les variables modifiées dans la boucle de calcul d'un objet:
+
+angleX : ok	+52				
+angleY : ok	+56
+angleZ : ok	+60
+nombre_etapes_du_mouvement_en_cours : ok	+132
+pointeur_index_actuel_mouvement : ok		+124
+flag_mouvement_en_cours		: ok		+116
+
+-position_objet_sur_ecran_X-
+-position_objet_sur_ecran_Y-
+
+deja fait : pointeur_index_actuel_mouvement : ok		+124
+
+-pointeur_points_objet_en_cours-
+-nb_points_objet_en_cours-				=> pour calc3D
+-pointeur_coordonnees_projetees_actuel-			- venant de calc3D
+
+nb_frame_animation_en_cours : ok			+112
+pointeur_vers_coordonnees_points_animation_en_cours : ok		+100
+
+-pointeur_points_objet_en_cours-
+-nb_points_objet_en_cours-				=> pour calc3D
+-pointeur_coordonnees_projetees_actuel-			- venant de calc3D
+
+deja fait : pointeur_vers_coordonnees_points_animation_en_cours	: ok			+100
+
+-nb_points_objet_en_cours_au_total-
+
+nb_frame_en_cours					: ok 				+64
+
+
+---pointeur_actuel_buffer_en_cours_de_calcul		- mise à jour normale - pas stocké - OK
+
+-------------------------------
+
+mis à jour après la fin de la scene d'animation:
+
+-pointeur_actuel_buffer_sequences_calcul-
+
+
+----------------------------------------------
+je lis la suite d'animation, pour 1 objet
+je sauvegarde ses variables, j'avance le pointeur correspondant
+je lis la suite d'animation, pour l'objet suivant
+je sauvegarde ses variables, j'avance le pointeur correspondant
+etc , jusqu'à nombre_d_objets_de_la_scene_en_cours = 0 , boucle vers boucle_preparation_objet_par_objet
+---OK ^
+
+ensuite
+
+je remet le pointeur sur les structures, au début
+
+je charge les variables de l'objet 1
+je fais tourner la boucle de calculs
+je sauvegarde les variables modifiées pour l'objet 1
+
+je boucle sur l'objet 2
+
+
+
+- boucle_lecture_animations
+	- boucle_preparation_objet_par_objet
+	- boucle_calcul_frames_classiques
+		- boucle_execution_objet_par_objet
+	

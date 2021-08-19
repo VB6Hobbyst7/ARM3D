@@ -1,0 +1,3 @@
+﻿  sincos.cpp
+C:\Users\Eric\source\repos\sincos\sincos.cpp(46,12): warning C4477: 'printf' : la chaîne de format '%x' nécessite un argument de type 'unsigned int', mais l'argument variadique 1 est de type 'double'
+  sincos.vcxproj -> C:\Users\Eric\source\repos\sincos\Debug\sincos.exe

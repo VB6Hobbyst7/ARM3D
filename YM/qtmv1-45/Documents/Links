@@ -1,0 +1,20 @@
+Useful links for QTM users
+--------------------------
+
+Current QTM release web site:
+
+ http://www.phlamethrower.co.uk/riscos/qtm.php
+
+
+Useful sources of ProTracker / FastTracker / Octalyser / etc. music modules:
+
+FastTracker MODs*     http://neoartcr.com/modules/fasttracker%20(mod)/
+The MOD archive       http://www.modarchive.org/index.php
+World of Game Music   http://www.mirsoft.info/index.php
+aminet                http://www.aminet.net/mods/blkha
+Modland database      http://www.exotica.org.uk/wiki/Special:Modland
+
+
+Note: some mods on aminet are LHA compressed, Amiga and PC tools are available to decompress these.
+
+*The FastTracker MOD archive includes lots of 4/6/8 channel mods, which QTM v1.45 will play perfectly, but it also contains some 12/16/24/32 channel mods, which the current version of QTM cannot play.

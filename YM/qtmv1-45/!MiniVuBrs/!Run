@@ -1,0 +1,14 @@
+| !Run file for !MiniVuBrs v0.21
+|
+| The World's smallest VU Bars!!!
+|
+| © 1993 Phoenix
+|
+Set MiniBars$Dir <Obey$Dir>
+IconSprites <MiniBars$Dir>.!Sprites
+|
+If "<QTMTrack$Dir>" <> "" Then RMEnsure QTMTracker 1.0 RMLoad <QTMTrack$Dir>.QTMModule
+RMEnsure QTMTracker 1.0 Error !MiniVuBrz requires the QTM module to be loaded first
+|
+WimpSlot -min 32K -max 32K
+Run <MiniBars$Dir>.!RunImage

@@ -1,0 +1,3 @@
+﻿convert_png.obj : error LNK2019: symbole externe non résolu _FreeImage_Initialise référencé dans la fonction _main
+convert_png.obj : error LNK2019: symbole externe non résolu _FreeImage_GetFormatFromFIF référencé dans la fonction "void __cdecl FreeImageErrorHandler(enum FREE_IMAGE_FORMAT,char const *)" (?FreeImageErrorHandler@@YAXW4FREE_IMAGE_FORMAT@@PBD@Z)
+C:\Users\Eric\source\repos\convert_png\Debug\convert_png.exe : fatal error LNK1120: 2 externes non résolus

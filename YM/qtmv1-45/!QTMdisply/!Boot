@@ -1,0 +1,4 @@
+| QTM Tracker Display v0.60 (c) S. Harrison Jun '97-Dec '13
+|
+Set QTMDisplay$Dir <Obey$Dir>
+IconSprites <QTMDisplay$Dir>.!Sprites

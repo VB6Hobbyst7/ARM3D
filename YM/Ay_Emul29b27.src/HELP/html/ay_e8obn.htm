@@ -1,0 +1,42 @@
+<!doctype html><HTML><HEAD><META HTTP-EQUIV="Content-Type" Content="text/html; charset=Windows-1251"><LINK REL="stylesheet" TYPE="text/css" HREF="Ay_Emul.css"></HEAD><BODY>
+
+<H1><A NAME="asc"></A>ASC</H1>
+
+<P>Russian musical editor ASC Sound Master (ASM) versions from 0.xx to 2.xx produce these files. Compiler of ASM always adds play routine to data block. But ASC file must contain only data block. So, you must remove player from compiled module before giving extension ASC to your module. Unfortunately, author and name of song are stored in player routine (see comments below).</P>
+
+<P>Simplified structure of ASC module follows.</P>
+<pre>
+Offset  Number of byte  Name                     Description
++0      1               Delay                    Initial minimal number of interrupts between notes of track
++1      1               Loop Position            Position for looping song
++2      2               PatternPointers Pointer  Pointer to PatternPointers table
++4      2               SamplePointers Pointer   Pointer to SamplePointers table
++6      2               OrnamentPointers Pointer Pointer to OrnamentPointers table
++8      1               Position's Number        Number of positions
++9      ???             Data                     Other data
+</pre>
+<P>Some files have no field LoopPosition (in this case loop position is zero). These are files of ASM version 0.xx. For playing it in AY Emulator, add manually this field (with zero value) and increase next three pointers by 1. Other way: give to this file another extension than ASC, and open it in AY Emulator. If extension is non-standard then Emulator tries to detect module type automatically.</P>
+
+<P>Simplified structure of ASC module improved for storing song titles and author names by Ilya Kudryavcev (Himik's ZXZ) of Power of Sound group follows.</P>
+<pre>
+Offset                  Number of byte  Name                     Description
++0                      1               Delay                    Initial minimal number of interrupts between notes of track
++1                      1               Loop Position            Position for looping song
++2                      2               PatternPointers Pointer  Pointer to PatternPointers table
++4                      2               SamplePointers Pointer   Pointer to SamplePointers table
++6                      2               OrnamentPointers Pointer Pointer to OrnamentPointers table
++8                      1               Position's Number        Number of positions
++9                      Position's
+                        Number          Position list            Position list in playing order
++9+Position's Number    19              ID                       String 'ASM COMPILATION OF '
++28+Position's Number   20              Title                    Song title
++48+Position's Number   4               ID2                      String ' BY '
++52+Position's Number   20              Author                   Song author name
++72+Position's Number   ???             Data                     Other data
+</pre>
+<P>So, to add name and title to ASC module, extract whole string 'ASM COMPILATION OF &lt;NAME&gt; BY &lt;AUTHOR&gt;' from player manually and use ASCCONV utility (see official emulator site).</P>
+
+<P>Version 2.8 of Ay_Emul gives you second way: if compiled ASM-file (as player+module) is stored in SCL, TRD or Hobeta formats, simply open it in Ay_Emul and save from playlist. In this case ASM and STP module-blocks are modified to store titles and names and saved separately from player.</P>
+
+</BODY>
+</HTML>

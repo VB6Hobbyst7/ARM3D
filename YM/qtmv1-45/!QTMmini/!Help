@@ -1,0 +1,20 @@
+>>>>>> !QTMmini <<<<<<                             © Steve Harrison 1993-2013
+
+Welcome to QTheMusic (QTM), the ProTracker / StarTrekker player for Risc OS.
+
+!QTMmini is a very small application, which loads and controls the QTMTracker
+module. Once loaded, !QTMmini displays an icon on the iconbar which moves in
+time to any music currently being played by QTM.
+
+To pause the music playing, left-click once on the QTMmini icon, then click
+again to start music playing. To stop and rewind the music to the start,
+right-click on the QTMmini icon then click again to start playing.
+
+This 'mini-app' is part of the QTM v1.43 full source code release, but may be
+distributed separately so long as this !Help file remains inside it. !QTMmini
+was written in 1993, but never officially released until now.
+
+For more details about QTM and to download the QTM v1.43 source code release
+pack, visit the QTM web page at: www.phlamethrower.co.uk/riscos/qtm.php
+
+Steve Harrison, 15/6/2013

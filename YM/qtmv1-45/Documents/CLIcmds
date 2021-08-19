@@ -1,0 +1,91 @@
+'*Commands' list and help for QTM v1.45          © Steve Harrison, 1993-2013
+----------------------------------------------------------------------------
+
+The '*Commands' provided by QTM are there to bridge the gap between QTM
+desktop interfaces, such as !QTMTrack and !QTMPlay, and the programmer's SWI
+interface. All the '*Commands' can be used by pressing f12 and typing them
+in, or by putting them in Basic programs.
+
+The commands provided are basically a simpler alternative to the most
+commonly used QTM SWIs. Help on all the commands can be given at any time by
+typing '*Help QTM.'
+
+These commands are:
+
+   *QTMLoad <filename> [x]
+
+This is probably the most important command, allowing you to load a piece of
+music into QTM. Type '*QTMLoad Music' to load the song 'Music' and start it
+playing.
+
+If an 'x' is placed after the filename, QTM will load the song, but not
+start it playing. This is useful in some demos etc.
+
+   *QTMStart
+
+Use this command to start a song playing, after it has been stopped, paused,
+or loaded using the 'x' parameter with *QTMLoad.
+
+   *QTMStop
+
+This command will stop the current song playing and reset the internal
+position and song variables, leaving QTM set up at the start of the song, as
+if it had just been loaded.
+
+   *QTMPause
+
+Like *QTMStop, this command stops the current song playing, but it will not
+reset any internal variables, so the song can be restarted from exactly the
+same position, using *QTMStart.
+
+   *QTMClear
+
+This command stops the current song, as with *QTMStop, but also removes the
+song from memory, freeing any RMA used to store the song.
+
+   *QTMInfo
+
+This command will display a list of information about the currently loaded
+song, such as the name, author, length, etc.
+
+   *QTMSamples
+
+This will list all the samples used in the current song, along with any
+unused samples, if they contain a name.
+
+   *QTMVolume [<volume 0-64>]
+
+Use this command, with no parameters, to display the current overall QTM
+volume (min 0-64 max). A parameter in the range 0-64 will set the new
+overall QTM output level.
+
+   *QTMPos [<position> [x]]
+
+Without any parameters, this command will display the current song position
+in the sequence table.
+
+If you specify a song position after the command, the player will jump to
+the start of that position.
+
+If you follow a song position by the 'x' parameter, after jumping to the new
+position, the player will continue at the same event as it was at in the old
+position, rather than starting at the start (event 0) of the new sequence.
+
+   *QTMDisable [<effect number>]
+
+This command has only been provided for advanced users of the module. If an
+effect number is specified (range 0-F or E0-EF - for 'E' effects)), the
+given effect will be disabled from being playing. Use *QTMEnable to
+re-enable the effect again.
+
+If no effect number is specified, a list of the currently disabled effects
+is displayed.
+
+   *QTMEnable <effect number>
+
+Use this command to reverse the operation of *QTMDisable, and re-enable the
+specified effect.
+
+   *QTMTransparent [On|Off]
+
+Use this to enable/disable the Transparent Sound System (TSS), or with no parameter to show the current state of the TSS. TSS is enabled by default only on RISC OS 5 and later.

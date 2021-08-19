@@ -1,0 +1,52 @@
+<!doctype html><HTML><HEAD><META HTTP-EQUIV="Content-Type" Content="text/html; charset=Windows-1251"><LINK REL="stylesheet" TYPE="text/css" HREF="Ay_Emul.css"></HEAD><BODY>
+
+<H1><A NAME="mixer"></A>"Mixer" dialog box</H1>
+
+<P>Hot key is <B>G</B>. "Mixer" box give you full control under AY/YM sound emulation. All settings are used not only for playing, all of them used during generating WAV files too. The most parameters can be changed during playing. If "Get from list" option were checked then corresponding parameter would be got from playlist global or item parameters or format headers. In dark fields current playing parameters are shown.</P>
+
+<P><B><I>Tab sheet AY Emulation.</I></B></P>
+
+<P><B>Channels amplification. </B>For each of chip channels (A, B and C) amplification to right and left channels can be set by input number (range 0–255, equivalent to k = 0.0–1.0) or by moving controls. Use predefined patterns by choosing item of list in lower side of Channels amplification control group. Beeper amplification is not attached to ABC-levels in this version. Preamp is a volume of AY and beeper emulation, use higher value for better emulation.</P>
+
+<P><B>Optimization.</B> Choose emulation algorithm. If <I>for quality</I> is checked then linear interpolation is added, but process is a little slower, than if <I>for performance</I> is checked. You can add FIR-filter in “<I>for quality</I>” mode for better quality of downsampling from sound chip frequency to sample rate of sound card<I>. </I>For AY frequency 1,7734 MHz and sample rate 44,1 KHz <I>Filter quality </I>option must be not lower than 32 to complete rejecting all ultrasound frequencies.</P>
+
+<P><B>Sound chip frequency.</B> Choose standard external clock frequency or input own value.</P>
+
+<P><B>Chip type.</B> Choose chip type (AY or YM).</P>
+
+<P><B>Interrupt frequency.</B> Choose or input player frequency (not used for playing non-synchronized files – OUT, ZXAY, EPSG, AY and AYM, they use <I>TStates per frame</I> instead).</P>
+
+<P><B>OUT, ZXAY, AY, AYM.</B> <I>Interrupt offset</I> parameter is used for converting from OUT and ZXAY into PSG, VTX and YM6. Its value is time of first outing to chip from beginning of OUT or ZXAY file (in Z80 tacts). The offset must be smaller than <I>TStates per frame</I> parameter. <I>TStates per frame</I> parameter defines range in Z80 TStates (tacts) between interrupts. The parameter is used with <I>Z80 frequency </I>for playing AY and AYM files, and with <I>Interrupt offset</I> for converting from OUT and ZXAY. If OUT and ZXAY are created by using "Z80" Speccy emulator by G.A. Lunter then <I>TStates per frame</I> must be 69888.</P>
+
+<P><B>Z80 frequency. </B>Set Z80 clock frequency for playing OUT, ZXAY, EPSG, AY and AYM. If OUT files are created in "Z80" Speccy emulator by G.A. Lunter then Z80 frequency is 3494400 Hz. If EPSG files are created in “Pentagon 128K” mode of Z80 Stealth emulator then Z80 frequency is 3500000 Hz.</P>
+
+<P><B>YM5, YM6 (MFP Timer). </B>Timer frequency for playing special effects in YM5 and YM6 files. Option <I>AY/YM x 16/13 </I>attaches MFP timer frequency to clock frequency of the sound chip with factor 16/13. Very conveniently for listening these files on frequency AY/YM other than 2 MHz. Option <I>Atari ST</I> allows to set documented frequency 2457600 Hz. Option <I>Another</I> allows to enter any other value.</P>
+
+<P><B><I>Tab sheet WaveOut.</I></B></P>
+
+<P><B>Sample rate, Bit rate, Channels.</B> Parameters of your sound card for digital audio playing. For exact emulation use 16 bit Stereo sound at sample rate frequency is equal to AY counters frequency (press <I>AY / 8 </I>button and required frequency will be calculated automatically). In fact, this high sample rate can be used only for generating WAV files for resampling to some lower rate with external resampler. For listening sound in Ay_Emul select sample rate not lower than 44100 Hz. If your sound device does not support selected sample rate, error message will appear during trying start playing or maybe sound quality will be worse even than at lower but supported rate. Anyway, refer to your sound card documentation.</P>
+
+<P><B>Buffers</B>. Allows set sound <I>Buffer length</I> in ms and select <I>Number of buffers</I>. <I>Total length</I> is calculated automatically. It defines sound latency after changing AY emulation parameters on corresponding tabsheet. Small length can bring to unstable sound.</P>
+
+<P><B>Device.</B> Allows select sound device. <I>Wave Mapper</I> is recommended.</P>
+
+<P>All setting of tab sheet <B><I>WaveOut</I></B> cannot be changed during playing. To stop playing, press <B>Stop playing</B> button at lower side of tab sheet.</P>
+
+<P><B><I>Tab sheet MIDIOut.</I></B></P>
+
+<P><B>Device.</B> Allows select MIDI-device (cannot be changed during playing).</P>
+
+<P><B>Seek to first “Note On” MIDI-event.</B> Allows to skip silence at begin of MIDI-files. There are many ones in Internet MIDI-collections, that have 2–3 seconds delay before playing (some time about 10 seconds), so it is very useful feature. Option works only if pause is greater then 0.5 sec, then <B><I>Progess</I></B> thumb jumps to 20 ms before first note in MIDI-file.</P>
+
+<P><B><I>Tab sheet Global Volume.</I></B></P>
+
+<P>Select desired mixer to associate with global volume control on main window. By checking <I>Linear scale</I> you are disabling logarithmic one. <I>Save volume position</I> allows to store current volume before closing application.</P>
+
+<P><B><I>Tab sheet BASS.DLL v2.2.</I></B></P>
+
+<P>For the moment, you can adjust only visualization of playing BASS.DLL files. <I>FFT Quality</I> – higher value for better visualization in low frequency range, but it takes more CPU time. <I>Hanning window </I>– check for more accurate FFT algorithm. <I>AmpMin/AmpMax</I> – parameter for logarithmic amplitude scale. 0.003 corresponds to about 300 levels of sound (very close to reality).</P>
+
+<P><B>Restore </B>button is used for setting all "Mixer" box parameters to default values. <B>Close</B> button closes mixer window (use Esc from keyboard).</P>
+
+</BODY>
+</HTML>

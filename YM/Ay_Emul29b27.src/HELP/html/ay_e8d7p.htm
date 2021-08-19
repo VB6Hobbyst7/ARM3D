@@ -1,0 +1,125 @@
+<!doctype html><HTML><HEAD><META HTTP-EQUIV="Content-Type" Content="text/html; charset=Windows-1251"><LINK REL="stylesheet" TYPE="text/css" HREF="Ay_Emul.css"></HEAD><BODY>
+
+<H1><A NAME="commandline"></A>Command line</H1>
+
+<P>Emulator can take parameters from command line. Parameters must be divided with spaces. If parameters are starts with '/' (slash line) then they are interprets as keys else as files names. If file name contains spaces, it must be quoted. If any other key contains spaces then it must be quoted too. You can quote only part of key containing spaces. Files in command line will be added to cleared playlist and will start playing. You can give in command line one or more file names (including playlist files: M3U and AYL). You can specify track/song number for multitrack/multisong files (AY, AYM, MID or XMI) after filename (using “:N” addition, where N is track number starting from 0). List of available keys here.</P>
+<pre>
+Sample rate                     sXXXXX
+                                XXXXX = 48000, 44100, 22050 or 11025.
+Bit rate                        bXXXXX
+                                XXXXX = 16 or 8.
+Channels number for sound card  dmono
+                                dstereo
+                                dlist – get from playlist
+                                dmixer – don't get from playlist.
+Number of sound buffers         wonXXXXX
+                                XXXXX = from 2 to 10.
+Length of sound buffer          wolXXXXX
+                                XXXXX = from 5 to 2000.
+Sound device number             wodXXXXX
+                                XXXXX >= 0.
+Z80 chip frequency              zXXXXX
+                                XXXXX = from 1000000 to 8000000
+Chip type       AY-3-8910/12    eay
+                YM2149(F)       eym
+                                elist – get from playlist
+                                emixer – don't get from playlist.
+Sound chip frequency            yXXXXX
+                                XXXXX = from 1000000 to 3000000
+                                ylist – get from playlist
+                                ymixer – don't get from playlist.
+First interrupt time            tXXXXX
+                                XXXXX greater or equal to zero.
+Number of tacts between
+                interrupts      iXXXXX
+                                XXXXX greater than zero.
+Amplitude analyzer      on      aon
+                        off     aoff
+Spectrum analyzer       on      fon
+                        off     foff
+Optimization    by performance  op
+                by quality      oq
+Interface language:     Russian lr
+                        English le
+Interrupt frequency             nXXXXX
+                                XXXXX from 1000 to 2000000 (in mHz)
+                                nlist – get from playlist
+                                nmixer – don't get from playlist.
+Loop playing            on      con
+                        off     coff
+Emulator priority               ri – idle,
+                                rn – normal,
+                                rh – high.
+Channels amplification          hMONO
+                                hAYABC
+                                hAYACB
+                                hYMACB
+                                and so on for any standard combination.
+                                hlist – get from playlist
+                                hmixer – don't get from playlist.
+Manual channels amplification   hXX,XX,XX,XX,XX,XX
+                                where after key h 3 pairs of amplificator for each chip channel (A, B and C). In pair first number for left channel, second for right. XX = from 0 to 255.
+Icon on system tray     never   g0
+                        always  g1
+                minimize        g2
+Auto scroll name        on      kon
+                        off     koff
+Timer mode      “elapsed”       j0
+                “remained”      j1
+                “length”        j2
+Load skin       standard        p
+                user defined    pAYS_File_Name
+        MFP timer frequency     attach to AY/YM q
+                user defined    qXXXXX
+                                XXXXX from 1000000 to 3000000
+Beeper amplification            uXXXXX
+                                XXXXX = from 0 to 255
+Window          minimize        vhide
+                restore         vshow
+Auto save path to folders
+                        on      won
+                        off     woff
+Auto saving volume position
+                        on      !on
+                        off     !off
+Auto saving position of windows
+                        on      xon
+                        off     xoff
+FIDO Tools keys
+                File Name       fdfFile_Name
+                Nothing         fdnString
+                Suffix          fdsString
+                Prefix          fdpString
+                Enabled yes     fde1
+                        no      fde0
+                Kill On Nothing
+                        yes     fdk1
+                        no      fdk0
+                Kill On Exit
+                        yes     fdx1
+                        no      fdx0
+                Win Encoding
+                        yes     fdw1
+                        no      fdw0
+Adding files to the end of
+playlist                        add
+Adding files to the end of
+playlist and starting playing
+first of them                   adp
+</pre>
+<p>Examples:</p>
+<pre>
+1)      AY_Emul /h0,0,255,255,0,0 /hmixer My_Song.vtx
+        play My_Song.vtx, use only channel B in middle.
+2)      AY_Emul.exe "My New Song.sqt" /eay
+        play My New Song.sqt by emulating AY-3-8910/12.
+3)      AY_Emul.exe /hYMABC /eym /y1750000 /n48828
+        set in mixer next values: standard amplification YMABC, chip type YM2149, chip frequency 1750000 Hz, interrupt frequency 48.828 Hz (typical xUSSR version of ZX Spectrum computer, Pentagon 128K for example).
+4)      Ay_Emul.exe /p"C:\Sergey Bulba\Pascal\Skin Manager\"Example.ays
+        load skin Example.ays
+5)      Ay_Emul /add DESERT.XMI:0 “Dizzy 7.ay”:2 “Dizzy 6.aym:1”
+        add to playlist first track of DESERT.XMI, third melody from Dizzy 7.ay and second melody from Dizzy 6.aym.
+</pre>
+
+</BODY>
+</HTML>

@@ -1,0 +1,17 @@
+| !Boot file for !QTMmini - The Protracker/Startrekker music player
+|
+| © Steve Harrison, 1993-2013
+|
+IconSprites <Obey$Dir>.!Sprites
+IconSprites <Obey$Dir>.FileSprs
+
+Set QTMmini$Dir <Obey$Dir>
+Set File$Type_000 STracker
+Set File$Type_001 STracker
+Set File$Type_CC5 TeqMusic
+Set File$Type_CB6 STModule
+
+Set Alias$@RunType_CB6 Run <QTMmini$Dir>.!Run %%*0
+Set Alias$@RunType_CC5 Run <QTMmini$Dir>.!Run %%*0
+Set Alias$@RunType_001 Run <QTMmini$Dir>.!Run %%*0
+Set Alias$@RunType_000 Run <QTMmini$Dir>.!Run %%*0

@@ -1,0 +1,135 @@
+QTM user load information v1.45                  © Steve Harrison, 1993-2013
+----------------------------------------------------------------------------
+
+QTM provides full support for user-memory operation. This means it is
+possible to load the module to anywhere you like in memory, and use it from
+there, without interfering with other versions of QTM which could be loaded
+in the RMA or user-loaded by other programs - an obvious advantage for games
+and demos etc. which are expected to return to an unaltered desktop.
+
+Using QTM's user-memory system, the QTM module can be loaded into an
+application's memory, or combined into the application itself at the time of
+compiling, and used from there as described below. (Although for Desktop
+tasks, restrictions apply, see notes below).
+
+However, QTM in this form cannot be controlled via SWIs or *Commands as these
+calls are directed to the version of QTM loaded to the RMA. Instead, the
+program must communicate with QTM by using four 'user entry points'
+available. If the QTM module is loaded into user memory at address 'QTMaddr'
+the entry points are:
+
+  QTMaddr + 52  Initialisation routine
+  QTMaddr + 56  SWI calling routine
+  QTMaddr + 60  Service call entry point
+  QTMaddr + 64  Finalisation routine
+
+The entry points are described below, followed by some notes on using
+user-loaded QTM in different situations.
+
+Note: in versions of QTM prior to v1.41, the entry points were located at a
+different position (starting at QTMaddr+40). The location of the entry points
+has been changed to make room for the required 32-bit compatibility flags.
+
+
+Initialisation routine                             QTMaddr+52  (QTMaddr+&34)
+----------------------------------------------------------------------------
+
+On entry: -
+On exit : -
+
+V flag set if error occurred and QTM could not initialise.
+
+You should call this address only once, during the programs own
+initialisation routines. It sets up all QTMs internal registers and
+workspace, ready for operation through the SWI entry point.
+
+
+SWI calling routine                                QTMaddr+56  (QTMaddr+&38)
+----------------------------------------------------------------------------
+
+On entry: R0-R9 dependant on R11
+          R11 = QTM SWI offset to call (= QTM SWI number-&47E40)
+
+On exit : R0-R9 dependant on SWI called
+          R11 preserved
+
+V set if error occurred.
+
+This is the main communication route to the user-loaded QTM module.
+
+To execute a QTM SWI (see the SWI help file) put the QTM SWI number minus
+&47E40 in R11 (which gives a range of &00-&1F, at the moment). The other
+registers, R0-R9, should be set as required by the SWI. Then simply jump to
+this entry point... couldn't be simpler!
+
+Note: As some QTM SWIs assume SVC or an IRQ mode, if you call this entry
+point from User mode, QTM will issue SWI OS_EnterOS to allow the code to
+operate correctly, and then return to user mode after the operation.
+
+
+Service call entry point                           QTMaddr+60  (QTMaddr+&3C)
+----------------------------------------------------------------------------
+
+On entry: R1 = service call number (currently R0 must be &46)
+          Other registers dependant on call
+
+On exit : R1 preserved
+          Other registers dependant on call
+
+V set if error occurred.
+
+This entry point has currently only one use and that is to inform QTM of a
+screen mode change.
+
+The service number is &46 (R1=&46, other registers not required) - by calling
+QTM with this number when the screen mode changes, QTM's auto pitch
+correction is able to operate. You MUST call this entry point, with R1=&46,
+after EVERY mode change your program issues (and every time you receive the
+Wimp message Message_ModeChange, if you are using QTM in a desktop task),
+otherwise the music pitch may be incorrect on pre-RiscPC computers.
+
+
+Finalisation routine                               QTMaddr+64  (QTMaddr+&40)
+----------------------------------------------------------------------------
+
+On entry: -
+On exit : -
+
+No errors are returned by this call.
+
+This address should be called after you have finished using QTM, and your
+program is about to end. The routine clears up any left-over interrupts from
+QTM (cancels any music playing, turns off VU bar interrupts, etc.) and
+releases all claimed memory, leaving the memory taken up by the QTM module
+free.
+
+After calling this entry point, you should not make any more calls to QTM,
+unless it is to the initialisation entry point, to re-initialise the module -
+although you should not ever have to do this as you should only finalise when
+your program is about to end.
+
+
+Notes on using user-loaded QTM
+------------------------------
+
+1) Memory handling. All RMA handling by QTM is exactly the same in the
+user-loaded form as in the module form, for example, songs can still be
+loaded to the RMA by calling the SWI entry point for QTM_Load (R11=0) with
+R1=0, the memory used for the song will still be released when the song is
+cleared.
+
+2) Using user-loaded QTM on the desktop. If you intend to use the user-loaded
+version of QTM in a desktop task, as opposed to a single tasking game etc.
+with a desktop front end, you must user-load the module to an RMA claimed
+memory block, so that interrupts can still access QTM whatever task may be
+paged in.
+
+3) Using QTM in a game etc. with a desktop front end. You can use QTM from
+your own application memory, as long as you do not access QTM from the
+desktop front to your program. Also, you must return QTM to a dormant state
+before going to back to the desktop, by calling QTM_Stop or QTM_Pause, and
+QTM_VUBarControl, if necessary - otherwise the computer will cause an error
+when an interrupt occurs and QTM is paged out of memory.
+
+4) Oh, and remember: Don't use *Commands, or call SWIs by SWI 'QTM_....' - it
+won't work!

@@ -1,0 +1,101 @@
+xmms-tfmx, by David Le Corfec <dlecorfec@users.sourceforge.net>
+
+Installation:
+./configure; make; sudo make install
+
+Hint:
+In the xmms FileInfo dialog for TFMX tunes, you have buttons
+for the prev/next subsongs.
+
+History:
+v0.1 (6-Mar-2000)
+ First release
+
+v0.2 (27-Mar-2000)
+ Applied tfmxplay interpolation patch from <duh, forgot the name>.
+ Added About and Configure dialogs (though incomplete).
+
+v0.3 (07-Nov-2000)
+ Bumped revision nmuber :)
+ New hosting on sourceforge
+ Corrected the "usual" ip_get_song_info() bug (crash in xmms 1.2.3
+ because title_real and len_real are not initialized to default values
+ before being passed to the plugin, and assumes the plugin will do so)
+ (Always consider plugins as harmful entities ! Don't rely on them !)
+ Humm ?
+
+v0.4 (20-Jul-2003)
+ Thanks to Clemens Buchmann for pointing out that the newlines in
+strings didnt compile with recent gcc.
+
+v0.5 (31-Oct-2003)
+ Applied patch from Kristof Koehler. It brings new options to the
+configuration dialog and allows to save settings. Thanks !
+
+--
+
+This is a plugin for the Unix soundplayer XMMS (www.xmms.org).
+It replays the TFMX format, created by Chris Huelsbeck in the late 80's.
+Used in the Amiga games Turrican 1/2/3, X-Out, Z-Out, Apydia,
+and many others ...
+
+This plugin is based upon code (Winamp plugin) by
+Per Lindén <per@snakebite.com>, in turn based upon code
+(free TFMX replayer) by Jonathan H. Pickard.
+
+I didn't do anything to improve the readability of the code,
+so read it at your own risks :)
+I didn't either improve the replayer, because TFMX is really a strange
+format, and I'm not a natural born replay coder.
+
+Congratulations to Huelsbeck, Pickard, BlackBird and Cyb
+(those 2 did the EaglePlayer plugin), these are the only people
+I know who worked on the inner parts of a TFMX player :)
+
+Features:
+* Support most TFMX Pro/7V/1.5 tunes
+* Support either mdat + smpl, or single TFMX files produced
+  by Cyb' TFMXConverter.
+* Support SQSH decrunching on single TFMX file (because TFMX tunes on
+  my Amiga hard disk were squashed :)
+* FileInfo Dialog, with Prev/Next Subsong buttons (useful :)
+* About dialog
+* Configure dialog
+
+As a feature (or bug), currently each subsong is played only once
+before jumping to the next one. A prefs panel should
+allow you to loop on subsongs.
+
+Enjoy those great TFMX tunes ! (my favorite being Turrican-II Title)
+
+Chris Huelsbeck is now working in the USA, and he has a site:
+www.huelsbeck.com
+
+rant: If xmms was clever app (in future versions perhaps) it would have
+an unpacking engine, a channel mixer, a prev/next song/pattern board,
+or anything that would improve plugin's quality while removing some
+burden from the plugin programmer. EaglePlayer II forever.
+(unfortunately it's been already 5 years - started in 1998 - that I plan
+to make a proper modular player for Unix, but it seems that Unix sucks
+ - or is it just me ? :)
+
+
+Copyrights :
+
+My own code is Public Domain (though there isn't a clear limit
+between my code and jhp/pl code in some files, I like to wander
+everywhere to add "static" keywords and other minor changes ...)
+OK, I admit, I messed up the whole thing by trying to give
+meaningful names to the variables. But it was an attempt at improving
+clarity ! :)
+
+This XMMS plugin is heavily based on existing sources ...
+
+1) tfmx-play
+
+ See tfmxplay.txt
+
+2) TFMXPlug
+
+ See tfmxplugreadme.txt
+

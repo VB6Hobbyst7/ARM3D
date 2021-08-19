@@ -1,14 +1,31 @@
-F00:0001       ; vsync
-F00:0002       ; irq status A bit3
-F00:0003       ; control port : bit 7
-F00:0004       ; pas FIQ
-F00:0005       ; irq, PC=18
-F00:0006       ; at memory 1c = return
-F00:0007       
+F00:0001       ;
+F00:0002       ; template avec rasterman integré
+F00:0003       ;
+F00:0004       ; - Vsync
+F00:0005       ; 128-1 avant première ligne
+F00:0006       ; 128-1 par ligne * 256 lignes
+F00:0007       ; 7142 avant Vsync
 F00:0008       
-F00:0009       .equ Screen_Mode, 13
+F00:0009       ; - 200 lignes : 200*128 - 1
 F00:0010       
-F00:0011       .include "swis.h.asm"
+F00:0011       
+F00:0012       .equ Screen_Mode, 97
+F00:0013       .equ	IKey_Escape, 0x9d
+F00:0014       
+F00:0015       ; valeurs fixes RMA
+F00:0016       .equ	ylines,			56
+F00:0017       .equ	vsyncreturn,	7142+(128*200)						; vsyncreturn=7168+16-1-48   +   vsyncreturn+=7
+F00:0018       .equ	vsyncreturn_low,		(vsyncreturn & 0x00FF)>>0
+F00:0019       .equ	vsyncreturn_high,		((vsyncreturn & 0xFF00)>>8)
+F00:0020       
+F00:0021       .equ	hsyncline,		128-1			; 127
+F00:0022       .equ	hsyncline_low,			((hsyncline & 0x00FF)>>0)
+F00:0023       .equ	hsyncline_high,			((hsyncline & 0xFF00)>>8)
+F00:0024       
+F00:0025       .equ	position_ligne_hsync,	 	0xE4
+F00:0026       .equ	saveR14_firq,				0xE0
+F00:0027       
+F00:0028       .include "swis.h.asm"
 F01:0001       .equ OS_WriteC, 0
 F01:0002       .equ OS_WriteO, 2
 F01:0003       .equ OS_NewLine, 3
@@ -25,2018 +42,1060 @@ F01:0013       .equ OS_ReadMonotonicTime, 0x42
 F01:0014       .equ OS_ReadDynamicArea, 0x5c
 F01:0015       .equ OS_ConvertCardinal4, 0xd8	
 F01:0016       
-F01:0017       .equ OSByte_EventEnable, 14
-F01:0018       .equ OSByte_EventDisable, 13
-F01:0019       .equ OSByte_Vsync, 19
-F01:0020       .equ OSByte_WriteVDUBank, 112
-F01:0021       .equ OSByte_WriteDisplayBank, 113
-F01:0022       .equ OSByte_ReadKey, 129
-F01:0023       
-F01:0024       .equ OSWord_WritePalette, 12
+F01:0017       .equ OS_Module, 0x1E
+F01:0018       
+F01:0019       .equ OSByte_EventEnable, 14
+F01:0020       .equ OSByte_EventDisable, 13
+F01:0021       .equ OSByte_Vsync, 19
+F01:0022       .equ OSByte_WriteVDUBank, 112
+F01:0023       .equ OSByte_WriteDisplayBank, 113
+F01:0024       .equ OSByte_ReadKey, 129
 F01:0025       
-F01:0026       .equ IKey_LeftClick, 0xf6
-F01:0027       .equ IKey_RightClick, 0xf4
-F01:0028       .equ IKey_Space, 0x9d
-F01:0029       
-F01:0030       .equ DynArea_Screen, 2
+F01:0026       .equ OSWord_WritePalette, 12
+F01:0027       
+F01:0028       .equ IKey_LeftClick, 0xf6
+F01:0029       .equ IKey_RightClick, 0xf4
+F01:0030       .equ IKey_Space, 0x9d
 F01:0031       
-F01:0032       .equ VD_ScreenStart, 148 
+F01:0032       .equ DynArea_Screen, 2
 F01:0033       
-F01:0034       .equ OS_Claim, 0x1f
-F01:0035       .equ OS_Release, 0x20
-F01:0036       .equ OS_AddToVector, 0x47
-F01:0037       
-F01:0038       .equ ErrorV, 0x01
-F01:0039       .equ EventV, 0x10
-F01:0040       .equ Event_VSync, 4
-F01:0041       
-F01:0042       .equ OS_ConvertHex2, 0xd1
-F01:0043       .equ OS_ConvertHex4, 0xd2
-F01:0044       .equ OS_ConvertHex8, 0xd4
-F01:0045       
-F01:0046       .equ QTM_Load, 0x47E40
-F01:0047       .equ QTM_Start, 0x47E41
-F01:0048       .equ QTM_Stop, 0x47E42
-F01:0049       .equ QTM_SetSampleSpeed, 0x47E49
-F00:0012       
-F00:0013       .org 0x8000
-F00:0014       
-F00:0015       Start:
-F00:0016           adr sp, stack_base
-               S01:00008000:  01 DB 8F E2
-F00:0017       	B main
-               S01:00008004:  00 01 00 EA
-F00:0018       
-F00:0019       .skip 1024
-F00:0020       stack_base:
-F00:0021       
-F00:0022       scr_bank:
-F00:0023       	.long 0
-               S01:00008408:  00 00 00 00
-F00:0024       
-F00:0025       main:
-F00:0026       
-F00:0027       	bl calc3D
-               S01:0000840C:  38 00 00 EB
-F00:0028       
-F00:0029       	MOV r0,#22	;Set MODE
-               S01:00008410:  16 00 A0 E3
-F00:0030       	SWI OS_WriteC
-               S01:00008414:  00 00 00 EF
-F00:0031       	MOV r0,#Screen_Mode
-               S01:00008418:  0D 00 A0 E3
-F00:0032       	SWI OS_WriteC
-               S01:0000841C:  00 00 00 EF
-F00:0033       	
+F01:0034       .equ VD_ScreenStart, 148 
+F01:0035       
+F01:0036       .equ OS_Claim, 0x1f
+F01:0037       .equ OS_Release, 0x20
+F01:0038       .equ OS_AddToVector, 0x47
+F01:0039       
+F01:0040       .equ ErrorV, 0x01
+F01:0041       .equ EventV, 0x10
+F01:0042       .equ Event_VSync, 4
+F01:0043       
+F01:0044       .equ OS_ConvertHex2, 0xd1
+F01:0045       .equ OS_ConvertHex4, 0xd2
+F01:0046       .equ OS_ConvertHex8, 0xd4
+F01:0047       
+F01:0048       .equ QTM_Load, 0x47E40
+F01:0049       .equ QTM_Start, 0x47E41
+F01:0050       .equ QTM_Stop, 0x47E42
+F01:0051       .equ QTM_SetSampleSpeed, 0x47E49
+F01:0052       
+F01:0053       ; Rasterman 
+F01:0054       .equ	RasterMan_Version,			0x47e84
+F01:0055       .equ	RasterMan_SetTables,		0x47e83
+F01:0056       .equ	RasterMan_Install,			0x47e80
+F01:0057       .equ	RasterMan_Release,			0x47e81
+F01:0058       .equ	RasterMan_Wait,				0x47e82
+F01:0059       .equ	RasterMan_ReadScanline,		0x47e85
+F01:0060       .equ	RasterMan_SetVIDCRegister,	0x47e86
+F01:0061       .equ	RasterMan_SetMEMCRegister,	0x47e87
+F01:0062       .equ	RasterMan_QTMParamAddr,		0x47e88
+F01:0063       .equ	RasterMan_ScanKeyboard,		0x47e89
+F01:0064       .equ	RasterMan_ClearKeyBuffer, 	0x47e8a
+F01:0065       .equ	RasterMan_ReadScanAddr,		0x47e8b
+F01:0066       
+F01:0067       ; QDebug_Break
+F01:0068       .equ	BKP, 0x44B85
+F01:0069       
+F01:0070       ; XOS
+F01:0071       .equ	XOS_ServiceCall,		0x20030
+F01:0072       
+F00:0029       	.org 0x8000
+F00:0030       	
+F00:0031       main:
+F00:0032       
+F00:0033       ;"XOS_ServiceCall"
 F00:0034       
-F00:0035       	
-F00:0036       	; Claim the Event vector
-F00:0037       	mov r0, #EventV
-               S01:00008420:  10 00 A0 E3
-F00:0038       	adr r1, event_handler
-               S01:00008424:  58 10 8F E2
-F00:0039       	mov r2, #0
-               S01:00008428:  00 20 A0 E3
-F00:0040       	swi OS_AddToVector
-               S01:0000842C:  47 00 00 EF
-F00:0041       	
-F00:0042       	; Enable Vsync event
-F00:0043       	mov r0, #OSByte_EventEnable
-               S01:00008430:  0E 00 A0 E3
-F00:0044       	mov r1, #Event_VSync
-               S01:00008434:  04 10 A0 E3
-F00:0045       	SWI OS_Byte
-               S01:00008438:  06 00 00 EF
-F00:0046       
-F00:0047       
-F00:0048       	mov r1,#0x1FD8400
-               S01:0000843C:  61 1B A0 E3 7F 17 81 E3
-F00:0049       	mov r2,#0x1
-               S01:00008444:  01 20 A0 E3
-F00:0050       	LDR r0, [r1]
-               S01:00008448:  00 00 91 E5
-F00:0051       	STR r2,[r1]
-               S01:0000844C:  00 20 81 E5
-F00:0052       
-F00:0053       ; boucle
-F00:0054       
-F00:0055       boucle:
-F00:0056       	LDR r0, vsync_count
-               S01:00008450:  5C 00 9F E5
-F00:0057       	cmp r0,#500
-               S01:00008454:  7D 0F 50 E3
-F00:0058       	bne boucle
-               S01:00008458:  FC FF FF 1A
-F00:0059       
-F00:0060       
-F00:0061       
-F00:0062       
-F00:0063       	; disable vsync event
-F00:0064       	mov r0, #OSByte_EventDisable
-               S01:0000845C:  0D 00 A0 E3
-F00:0065       	mov r1, #Event_VSync
-               S01:00008460:  04 10 A0 E3
-F00:0066       	swi OS_Byte
-               S01:00008464:  06 00 00 EF
-F00:0067       	
-F00:0068       		; release our event handler
-F00:0069       	mov r0, #EventV
-               S01:00008468:  10 00 A0 E3
-F00:0070       	adr r1, event_handler
-               S01:0000846C:  10 10 8F E2
-F00:0071       	mov r2, #0
-               S01:00008470:  00 20 A0 E3
-F00:0072       	swi OS_Release
-               S01:00008474:  20 00 00 EF
-F00:0073       	
-F00:0074       	; Show our final frame count
-F00:0075       	bl debug_write_vsync_count
-               S01:00008478:  0F 00 00 EB
-F00:0076       	
-F00:0077       	MOV R0,#0
-               S01:0000847C:  00 00 A0 E3
-F00:0078       	SWI OS_Exit
-               S01:00008480:  11 00 00 EF
-F00:0079       	
-F00:0080       	
-F00:0081       	
-F00:0082       ; R0=event number
-F00:0083       event_handler:
-F00:0084       	cmp r0, #Event_VSync
-               S01:00008484:  04 00 50 E3
-F00:0085       	movnes pc, r14
-               S01:00008488:  0E F0 B0 11
-F00:0086       	
-F00:0087       	STMDB sp!, {r0-r1, lr}
-               S01:0000848C:  03 40 2D E9
-F00:0088       
-F00:0089       	; update the vsync counter
-F00:0090       	LDR r0, vsync_count
-               S01:00008490:  1C 00 9F E5
-F00:0091       	ADD r0, r0, #1
-               S01:00008494:  01 00 80 E2
-F00:0092       	STR r0, vsync_count
-               S01:00008498:  14 00 8F E5
-F00:0093       	
-F00:0094       	mov r1,#0x1FD8400
-               S01:0000849C:  61 1B A0 E3 7F 17 81 E3
-F00:0095       	LDR r0, [r1]
-               S01:000084A4:  00 00 91 E5
-F00:0096       	;mov r2,#0x303
-F00:0097       	mov r0,r0, ror #31
-               S01:000084A8:  E0 0F A0 E1
-F00:0098       	;eor r0,r0,r2
-F00:0099       	STR r0,[r1]
-               S01:000084AC:  00 00 81 E5
-F00:0100       	
-F00:0101       	
-F00:0102       	LDMIA sp!, {r0-r1, pc}
-               S01:000084B0:  03 80 BD E8
-F00:0103       
-F00:0104       vsync_count:
-F00:0105       	.long 0
-               S01:000084B4:  00 00 00 00
-F00:0106       	
-F00:0107       last_vsync:
-F00:0108       	.long -1
-               S01:000084B8:  FF FF FF FF
-F00:0109       	
-F00:0110       debug_write_vsync_count:
-F00:0111       	mov r0, #30
-               S01:000084BC:  1E 00 A0 E3
-F00:0112       	swi OS_WriteC
-               S01:000084C0:  00 00 00 EF
-F00:0113       
-F00:0114       	ldr r0, vsync_count
-               S01:000084C4:  18 00 1F E5
-F00:0115       	ldr r1, last_vsync
-               S01:000084C8:  18 10 1F E5
-F00:0116       	sub r0, r0, r1
-               S01:000084CC:  01 00 40 E0
-F00:0117       	adr r1, debug_string
-               S01:000084D0:  10 10 8F E2
-F00:0118       	mov r2, #8
-               S01:000084D4:  08 20 A0 E3
-F00:0119       	swi OS_ConvertHex4
-               S01:000084D8:  D2 00 00 EF
-F00:0120       
-F00:0121       	adr r0, debug_string
-               S01:000084DC:  04 00 8F E2
-F00:0122       	swi OS_WriteO
-               S01:000084E0:  02 00 00 EF
-F00:0123       
-F00:0124       	mov pc, r14
-               S01:000084E4:  0E F0 A0 E1
+F00:0035       ;OS_SWINumberFromString 
+F00:0036       ;	ldr		R1,pointeur_XOS_ServiceCall
+F00:0037       
+F00:0038       ;	SWI 0x39
+F00:0039       
+F00:0040       
+F00:0041       
+F00:0042       	mov		R0,#11			; OS_Module 11 : Insert module from memory and move into RMA
+               S01:00008000:  0B 00 A0 E3
+F00:0043       	ldr		R1,pointeur_module97
+               S01:00008004:  14 14 9F E5
+F00:0044       	SWI		0x1E
+               S01:00008008:  1E 00 00 EF
+F00:0045       	
+F00:0046       	MOV r0,#22	;Set MODE
+               S01:0000800C:  16 00 A0 E3
+F00:0047       	SWI OS_WriteC
+               S01:00008010:  00 00 00 EF
+F00:0048       	MOV r0,#Screen_Mode
+               S01:00008014:  61 00 A0 E3
+F00:0049       	SWI OS_WriteC
+               S01:00008018:  00 00 00 EF
+F00:0050       
+F00:0051       
+F00:0052       	MOV r0,#23	;Disable cursor
+               S01:0000801C:  17 00 A0 E3
+F00:0053       	SWI OS_WriteC
+               S01:00008020:  00 00 00 EF
+F00:0054       	MOV r0,#1
+               S01:00008024:  01 00 A0 E3
+F00:0055       	SWI OS_WriteC
+               S01:00008028:  00 00 00 EF
+F00:0056       	MOV r0,#0
+               S01:0000802C:  00 00 A0 E3
+F00:0057       	SWI OS_WriteC
+               S01:00008030:  00 00 00 EF
+F00:0058       	SWI OS_WriteC
+               S01:00008034:  00 00 00 EF
+F00:0059       	SWI OS_WriteC
+               S01:00008038:  00 00 00 EF
+F00:0060       	SWI OS_WriteC
+               S01:0000803C:  00 00 00 EF
+F00:0061       	SWI OS_WriteC
+               S01:00008040:  00 00 00 EF
+F00:0062       	SWI OS_WriteC
+               S01:00008044:  00 00 00 EF
+F00:0063       	SWI OS_WriteC
+               S01:00008048:  00 00 00 EF
+F00:0064       	SWI OS_WriteC
+               S01:0000804C:  00 00 00 EF
+F00:0065       
+F00:0066       
+F00:0067       ; Set screen size for number of buffers
+F00:0068       	MOV r0, #DynArea_Screen
+               S01:00008050:  02 00 A0 E3
+F00:0069       	SWI OS_ReadDynamicArea
+               S01:00008054:  5C 00 00 EF
+F00:0070       	; r1=taille actuelle de la memoire ecran
+F00:0071       	MOV r0, #DynArea_Screen
+               S01:00008058:  02 00 A0 E3
+F00:0072       ; 416 * ( 32+258+32+258+32)
+F00:0073       	MOV r2, #416*612
+               S01:0000805C:  8A 2D A0 E3 0F 29 82 E3
+F00:0074       
+F00:0075       	; 416*258 * 2 ecrans
+F00:0076       	SUBS r1, r2, r1
+               S01:00008064:  01 10 52 E0
+F00:0077       	SWI OS_ChangeDynamicArea
+               S01:00008068:  2A 00 00 EF
+F00:0078       	
+F00:0079       ; taille dynamic area screen = 416*258*2
+F00:0080       
+F00:0081       	MOV r0, #DynArea_Screen
+               S01:0000806C:  02 00 A0 E3
+F00:0082       	SWI OS_ReadDynamicArea
+               S01:00008070:  5C 00 00 EF
+F00:0083       	
+F00:0084       	; r0 = pointeur memoire ecrans
+F00:0085       	
+F00:0086       	;add		R0,R0,#416*32
+F00:0087       	str		r0,screenaddr1
+               S01:00008074:  B0 03 8F E5
+F00:0088       	add		r0,r0,#416*290
+               S01:00008078:  5D 0D 80 E2 07 09 80 E2
+F00:0089       	str		r0,screenaddr2
+               S01:00008080:  A8 03 8F E5
+F00:0090       	
+F00:0091       	mov		r0,#416*32
+               S01:00008084:  0D 0B A0 E3
+F00:0092       	mov		R0,#0
+               S01:00008088:  00 00 A0 E3
+F00:0093       	str		r0,screenaddr1_MEMC
+               S01:0000808C:  A0 03 8F E5
+F00:0094       	add		r0,r0,#416*290
+               S01:00008090:  5D 0D 80 E2 07 09 80 E2
+F00:0095       	str		r0,screenaddr2_MEMC
+               S01:00008098:  98 03 8F E5
+F00:0096       	
+F00:0097       	ldr		r1,screenaddr1
+               S01:0000809C:  88 13 9F E5
+F00:0098       
+F00:0099       ; au milieu
+F00:0100       	add		R1,R1,#208
+               S01:000080A0:  D0 10 81 E2
+F00:0101       	mov		R2,R1
+               S01:000080A4:  01 20 A0 E1
+F00:0102       	
+F00:0103       	ldr		r3,couleur
+               S01:000080A8:  74 33 9F E5
+F00:0104       	
+F00:0105       ; nombre de lignes
+F00:0106       	mov		R0,#50
+               S01:000080AC:  32 00 A0 E3
+F00:0107       
+F00:0108       boucle_triangle_ligne:
+F00:0109       	strb	r3,[r1]
+               S01:000080B0:  00 30 C1 E5
+F00:0110       	strb	r3,[r2]
+               S01:000080B4:  00 30 C2 E5
+F00:0111       	subs	R1,R1,#1
+               S01:000080B8:  01 10 51 E2
+F00:0112       	adds	R2,R2,#1
+               S01:000080BC:  01 20 92 E2
+F00:0113       	
+F00:0114       	add		R1,R1,#416
+               S01:000080C0:  1A 1E 81 E2
+F00:0115       	add		R2,R2,#416
+               S01:000080C4:  1A 2E 82 E2
+F00:0116       	
+F00:0117       	subs	R0,R0,#1
+               S01:000080C8:  01 00 50 E2
+F00:0118       	bgt		boucle_triangle_ligne
+               S01:000080CC:  F7 FF FF CA
+F00:0119       	
+F00:0120       	
+F00:0121       	
+F00:0122       	
+F00:0123       	
+F00:0124       	
 F00:0125       	
-F00:0126       	
-F00:0127       	
-F00:0128       debug_string:
-F00:0129       	.skip 12
-F00:0130       	
-F00:0131       
+F00:0126       		ldr		r3,couleur2
+               S01:000080D0:  50 33 9F E5
+F00:0127       	mov		r0,#416
+               S01:000080D4:  1A 0E A0 E3
+F00:0128       .clsall4:
+F00:0129       	strb	r3,[r1],#1
+               S01:000080D8:  01 30 C1 E4
+F00:0130       	subs	r0,r0,#1
+               S01:000080DC:  01 00 50 E2
+F00:0131       	bne		.clsall4
+               S01:000080E0:  FC FF FF 1A
 F00:0132       
-F00:0133       ; PORTION DE CODE EFFECTUANT LES PROJECTIONS DES POINTS
-F00:0134       
-F00:0135       ; SX=SIN/COS ANGLE X,SY=SIN/COS ANGLE Y,SZ=SIN/COS ANGLE Z
-F00:0136       ; L14=ANGLE ROT X,L16=ANGLE ROT Y,L3C=ANGLE ROT Z
-F00:0137       ; ROTX,ROTY,ROTZ=ANGLES COURANTS
-F00:0138       
-F00:0139       ; table SINCOS entrelacés
-F00:0140       
-F00:0141       ; en entrée :
-F00:0142       ; angleX et incrementX
-F00:0143       ; angleY et intrementY
-F00:0144       ; angleZ et incrementZ
+F00:0133       
+F00:0134       	SWI		22
+               S01:000080E4:  16 00 00 EF
+F00:0135       	MOVNV R0,R0            
+               S01:000080E8:  00 00 A0 F1
+F00:0136       
+F00:0137       	
+F00:0138       	; update pointeur video hardware
+F00:0139       	ldr	r0,screenaddr1_MEMC
+               S01:000080EC:  40 03 9F E5
+F00:0140       	mov r0,r0,lsr #4
+               S01:000080F0:  20 02 A0 E1
+F00:0141       	mov r0,r0,lsl #2
+               S01:000080F4:  00 01 A0 E1
+F00:0142       	mov r1,#0x3600000
+               S01:000080F8:  36 16 A0 E3
+F00:0143       	add r0,r0,r1
+               S01:000080FC:  01 00 80 E0
+F00:0144       	str r0,[r0]
+               S01:00008100:  00 00 80 E5
 F00:0145       
-F00:0146       ; SIN et COS * 32768 signés
-F00:0147       ; 512 valeurs pour cos et 512 pour sin
-F00:0148       ; cos * cos *2 puis swap
-F00:0149       
-F00:0150       
-F00:0151       calc3D:
-F00:0152       
-F00:0153       	str r14,save_R14
-               S01:000084F4:  C4 E2 8F E5
-F00:0154       
-F00:0155       	; calcul de la matrice de transformation
-F00:0156       	;mov r12,#matrice
-F00:0157       	mov r11,#SINCOS
-               S01:000084F8:  8A BC A0 E3 E4 B0 8B E3
-F00:0158       	
-F00:0159       	ldr r1,angleX
-               S01:00008500:  E4 12 9F E5
-F00:0160       	add r1,r11, r1, lsl #3
-               S01:00008504:  81 11 8B E0
-F00:0161       	ldmia r1, {r2-r3}			
-               S01:00008508:  0C 00 91 E8
-F00:0162       	; r2=SINX , r3=COSX
-F00:0163       	
-F00:0164       	ldr r1,angleY
-               S01:0000850C:  DC 12 9F E5
-F00:0165       	add r1,r11, r1, lsl #3
-               S01:00008510:  81 11 8B E0
-F00:0166       	ldmia r1, {r4-r5}
-               S01:00008514:  30 00 91 E8
-F00:0167       	; r4=SINY , r5=COSY
-F00:0168       	
-F00:0169       	ldr r1,angleZ
-               S01:00008518:  D4 12 9F E5
-F00:0170       	add r1,r11, r1, lsl #3
-               S01:0000851C:  81 11 8B E0
-F00:0171       	ldmia r1, {r6-r7}
-               S01:00008520:  C0 00 91 E8
-F00:0172       	; r6=SINZ , r7=COSZ
-F00:0173       	
-F00:0174       	RSB r6,r6,#0
-               S01:00008524:  00 60 66 E2
-F00:0175       	;mov r1,#0
-F00:0176       	;sub r6,r1,r6
-F00:0177       	;neg R6, ROTATION EN Z BUGGEE !!!
+F00:0146       	bl		RM_init
+               S01:00008104:  10 00 00 EB
+F00:0147       
+F00:0148       	bl		RM_start
+               S01:00008108:  1A 00 00 EB
+F00:0149       	
+F00:0150       	mov		R8,#0x1234
+               S01:0000810C:  12 8C A0 E3 34 80 88 E3
+F00:0151       	
+F00:0152       boucle:
+F00:0153       
+F00:0154       	bl		RM_wait_VBL
+               S01:00008114:  63 00 00 EB
+F00:0155       
+F00:0156       ; ici il faut tester une touche
+F00:0157       
+F00:0158       
+F00:0159       
+F00:0160       	bl      RM_scankeyboard
+               S01:00008118:  67 00 00 EB
+F00:0161       	cmp		R0,#0x5F
+               S01:0000811C:  5F 00 50 E3
+F00:0162       	bne		boucle
+               S01:00008120:  FB FF FF 1A
+F00:0163       
+F00:0164       	
+F00:0165       
+F00:0166       exit:
+F00:0167       	;bl		RM_wait_VBL
+F00:0168       	;bl      RM_scankeyboard
+F00:0169       	str		R8,toucheclavier
+               S01:00008124:  1C 80 8F E5
+F00:0170       
+F00:0171       	bl		RM_wait_VBL
+               S01:00008128:  5E 00 00 EB
+F00:0172       ;-----------------------
+F00:0173       ;sortie
+F00:0174       ;-----------------------
+F00:0175       
+F00:0176       	bl	RM_release
+               S01:0000812C:  4A 00 00 EB
+F00:0177       
 F00:0178       
-F00:0179       	; r2-r7 utilisés
+F00:0179       	
 F00:0180       
-F00:0181       	; calcul de CY*CZ
-F00:0182       	muls r14, r5 , r7	; CY*CZ * 2^15*2^15
-               S01:00008528:  95 07 1E E0
-F00:0183       	; # / 2^15
-F00:0184       	;asr r1,#15
-F00:0185       	mov r14,r14,asr #15	; / 32768
-               S01:0000852C:  CE E7 A0 E1
-F00:0186       	;str r1, [r12], #4	;r14
-F00:0187       		
-F00:0188       	; calcul de -(CY*SZ*CX+SX*SY)
-F00:0189       	muls r1,r5,r6	;r1=cy*sz
-               S01:00008530:  95 06 11 E0
-F00:0190       	mov r1,r1,asr #15
-               S01:00008534:  C1 17 A0 E1
-F00:0191       	mov r8,r1		; on met de coté cy*sz dans R8
-               S01:00008538:  01 80 A0 E1
-F00:0192       	muls r1,r3,r1	; CY*SZ*CX
-               S01:0000853C:  93 01 11 E0
-F00:0193       	muls r0,r2,r4	; SX*SY
-               S01:00008540:  92 04 10 E0
-F00:0194       	adds r1,r0,r1	; (CY*SZ*CX+SX*SY)
-               S01:00008544:  01 10 90 E0
-F00:0195       	mov r0,#0
-               S01:00008548:  00 00 A0 E3
-F00:0196       	sub r13,r0,r1,asr #15	; r1=-(CY*SZ*CX+SX*SY) / 32768
-               S01:0000854C:  C1 D7 40 E0
-F00:0197       	;str r1, [r12], #4	;r13
-F00:0198       	
-F00:0199       	; calcul de CY*SZ*SX-SY*CX
-F00:0200       	muls r1,r8,r2		; CY*SZ*SX
-               S01:00008550:  98 02 11 E0
-F00:0201       	
-F00:0202       	muls r0,r4,r3		; SY*CX
-               S01:00008554:  94 03 10 E0
-F00:0203       	subs r1,r0,r1 		; CY*SZ*SX-SY*CX
-               S01:00008558:  01 10 50 E0
-F00:0204       	mov r10,r1,asr #15	; / 32768
-               S01:0000855C:  C1 A7 A0 E1
-F00:0205       	;str r1, [r12], #4	; r10
+F00:0181       	MOV r0,#22	;Set MODE
+               S01:00008130:  16 00 A0 E3
+F00:0182       	SWI OS_WriteC
+               S01:00008134:  00 00 00 EF
+F00:0183       	MOV r0,#12
+               S01:00008138:  0C 00 A0 E3
+F00:0184       	SWI OS_WriteC
+               S01:0000813C:  00 00 00 EF
+F00:0185       
+F00:0186       	
+F00:0187       	
+F00:0188       	MOV R0,#0
+               S01:00008140:  00 00 A0 E3
+F00:0189       	SWI OS_Exit
+               S01:00008144:  11 00 00 EF
+F00:0190       toucheclavier:		.long 0
+               S01:00008148:  00 00 00 00
+F00:0191       
+F00:0192       RM_init:
+F00:0193       ; ne fait que verifier la version de Risc OS...
+F00:0194       	str		lr,save_lr
+               S01:0000814C:  20 E0 8F E5
+F00:0195       ; get OS version
+F00:0196       	MOV     R0,#129
+               S01:00008150:  81 00 A0 E3
+F00:0197       	MOV     R1,#0
+               S01:00008154:  00 10 A0 E3
+F00:0198       	MOV     R2,#0xFF
+               S01:00008158:  FF 20 A0 E3
+F00:0199       	SWI     OS_Byte
+               S01:0000815C:  06 00 00 EF
+F00:0200       
+F00:0201       	STRB    R1,os_version
+               S01:00008160:  78 12 CF E5
+F00:0202       
+F00:0203       ; Risc os 3.5 ? => sortie
+F00:0204       	CMP     R1,#0xA5
+               S01:00008164:  A5 00 51 E3
+F00:0205       	beq		exit
+               S01:00008168:  ED FF FF 0A
 F00:0206       	
-F00:0207       	; calcul de SZ
-F00:0208       	;str r6, [r12], #4	;r6
-F00:0209       	
-F00:0210       	; calcul de CX*CZ
-F00:0211       	muls r0,r3,r7
-               S01:00008560:  93 07 10 E0
-F00:0212       	mov r11,r0,asr #15	; / 32768
-               S01:00008564:  C0 B7 A0 E1
-F00:0213       	;str r0, [r12], #4	; r11
-F00:0214       	
-F00:0215       	; calcul de -SX*CZ
-F00:0216       	muls r0,r2,r7
-               S01:00008568:  92 07 10 E0
-F00:0217       	mov r1,#0
-               S01:0000856C:  00 10 A0 E3
-F00:0218       	sub r12,r1,r0,asr #15	; /32768
-               S01:00008570:  C0 C7 41 E0
-F00:0219       	;str r0, [r12], #4		; r12
-F00:0220       	
-F00:0221       	; calcul de SY*CZ
-F00:0222       	muls r0, r4, r7
-               S01:00008574:  94 07 10 E0
-F00:0223       	mov r7,r0,asr #15	; / 32768
-               S01:00008578:  C0 77 A0 E1
-F00:0224       	;str r0, [r12], #4	; r7 possible
-F00:0225       	
-F00:0226       	; r2,r3,r4,r5,r6 : utilisés
-F00:0227       	; r7 : dispo
-F00:0228       	; calcul de CY*SX-SY*SZ*CX
-F00:0229       	muls r0, r4, r6		; r0=SY*SZ
-               S01:0000857C:  94 06 10 E0
-F00:0230       	mov r0,r0,asr #15	; / 32768
-               S01:00008580:  C0 07 A0 E1
-F00:0231       	muls r1, r5, r2		; r1 = CY*SX
-               S01:00008584:  95 02 11 E0
-F00:0232       	muls r8, r0, r3		; r8 = SY*SZ*CX
-               S01:00008588:  90 03 18 E0
-F00:0233       	subs r1, r1, r8		;  CY*SX-SY*SZ*CX
-               S01:0000858C:  08 10 51 E0
-F00:0234       	mov r4,r1,asr #15	; / 32768
-               S01:00008590:  C1 47 A0 E1
-F00:0235       	;str r1, [r12], #4	; r4 possible
-F00:0236       	
-F00:0237       	; r2,r3,r5 : utilisés
-F00:0238       	; r4,r6,r7 : dispos
-F00:0239       	; calcul de SY*SZ*SX+CY*CX
-F00:0240       	; r0=SY*SZ
-F00:0241       	muls r0, r2 , r0	; SY*SZ*SX
-               S01:00008594:  92 00 10 E0
-F00:0242       	muls r1, r5, r3		; CY*CX
-               S01:00008598:  95 03 11 E0
-F00:0243       	adds r0, r1, r0		; SY*SZ*SX+CY*CX
-               S01:0000859C:  00 00 91 E0
-F00:0244       	mov r8,r0,asr #15	; / 32768
-               S01:000085A0:  C0 87 A0 E1
-F00:0245       	;str r0, [r12], #4	; r8
-F00:0246       	
-F00:0247       	; il faut 9 resgistres
-F00:0248       	; r0, r1 : bloqués
-F00:0249       	; r12,r11,r10,r9,r8 : 5
-F00:0250       	; r12,r11,r10
-F00:0251       	; r6 garde SZ
-F00:0252       	; r13 : dispo
-F00:0253       	; r14  : dispo
-F00:0254       	
-F00:0255       	; au final : r14 , r13 , r10 , r6 , r11 , r12 , r7 , r4 , r8
-F00:0256       	; dispos : r0,r1,r2,r3, r5,r9
-F00:0257       	
-F00:0258       
-F00:0259       	ldr r0,numero_objet	; numero objet en cours
-               S01:000085A4:  3C 02 9F E5
-F00:0260       	mov r1,#all_objects
-               S01:000085A8:  22 1B A0 E3 04 10 81 E3
-F00:0261       	add R1, R1, R0, LSL #3	; numero objet *8
-               S01:000085B0:  80 11 81 E0
-F00:0262       	ldr r5,[r1],#4			; r5 = pointeur vers les points
-               S01:000085B4:  04 50 91 E4
-F00:0263       	
-F00:0264       	ldr r1,[r5],#4			; nb points
-               S01:000085B8:  04 10 95 E4
-F00:0265       	
-F00:0266       	mov r0,#coordonnees_transformees
-               S01:000085BC:  22 0B A0 E3 E4 00 80 E3
-F00:0267       	str r1,[r0],#4			; nb points
-               S01:000085C4:  04 10 80 E4
-F00:0268       	
-F00:0269       boucle_calc_points:
-F00:0270       	str r1,nb_points_en_cours
-               S01:000085C8:  E8 11 8F E5
-F00:0271       
-F00:0272       	ldr r1,[r5],#4			; X point
-               S01:000085CC:  04 10 95 E4
-F00:0273       	ldr r2,[r5],#4			; Y point
-               S01:000085D0:  04 20 95 E4
-F00:0274       	ldr r3,[r5],#4			; Z point
-               S01:000085D4:  04 30 95 E4
-F00:0275       	str r5,pointeur_en_cours_liste_points
-               S01:000085D8:  D4 51 8F E5
-F00:0276       
-F00:0277       
+F00:0207       	ldr		lr,save_lr
+               S01:0000816C:  00 E0 9F E5
+F00:0208       	mov		pc,lr
+               S01:00008170:  0E F0 A0 E1
+F00:0209       save_lr:		.long		0
+               S01:00008174:  00 00 00 00
+F00:0210       
+F00:0211       ; SH decoded IRQ and FIQ masks
+F00:0212       ;
+F00:0213       ; to load/set/store IRQ and FIQ masks use:
+F00:0214       ;
+F00:0215       ; Rx=mask
+F00:0216       ; Ry=&3200000 (IOC base)
+F00:0217       ;
+F00:0218       ;
+F00:0219       ; LDRB Rx,[Ry,#&18+0]      ;load irqa mask (+0)
+F00:0220       ; STRB Rx,oldirqa          ;store original mask
+F00:0221       ; MOV  Rx,#%00100000       ;only allow timer 0 interrupt
+F00:0222       ; STRB Rx,[Ry,#&18+2]      ;(note +2 on storing)
+F00:0223       ;
+F00:0224       ; LDRB Rx,[Ry,#&28+0]      ;load irqb mask (+0)
+F00:0225       ; STRB Rx,oldirqb          ;store original mask
+F00:0226       ; MOV  Rx,#%00000010       ;only allow sound interrupt
+F00:0227       ; STRB Rx,[Ry,#&28+2]      ;(note +2 on storing)
+F00:0228       ;
+F00:0229       ;
+F00:0230       
+F00:0231       ;irqa mask = IOC (&3200000) + &18
+F00:0232       ;
+F00:0233       ;bit 0   - il6 0 printer busy / printer irq
+F00:0234       ;    1   - il7 0 serial port ringing / low battery
+F00:0235       ;    2   - if  0 printer ack / floppy index
+F00:0236       ;    3s  - ir  1 vsync
+F00:0237       ;    4   - por 0 power on
+F00:0238       ;    5c  - tm0 0 timer 0
+F00:0239       ;    6   - tm1 1 timer 1
+F00:0240       ;    7   - 1   0 n/c      (fiq downgrade?)
+F00:0241       ;
+F00:0242       ;irqb mask = IOC (&3200000) + &28
+F00:0243       ;
+F00:0244       ;bit 0   - il0 0 expansion card fiq downgrade
+F00:0245       ;    1   - il1 0 sound system buffer change
+F00:0246       ;    2   - il2 0 serial port controller
+F00:0247       ;    3   - il3 0 hdd controller / ide controller
+F00:0248       ;    4   - il4 0 floppy changed / floppy interrupt
+F00:0249       ;    5   - il5 0 expansion card interrupt
+F00:0250       ;    6   - stx 1 keyboard transmit empty
+F00:0251       ;    7cs - str 1 keyboard recieve full
+F00:0252       ;
+F00:0253       ; c = cmdline critical
+F00:0254       ; s = desktop critical
+F00:0255       ;
+F00:0256       ;fiq mask (none are critical) = IOC (&3200000) + &38
+F00:0257       ;
+F00:0258       ;bit 0  - fh0 0 floppy data request / floppy dma
+F00:0259       ;    1  - fh1 0 fdc interrupt / fh1 pin on ioc
+F00:0260       ;    2  - fl  0 econet interrupt
+F00:0261       ;    3  - c3  0 c3 on ioc
+F00:0262       ;    4  - c4  0 c4 on ioc / serial interrupt (also IRQB bit2)
+F00:0263       ;    5  - c5  0 c5 on ioc
+F00:0264       ;    6  - il0 0 expansion card interrupt
+F00:0265       ;    7  - 1   0 force fiq (always 1)
+F00:0266       ;
+F00:0267       ;cr
+F00:0268       ;
+F00:0269       ;bit 0 - c0 IIC data
+F00:0270       ;    1 - c1 IIC clock
+F00:0271       ;    2 - c2 floppy ready / density
+F00:0272       ;    3 - c3 reset enable / unique id
+F00:0273       ;    4 - c4 aux i/o connector / serial fiq
+F00:0274       ;    5 - c5 speaker
+F00:0275       ;    6 - if printer ack or floppy index
+F00:0276       ;    7 - ir vsync
+F00:0277       ;	
 F00:0278       
-F00:0279       	; calcul de X transformé
-F00:0280       	muls r5,r1,r14			; x
-               S01:000085DC:  91 0E 15 E0
-F00:0281       	muls r9,r2,r13
-               S01:000085E0:  92 0D 19 E0
-F00:0282       	adds r5,r5,r9
-               S01:000085E4:  09 50 95 E0
-F00:0283       	muls r9,r3,r10
-               S01:000085E8:  93 0A 19 E0
-F00:0284       	adds r5,r5,r9
-               S01:000085EC:  09 50 95 E0
-F00:0285       	mov r5,r5,asr #8
-               S01:000085F0:  45 54 A0 E1
-F00:0286       	str r5,[r0],#4			; stock X transformé
-               S01:000085F4:  04 50 80 E4
-F00:0287       	
-F00:0288       	; calcul de Y transformé	
-F00:0289       	muls r5,r1,r6			; Y
-               S01:000085F8:  91 06 15 E0
-F00:0290       	muls r9,r2,r11
-               S01:000085FC:  92 0B 19 E0
-F00:0291       	adds r5,r5,r9
-               S01:00008600:  09 50 95 E0
-F00:0292       	muls r9,r3,r12
-               S01:00008604:  93 0C 19 E0
-F00:0293       	adds r5,r5,r9
-               S01:00008608:  09 50 95 E0
-F00:0294       	mov r5,r5,asr #8
-               S01:0000860C:  45 54 A0 E1
-F00:0295       	str r5,[r0],#4			; stock Y transformé	
-               S01:00008610:  04 50 80 E4
-F00:0296       	
-F00:0297       	; calcul de Z transformé
-F00:0298       	muls r9,r1,r7			; Z
-               S01:00008614:  91 07 19 E0
-F00:0299       	muls r5,r2,r4
-               S01:00008618:  92 04 15 E0
-F00:0300       	adds r9,r5,r9
-               S01:0000861C:  09 90 95 E0
-F00:0301       	muls r5,r3,r8
-               S01:00008620:  93 08 15 E0
-F00:0302       	adds r9,r5,r9
-               S01:00008624:  09 90 95 E0
-F00:0303       	
-F00:0304       	ldr r5,distance_z
-               S01:00008628:  8C 51 9F E5
-F00:0305       	mov r9,r9,asr #16
-               S01:0000862C:  49 98 A0 E1
-F00:0306       	subs r9,r9,r5			; r0=Z transformé
-               S01:00008630:  05 90 59 E0
-F00:0307       	str r9,[r0],#4			; stock Z transformé
-               S01:00008634:  04 90 80 E4
-F00:0308       	
-F00:0309       	ldr r5,pointeur_en_cours_liste_points
-               S01:00008638:  74 51 9F E5
-F00:0310       	ldr r1,nb_points_en_cours
-               S01:0000863C:  74 11 9F E5
-F00:0311       	subs r1,r1,#1
-               S01:00008640:  01 10 51 E2
-F00:0312       	bne boucle_calc_points
-               S01:00008644:  DF FF FF 1A
-F00:0313       	
-F00:0314       
-F00:0315       ; calculs des divisons X/Z et Y/Z
-F00:0316       	mov r9,#coordonnees_transformees
-               S01:00008648:  22 9B A0 E3 E4 90 89 E3
-F00:0317       	ldr r8,[r9],#4			; r8=nb points
-               S01:00008650:  04 80 99 E4
-F00:0318       	mov r10,#coordonnees_projetees
-               S01:00008654:  89 AC A0 E3 E4 A0 8A E3
-F00:0319       	
-F00:0320       boucle_divisions_calcpoints:
-F00:0321       	
-F00:0322       	ldr r11,[r9],#4			; X point
-               S01:0000865C:  04 B0 99 E4
-F00:0323       	ldr r12,[r9],#4			; Y point
-               S01:00008660:  04 C0 99 E4
-F00:0324       	ldr r13,[r9],#4			; Z point
-               S01:00008664:  04 D0 99 E4
-F00:0325       
-F00:0326       
-F00:0327       ; si r11 négatif , 
-F00:0328        
-F00:0329       
-F00:0330       	mov R5,#0
-               S01:00008668:  00 50 A0 E3
-F00:0331       	cmp r11,#0
-               S01:0000866C:  00 00 5B E3
-F00:0332       	bpl .cont1
-               S01:00008670:  01 00 00 5A
-F00:0333       ; r11 négatif
+F00:0279       RM_start:
+F00:0280       	str		lr,save_lr
+               S01:00008178:  0C E0 0F E5
+F00:0281       ; appel XOS car si appel OS_SWI si erreur, ça sort directement
+F00:0282       	MOV		R0,#0x0C           ;claim FIQ
+               S01:0000817C:  0C 00 A0 E3
+F00:0283       	SWI		XOS_ServiceCall
+               S01:00008180:  30 00 02 EF
+F00:0284       	bvs		exit
+               S01:00008184:  E6 FF FF 6A
+F00:0285       
+F00:0286       
+F00:0287       ; we own FIQs
+F00:0288       
+F00:0289       
+F00:0290       	TEQP	PC,#0xC000001
+               S01:00008188:  43 F3 3F E3
+F00:0291       ;	TEQP	PC,#0b11<<26 OR 0b01			;disable IRQs and FIQs, change to FIQ mode
+F00:0292       	MOV		R0,R0
+               S01:0000818C:  00 00 A0 E1
+F00:0293       
+F00:0294       	ADR       R0,fiqoriginal				; sauvegarde de R8-R14
+               S01:00008190:  93 0F 8F E2
+F00:0295       	STMIA     R0,{R8-R14}
+               S01:00008194:  00 7F 80 E8
+F00:0296       
+F00:0297       	MOV       R1,#0x3200000
+               S01:00008198:  32 16 A0 E3
+F00:0298       	LDRB      R0,[R1,#0x18]
+               S01:0000819C:  18 00 D1 E5
+F00:0299       	STR       R0,oldIRQa
+               S01:000081A0:  58 02 8F E5
+F00:0300       	LDRB      R0,[R1,#0x28]
+               S01:000081A4:  28 00 D1 E5
+F00:0301       	STR       R0,oldIRQb
+               S01:000081A8:  54 02 8F E5
+F00:0302       
+F00:0303       ; When installing, we will start on the next VSync, so set IRQ for VSync only
+F00:0304       ; and set T1 to contain 'vsyncvalue', so everything in place for VSync int...
+F00:0305       
+F00:0306       	MOV       R0,#0b00001000
+               S01:000081AC:  08 00 A0 E3
+F00:0307       	STRB      R0,[R1,#0x18+2]    ;set IRQA mask to %00001000 = VSync only
+               S01:000081B0:  1A 00 C1 E5
+F00:0308       	MOV       R0,#0
+               S01:000081B4:  00 00 A0 E3
+F00:0309       	STRB      R0,[R1,#0x28+2]    ;set IRQB mask to 0
+               S01:000081B8:  2A 00 C1 E5
+F00:0310       	STRB      R0,[R1,#0x38+2]    ;set FIQ mask to 0 (disable FIQs)
+               S01:000081BC:  3A 00 C1 E5
+F00:0311       
+F00:0312       	MOV       R0,#0xFF           ;*v0.14* set max T1 - ensure T1 doesn't trigger before first VSync!
+               S01:000081C0:  FF 00 A0 E3
+F00:0313       	STRB      R0,[R1,#0x50+2]    ;T1 low byte, +2 for write
+               S01:000081C4:  52 00 C1 E5
+F00:0314       	STRB      R0,[R1,#0x54+2]    ;T1 high byte, +2 for write
+               S01:000081C8:  56 00 C1 E5
+F00:0315       	STRB      R1,[R1,#0x58+2]    ;T1_go = reset T1
+               S01:000081CC:  5A 10 C1 E5
+F00:0316       
+F00:0317       	MOV       R0,#vsyncreturn_low			;or ldr r8,vsyncval  - will reload with this on VSync...
+               S01:000081D0:  E6 00 A0 E3
+F00:0318       	STRB      R0,[R1,#0x50+2]    				;T1 low byte, +2 for write
+               S01:000081D4:  52 00 C1 E5
+F00:0319       	MOV       R0,#vsyncreturn_high			;or mov r8,r8,lsr#8
+               S01:000081D8:  7F 00 A0 E3
+F00:0320       	STRB      R0,[R1,#0x54+2]   					;T1 high byte, +2 for write
+               S01:000081DC:  56 00 C1 E5
+F00:0321       
+F00:0322       
+F00:0323       ; poke our IRQ/FIQ code into &1C-&FC
+F00:0324       	MOV       R0,#0
+               S01:000081E0:  00 00 A0 E3
+F00:0325       	LDR       R1,[R0,#0x18]      ;load current IRQ vector
+               S01:000081E4:  18 10 90 E5
+F00:0326       	STR       R1,oldIRQbranch
+               S01:000081E8:  1C 12 8F E5
+F00:0327       
+F00:0328       	BIC       R1,R1,#0xFF000000
+               S01:000081EC:  FF 14 C1 E3
+F00:0329       	MOV       R1,R1,LSL#2
+               S01:000081F0:  01 11 A0 E1
+F00:0330       	ADD       R1,R1,#0x18+8
+               S01:000081F4:  20 10 81 E2
+F00:0331       	STR       R1,oldIRQaddress
+               S01:000081F8:  10 12 8F E5
+F00:0332       
+F00:0333       ;copy IRQ/FIQ code to &18 onwards
 F00:0334       
-F00:0335       	rsb r11,r11,#0
-               S01:00008674:  00 B0 6B E2
-F00:0336       	mov r5,#1		; R5 = 1 si X negatif
-               S01:00008678:  01 50 A0 E3
-F00:0337       
-F00:0338       .cont1:
-F00:0339       
-F00:0340       ; si r13 négatif ,	
-F00:0341       	mov R6,#0
-               S01:0000867C:  00 60 A0 E3
-F00:0342       	cmp r13,#0
-               S01:00008680:  00 00 5D E3
-F00:0343       	bpl .cont2
-               S01:00008684:  01 00 00 5A
-F00:0344       ; r13 négatif
-F00:0345       
-F00:0346       	rsb r13,r13,#0
-               S01:00008688:  00 D0 6D E2
-F00:0347       	mov r6,#1		; R6 = 1 si Z negatif
-               S01:0000868C:  01 60 A0 E3
-F00:0348       
-F00:0349       .cont2:
-F00:0350       
-F00:0351       ; X / Z
-F00:0352       ; R11 / R13
-F00:0353       
-F00:0354       
-F00:0355       ; division par zéro ?
-F00:0356       	;CMP		R13, #0
-F00:0357       	;BEQ		.divide_enddivY
-F00:0358       	
-F00:0359       	
-F00:0360       	MOV      R0,#0     ;clear R0 to accumulate result
-               S01:00008690:  00 00 A0 E3
-F00:0361       	MOV      R3,#1     ;set bit 0 in R3, which will be
-               S01:00008694:  01 30 A0 E3
-F00:0362       					   ;shifted left then right
-F00:0363       .startdivX:
-F00:0364       	CMP      R13,R11
-               S01:00008698:  0B 00 5D E1
-F00:0365       	MOVLS    R13,R13,LSL#1
-               S01:0000869C:  8D D0 A0 91
-F00:0366       	MOVLS    R3,R3,LSL#1
-               S01:000086A0:  83 30 A0 91
-F00:0367       	BLS      .startdivX
-               S01:000086A4:  FB FF FF 9A
-F00:0368        ;shift R13 left until it is about to
-F00:0369        ;be bigger than R111
-F00:0370        ;shift R3 left in parallel in order
-F00:0371        ;to flag how far we have to go
+F00:0335       	ldr			R0,pointeur_fiqbase
+               S01:000081FC:  D0 04 9F E5
+F00:0336       	MOV       R1,#0x18
+               S01:00008200:  18 10 A0 E3
+F00:0337       	
+F00:0338       	LDMIA     R0!,{R2-R12}
+               S01:00008204:  FC 1F B0 E8
+F00:0339       	STMIA     R1!,{R2-R12}      ;11 pokey codey
+               S01:00008208:  FC 1F A1 E8
+F00:0340       	
+F00:0341       	LDMIA     R0!,{R2-R12}
+               S01:0000820C:  FC 1F B0 E8
+F00:0342       	STMIA     R1!,{R2-R12}      ;22 pokey codey
+               S01:00008210:  FC 1F A1 E8
+F00:0343       
+F00:0344       	LDMIA     R0!,{R2-R12}
+               S01:00008214:  FC 1F B0 E8
+F00:0345       	STMIA     R1!,{R2-R12}      ;33 pokey codey
+               S01:00008218:  FC 1F A1 E8
+F00:0346       
+F00:0347       	LDMIA     R0!,{R2-R12}
+               S01:0000821C:  FC 1F B0 E8
+F00:0348       	STMIA     R1!,{R2-R12}      ;44 pokey codey
+               S01:00008220:  FC 1F A1 E8
+F00:0349       
+F00:0350       	LDMIA     R0!,{R2-R12}
+               S01:00008224:  FC 1F B0 E8
+F00:0351       	STMIA     R1!,{R2-R12}      ;55 pokey codey
+               S01:00008228:  FC 1F A1 E8
+F00:0352       
+F00:0353       	LDMIA     R0!,{R2-R4}
+               S01:0000822C:  1C 00 B0 E8
+F00:0354       	STMIA     R1!,{R2-R4}       ;58 pokey codey (58 max)
+               S01:00008230:  1C 00 A1 E8
+F00:0355       
+F00:0356       .equ 	FIQ_notHSync_valeur, 0xC0
+F00:0357       
+F00:0358       	adr		R0,notHSync					;FNlong_adr("",0,notHSync)   ;set up VSync code after copying
+               S01:00008234:  F8 00 8F E2
+F00:0359       	MOV     R1,#FIQ_notHSync_valeur 	;ref. works if assembling on RO3, note 'FIQ_notHSync' is 0-relative!
+               S01:00008238:  C0 10 A0 E3
+F00:0360       	STR       R0,[R1]
+               S01:0000823C:  00 00 81 E5
+F00:0361       
+F00:0362       	MOV       R0,#0
+               S01:00008240:  00 00 A0 E3
+F00:0363       	LDR       R1,[R0,#0x18]      ;first IRQ instruction from our code
+               S01:00008244:  18 10 90 E5
+F00:0364       	STR       R1,newIRQfirstinst
+               S01:00008248:  B8 11 8F E5
+F00:0365       
+F00:0366       ; sortie
+F00:0367       	TEQP      PC,#0b11				; %00<<26 OR %11;enable IRQs and FIQs, change to user mode
+               S01:0000824C:  03 F0 3F E3
+F00:0368       	MOV       R0,R0
+               S01:00008250:  00 00 A0 E1
+F00:0369       	
+F00:0370       	ldr		lr,save_lr
+               S01:00008254:  E8 E0 1F E5
+F00:0371       	mov		pc,lr					;exit in USER mode and with IRQs and FIQs on
+               S01:00008258:  0E F0 A0 E1
 F00:0372       
-F00:0373       .nextdivX:
-F00:0374       	CMP       R11,R13      ;carry set if R11&gt;R13 (don't ask why)
-               S01:000086A8:  0D 00 5B E1
-F00:0375       	SUBCS     R11,R11,R13   ;subtract R2 from R1 if this would
-               S01:000086AC:  0D B0 4B 20
-F00:0376                             ;give a positive answer
-F00:0377       	ADDCS     R0,R0,R3   ;and add the current bit in R3 to
-               S01:000086B0:  03 00 80 20
-F00:0378                             ;the accumulating answer in R0
-F00:0379       
-F00:0380       	MOVS      R3,R3,LSR#1     ;Shift R3 right into carry flag
-               S01:000086B4:  A3 30 B0 E1
-F00:0381       	MOVCC     R13,R13,LSR#1     ;and if bit 0 of R3 was zero, also
-               S01:000086B8:  AD D0 A0 31
-F00:0382                                  ;shift R13 right
-F00:0383       	BCC       .nextdivX            ;If carry not clear, R3 has shifted
-               S01:000086BC:  F9 FF FF 3A
-F00:0384                                  ;back to where it started, and we
-F00:0385                                  ;can end
-F00:0386       
-F00:0387       .divide_enddivX:
-F00:0388       ; resultat dans R0
+F00:0373       
+F00:0374       RM_release:
+F00:0375       	str		lr,save_lr
+               S01:0000825C:  F0 E0 0F E5
+F00:0376       
+F00:0377       ; we own FIQs
+F00:0378       				  
+F00:0379       	TEQP      PC,#0x0C000001					; %11<<26 OR %01            ;disable IRQs and FIQs, switch FIQ mode
+               S01:00008260:  43 F3 3F E3
+F00:0380       	MOV       R0,R0
+               S01:00008264:  00 00 A0 E1
+F00:0381       
+F00:0382       	MOV       R0,#0
+               S01:00008268:  00 00 A0 E3
+F00:0383       	LDR       R1,oldIRQbranch
+               S01:0000826C:  98 11 9F E5
+F00:0384       	STR       R1,[R0,#0x18]        ;restore original IRQ controller
+               S01:00008270:  18 10 80 E5
+F00:0385       	
+F00:0386       	MOV       R0,#0
+               S01:00008274:  00 00 A0 E3
+F00:0387       	MOV       R1,#0x3200000
+               S01:00008278:  32 16 A0 E3
+F00:0388       	STRB      R0,[R1,#0x38+2]      ;set FIQ mask to 0 (disable FIQs)
+               S01:0000827C:  3A 00 C1 E5
 F00:0389       
-F00:0390       
-F00:0391       ; signe ?
-F00:0392       	eors r5,r6,r5
-               S01:000086C0:  05 50 36 E0
-F00:0393       ; 0 si + , 1 si -
-F00:0394       	beq .contplus
-               S01:000086C4:  00 00 00 0A
-F00:0395       ; resultat est négatif
-F00:0396       	rsb r0,r0,#0
-               S01:000086C8:  00 00 60 E2
+F00:0390       	LDR       R0,oldIRQa
+               S01:00008280:  78 01 9F E5
+F00:0391       	STRB      R0,[R1,#0x18+2]
+               S01:00008284:  1A 00 C1 E5
+F00:0392       	LDR       R0,oldIRQb
+               S01:00008288:  74 01 9F E5
+F00:0393       	STRB      R0,[R1,#0x28+2]      ;restore IRQ masks
+               S01:0000828C:  2A 00 C1 E5
+F00:0394       
+F00:0395       	TEQP      PC,#0b11  			; (%00<<26) OR %11          ;enable IRQs and FIQs, stay SVC mode
+               S01:00008290:  03 F0 3F E3
+F00:0396       	MOV       R0,R0
+               S01:00008294:  00 00 A0 E1
 F00:0397       
-F00:0398       .contplus:
-F00:0399       ; stock X projeté
-F00:0400       	str r0,[r10],#4
-               S01:000086CC:  04 00 8A E4
+F00:0398       
+F00:0399       	MOV       R0,#0x0B             ;release FIQ
+               S01:00008298:  0B 00 A0 E3
+F00:0400       	SWI       XOS_ServiceCall
+               S01:0000829C:  30 00 02 EF
 F00:0401       
-F00:0402       
-F00:0403       ;---
-F00:0404       ; Y / Z
-F00:0405       ; R12 / R13
-F00:0406       
-F00:0407       ; si r12 négatif , 
-F00:0408       	mov R5,#0
-               S01:000086D0:  00 50 A0 E3
-F00:0409       	cmp r12,#0
-               S01:000086D4:  00 00 5C E3
-F00:0410       	bpl .cont11
-               S01:000086D8:  01 00 00 5A
-F00:0411       ; r12 négatif
+F00:0402       	ldr		lr,save_lr
+               S01:000082A0:  34 E1 1F E5
+F00:0403       	mov		pc,lr					; return USER mode, leave IRQs and FIQs on
+               S01:000082A4:  0E F0 A0 E1
+F00:0404       
+F00:0405       RM_wait_VBL:
+F00:0406       	LDRB      R11,vsyncbyte   ;load our byte from FIQ address, if enabled
+               S01:000082A8:  64 B1 DF E5
+F00:0407       waitloop_vbl:
+F00:0408       	LDRB      R12,vsyncbyte
+               S01:000082AC:  60 C1 DF E5
+F00:0409       	TEQ       R12,R11
+               S01:000082B0:  0B 00 3C E1
+F00:0410       	BEQ       waitloop_vbl
+               S01:000082B4:  FC FF FF 0A
+F00:0411       	MOVS      PC,R14
+               S01:000082B8:  0E F0 B0 E1
 F00:0412       
-F00:0413       	rsb r12,r12,#0
-               S01:000086DC:  00 C0 6C E2
-F00:0414       	mov r5,#1		; R5 = 1 si Y negatif
-               S01:000086E0:  01 50 A0 E3
-F00:0415       
-F00:0416       .cont11:
-F00:0417       
-F00:0418       	MOV      R0,#0     ;clear R0 to accumulate result
-               S01:000086E4:  00 00 A0 E3
-F00:0419       	MOV      R3,#1     ;set bit 0 in R3, which will be
-               S01:000086E8:  01 30 A0 E3
-F00:0420       					   ;shifted left then right
-F00:0421       .startdivY:
-F00:0422       	CMP      R13,R12
-               S01:000086EC:  0C 00 5D E1
-F00:0423       	MOVLS    R13,R13,LSL#1
-               S01:000086F0:  8D D0 A0 91
-F00:0424       	MOVLS    R3,R3,LSL#1
-               S01:000086F4:  83 30 A0 91
-F00:0425       	BLS      .startdivY
-               S01:000086F8:  FB FF FF 9A
-F00:0426        ;shift R13 left until it is about to
-F00:0427        ;be bigger than R12
-F00:0428        ;shift R3 left in parallel in order
-F00:0429        ;to flag how far we have to go
-F00:0430       
-F00:0431       .nextdivY:
-F00:0432       	CMP       R12,R13      ;carry set if R11&gt;R13 (don't ask why)
-               S01:000086FC:  0D 00 5C E1
-F00:0433       	SUBCS     R12,R12,R13   ;subtract R2 from R1 if this would
-               S01:00008700:  0D C0 4C 20
-F00:0434                             ;give a positive answer
-F00:0435       	ADDCS     R0,R0,R3   ;and add the current bit in R3 to
-               S01:00008704:  03 00 80 20
-F00:0436                             ;the accumulating answer in R0
-F00:0437       
-F00:0438       	MOVS      R3,R3,LSR#1     ;Shift R3 right into carry flag
-               S01:00008708:  A3 30 B0 E1
-F00:0439       	MOVCC     R13,R13,LSR#1     ;and if bit 0 of R3 was zero, also
-               S01:0000870C:  AD D0 A0 31
-F00:0440                                  ;shift R13 right
-F00:0441       	BCC       .nextdivY            ;If carry not clear, R3 has shifted
-               S01:00008710:  F9 FF FF 3A
-F00:0442                                  ;back to where it started, and we
-F00:0443                                  ;can end
-F00:0444       
-F00:0445       	
-F00:0446       	
-F00:0447       .divide_enddivY:
-F00:0448       
-F00:0449       ; signe ?
-F00:0450       	eors r5,r6,r5
-               S01:00008714:  05 50 36 E0
-F00:0451       ; 0 si + , 1 si -
-F00:0452       	beq .contplus1
-               S01:00008718:  00 00 00 0A
-F00:0453       ; resultat est négatif
-F00:0454       	rsb r0,r0,#0
-               S01:0000871C:  00 00 60 E2
-F00:0455       
-F00:0456       .contplus1:
-F00:0457       ; stock Y projeté
-F00:0458       	str r0,[r10],#4
-               S01:00008720:  04 00 8A E4
-F00:0459       
-F00:0460       
-F00:0461       ; boucle
-F00:0462       	subs r8,r8,#1
-               S01:00008724:  01 80 58 E2
-F00:0463       	bne boucle_divisions_calcpoints
-               S01:00008728:  CB FF FF 1A
-F00:0464       
-F00:0465       ; breakpoint
-F00:0466       	swi 0x44B85
-               S01:0000872C:  85 4B 04 EF
-F00:0467       ; les points sont dans coordonnees_projetees
-F00:0468       ; 
+F00:0413       RM_scankeyboard:
+F00:0414       ; https://www.riscosopen.org/wiki/documentation/show/Low-Level%20Internal%20Key%20Numbers
+F00:0415       ; retour : R0 = touche sur 2 octets
+F00:0416       	;mov		R12,#0
+F00:0417       	;mov		R0,#0
+F00:0418       
+F00:0419       	LDRB      R12,keybyte2
+               S01:000082BC:  5E C0 DF E5
+F00:0420       	ands			R12,R12,#0b1111
+               S01:000082C0:  0F C0 1C E2
+F00:0421       	beq		  sortie_keycheck
+               S01:000082C4:  02 00 00 0A
+F00:0422       	LDRB      R0,keybyte1
+               S01:000082C8:  51 00 DF E5
+F00:0423       	ands			R0,R0,#0b1111
+               S01:000082CC:  0F 00 10 E2
+F00:0424       	ORR       R0,R12,R0,LSL#4
+               S01:000082D0:  00 02 8C E1
+F00:0425       
+F00:0426       sortie_keycheck:
+F00:0427       	mov		pc,lr				; retour 
+               S01:000082D4:  0E F0 A0 E1
+F00:0428       
+F00:0429       RM_clearkeybuffer:		   ;10 - temp SWI, probably not needed in future once full handler done
+F00:0430       	MOV       R12,#0
+               S01:000082D8:  00 C0 A0 E3
+F00:0431       	STRB      R12,keybyte1
+               S01:000082DC:  3D C0 CF E5
+F00:0432       	STRB      R12,keybyte2
+               S01:000082E0:  3A C0 CF E5
+F00:0433       	MOV       PC,R14      ;flags not preserved
+               S01:000082E4:  0E F0 A0 E1
+F00:0434       
+F00:0435       
+F00:0436       RM_check_keyboard:
+F00:0437       	;CMP       R13,#256            ;retrace? - this is a backup to disable STx SRx irqs, n/r
+F00:0438       	;MOVNE     R8,#%00000000       ;           n/r once everything is working
+F00:0439       	;STRNEB    R8,[R14,#&28+2]     ;set IRQB mask to %11000000 = STx or SRx
+F00:0440       	;BNE       exitVScode          ;back to IRQ mode and exit
+F00:0441       
+F00:0442       ; dans la vbl, registres sauvés en debut de VBL
+F00:0443       	;ADR       R8,kbd_stack
+F00:0444       	;STMIA     R8,{R4-R7}          ;some regs to play with
+F00:0445       
+F00:0446       ; R14 = IOC 
+F00:0447       	MOV       R5,#0x3200000       ; R14 to IOC address
+               S01:000082E8:  32 56 A0 E3
+F00:0448       	LDRB      R4,[R5,#0x24+0]     ;load irq_B triggers
+               S01:000082EC:  24 40 D5 E5
+F00:0449       	TST       R4,#0b10000000       ;bit 7 = SRx, cleared by a read from 04
+               S01:000082F0:  80 00 14 E3
+F00:0450       
+F00:0451       	; LDMEQIA     R8,{R4-R7}          ;restore regs
+F00:0452       	BEQ         exitVScode          ;back to IRQ mode and exit
+               S01:000082F4:  33 00 00 0A
+F00:0453       ;BNE       kbd_received
+F00:0454       ;:
+F00:0455       ;.kbd_trans
+F00:0456       ;TST       R4,#%01000000       ;bit 6 = STx, cleared by a write to 04
+F00:0457       ;LDRNEB    R5,nextkeybyte
+F00:0458       ;STRNEB    R5,[R14,#&04+2]     ;clear STx
+F00:0459       ;MOVNE     R5,#%10000000       ;set mask to wait for ok-to-read
+F00:0460       ;STRNEB    R5,[R14,#&28+2]     ;set IRQB mask to %10000000 = SRx
+F00:0461       ;:
+F00:0462       ;LDMIA     R8,{R4-R7}          ;restore regs
+F00:0463       ;B         exitVScode          ;back to IRQ mode and exit
+F00:0464       ;
+F00:0465       ;
+F00:0466       kbd_received:
+F00:0467       
+F00:0468       ; process key byte, and put ack value in nextkeybyte
 F00:0469       
-F00:0470       	ldr r0,numero_objet	; numero objet en cours
-               S01:00008730:  B0 00 9F E5
-F00:0471       	mov r1,#all_objects
-               S01:00008734:  22 1B A0 E3 04 10 81 E3
-F00:0472       	add R1, R1, R0, LSL #3	; numero objet *8
-               S01:0000873C:  80 11 81 E0
-F00:0473       	
-F00:0474       	ldr r5,[r1,#4]			; r5 = pointeur vers les faces
-               S01:00008740:  04 50 91 E5
-F00:0475       	
-F00:0476       	ldr r0,[r5],#4			; r0=nb faces
-               S01:00008744:  04 00 95 E4
-F00:0477       	
-F00:0478       	mov r10,#coordonnees_projetees
-               S01:00008748:  89 AC A0 E3 E4 A0 8A E3
-F00:0479       	
-F00:0480       	; il faut tester la visibilité entre les points : 1,3 et 2  ( 1,2,3,4)
-F00:0481       	; (xa-xb)*(yc-yb) - ( (ya-yb)*(xc-xb) ) si negatif : face invisible
-F00:0482       	; point a = 1
-F00:0483       	; point b = 3
-F00:0484       	; point c = 2
-F00:0485       
-F00:0486       	ldr r11,[r5],#4		; numero point A * 8
-               S01:00008750:  04 B0 95 E4
-F00:0487       	ldr r12,[r5],#4		; numero point B * 8
-               S01:00008754:  04 C0 95 E4
-F00:0488       	ldr r13,[r5],#4		; numero point C * 8
-               S01:00008758:  04 D0 95 E4
-F00:0489       	ldr r14,[r5],#4		; numero point D * 8
-               S01:0000875C:  04 E0 95 E4
-F00:0490       	
-F00:0491       	ldr r1,[r10,r11]		; r1=XA
-               S01:00008760:  0B 10 9A E7
-F00:0492       	ldr r3,[r10,r14]		; r3=XB
-               S01:00008764:  0E 30 9A E7
-F00:0493       	ldr r5,[r10,r12]		; r5=XC
-               S01:00008768:  0C 50 9A E7
-F00:0494       	
-F00:0495       	add r6,r10,#4			; R6 = R10+4 temporaire
-               S01:0000876C:  04 60 8A E2
-F00:0496       
-F00:0497       	ldr r2,[r6,r11]			; r2=YA
-               S01:00008770:  0B 20 96 E7
-F00:0498       	ldr r4,[r6,r14]			; r4=YB
-               S01:00008774:  0E 40 96 E7
-F00:0499       	ldr r6,[r6,r12]			; r6=YC
-               S01:00008778:  0C 60 96 E7
-F00:0500       	
-F00:0501       	subs r1,r1,r3			; r1 = xa-xb
-               S01:0000877C:  03 10 51 E0
-F00:0502       	subs r6,r6,r4			; r6 = yc-yb
-               S01:00008780:  04 60 56 E0
-F00:0503       	subs r2,r2,r4			; r2 = ya-yb
-               S01:00008784:  04 20 52 E0
-F00:0504       	subs r5,r5,r3			; r5 = xc-xb
-               S01:00008788:  03 50 55 E0
-F00:0505       
-F00:0506       	muls r1,r6,r1			; r1 = (xa-xb)*(yc-yb)
-               S01:0000878C:  96 01 11 E0
-F00:0507       	muls r2,r5,r2			; r2 = (ya-yb)*(xc-xb)
-               S01:00008790:  95 02 12 E0
-F00:0508       	
-F00:0509       	subs r1,r1,r2			; (xa-xb)*(yc-yb) - (ya-yb)*(xc-xb)
-               S01:00008794:  02 10 51 E0
-F00:0510       	bmi face_invisible		; face visible ?
-               S01:00008798:  03 00 00 4A
-F00:0511       	
-F00:0512       face_visible:
-F00:0513       	; il faut tracer les lignes
-F00:0514       	nop
-               S01:0000879C:  00 00 A0 E1
-F00:0515       	nop
-               S01:000087A0:  00 00 A0 E1
-F00:0516       	nop
-               S01:000087A4:  00 00 A0 E1
-F00:0517       	nop
-               S01:000087A8:  00 00 A0 E1
-F00:0518       
-F00:0519       	
-F00:0520       
-F00:0521       ; breakpoint
-F00:0522       ;	swi 0x44B85
+F00:0470       	LDRB      R6,keycounter
+               S01:000082F8:  20 60 DF E5
+F00:0471       	RSBS      R6,R6,#1            ;if =1 (NE), then this is the first byte, else (EQ)=second byte
+               S01:000082FC:  01 60 76 E2
+F00:0472       	STRB      R6,keycounter
+               S01:00008300:  18 60 CF E5
+F00:0473       
+F00:0474       	LDRB      R4,[R5,#0x04+0]     ;load byte, clear SRx
+               S01:00008304:  04 40 D5 E5
+F00:0475       	STRNEB    R4,keybyte1
+               S01:00008308:  11 40 CF 15
+F00:0476       	MOVNE     R6,#0b00111111       ;if first byte, reply with bACK
+               S01:0000830C:  3F 60 A0 13
+F00:0477       
+F00:0478       	STREQB    R4,keybyte2
+               S01:00008310:  0A 40 CF 05
+F00:0479       	MOVEQ     R6,#0b00110001       ;if second byte, reply with sACK
+               S01:00008314:  31 60 A0 03
+F00:0480       
+F00:0481       	STRB      R6,[R5,#0x04+2] ;transmit
+               S01:00008318:  06 60 C5 E5
+F00:0482       	;STRB      R6,nextkeybyte
+F00:0483       
+F00:0484       	;MOV       R5,#%01000000       ;set mask to wait for ok-to-transmit
+F00:0485       	;STRB      R5,[R14,#&28+2]     ;set IRQB mask to %01000000 = STx
+F00:0486       	
+F00:0487       	;LDMIA     R8,{R4-R7}          ;restore regs
+F00:0488       	B         exitVScode          ;back to IRQ mode and exit
+               S01:0000831C:  29 00 00 EA
+F00:0489       	;B         kbd_trans
+F00:0490       
+F00:0491       
+F00:0492       ; bACK=%00111111
+F00:0493       ; sACK=%00110001
+F00:0494       
+F00:0495       
+F00:0496       keycounter:  .byte 0 ;1 or 0
+               S01:00008320:  00
+F00:0497       keybyte1:    .byte 0
+               S01:00008321:  00
+F00:0498       keybyte2:    .byte 0
+               S01:00008322:  00
+F00:0499       nextkeybyte: .byte 0
+               S01:00008323:  00
+F00:0500       
+F00:0501       kbd_stack:
+F00:0502       .long      0 ;R4
+               S01:00008324:  00 00 00 00
+F00:0503       .long      0 ;R5
+               S01:00008328:  00 00 00 00
+F00:0504       .long      0 ;R6
+               S01:0000832C:  00 00 00 00
+F00:0505       .long      0 ;R7
+               S01:00008330:  00 00 00 00
+F00:0506       
+F00:0507       
+F00:0508       ;currently have rem'd the disable STx SRx irqs in hsync code and checkkeyboard code
+F00:0509       
+F00:0510       ;next try only enabling receive, assume transmit is ok...
+F00:0511       
+F00:0512       ;something wrong - &FFFF (HRST) seems to be only byte received
+F00:0513       ;v0.14 worked when trying only enabling receive, assume transmit is ok...
+F00:0514       
+F00:0515       ; on arrive avec:
+F00:0516       ; sauvegarde de R14 dans saveR14_firq en 0xE0
+F00:0517       ; sauvegarde de R4-R7 dans FIQ_tempstack en 0xD0
+F00:0518       ;  R14 = pointeur sur saveR14_firq
+F00:0519       ;  R8 = load irq_A triggers ( anciennement R8) R4 
+F00:0520       ;  R5 = 0x3200000 ( anciennement R14)  - IOC -
+F00:0521       ;  R6 = ...
+F00:0522       ;  R7 = ...
 F00:0523       
-F00:0524       
-F00:0525       face_invisible:
-F00:0526       
-F00:0527       	; retour
-F00:0528       	ldr r14,save_R14
-               S01:000087AC:  0C E0 9F E5
-F00:0529       	mov pc, r14
-               S01:000087B0:  0E F0 A0 E1
-F00:0530       
-F00:0531       pointeur_en_cours_liste_points:		.long 0	
-               S01:000087B4:  00 00 00 00
-F00:0532       nb_points_en_cours:		.long 0
-               S01:000087B8:  00 00 00 00
-F00:0533       distance_z:				.long 0x60
-               S01:000087BC:  60 00 00 00
+F00:0524       notHSync:
+F00:0525       	TST       R8,#0b00001000       ;retest R5 is it bit 3 = Vsync? (bit 6 = T1 trigger/HSync)
+               S01:00008334:  08 00 18 E3
+F00:0526       	STRNEB    R14,[R14,#0x58+2]    ;if VSync, reset T1 (latch should already have the vsyncvalue...)
+               S01:00008338:  5A E0 CE 15
+F00:0527       ;
+F00:0528       ; that's the high-priority stuff done, now we can check keyboard too...
+F00:0529       ;
+F00:0530       	BEQ       RM_check_keyboard       ;check IRQ_B for SRx/STx interrupts
+               S01:0000833C:  E9 FF FF 0A
+F00:0531       
+F00:0532       	STRB      R8,[R14,#0x14+2]     ; ...and clear all IRQ_A interrupt triggers
+               S01:00008340:  16 80 CE E5
+F00:0533       
 F00:0534       
-F00:0535       save_R14:	
-F00:0536       	.long 0
-               S01:000087C0:  00 00 00 00
-F00:0537       matrice:
-F00:0538       	.long	1,2,3,4,5,6,7,8,9
-               S01:000087C4:  01 00 00 00
-               S01:000087C8:  02 00 00 00
-               S01:000087CC:  03 00 00 00
-               S01:000087D0:  04 00 00 00
-               S01:000087D4:  05 00 00 00
-               S01:000087D8:  06 00 00 00
-               S01:000087DC:  07 00 00 00
-               S01:000087E0:  08 00 00 00
-               S01:000087E4:  09 00 00 00
-F00:0539       	
-F00:0540       numero_objet:
-F00:0541       	.long 0
-               S01:000087E8:  00 00 00 00
-F00:0542       angleX:
-F00:0543       	.long 0
-               S01:000087EC:  00 00 00 00
-F00:0544       angleY:
-F00:0545       	.long 0
-               S01:000087F0:  00 00 00 00
-F00:0546       angleZ:
-F00:0547       	.long 1
-               S01:000087F4:  01 00 00 00
-F00:0548       incrementX:
-F00:0549       	.long 0
-               S01:000087F8:  00 00 00 00
-F00:0550       incrementY:
-F00:0551       	.long 0
-               S01:000087FC:  00 00 00 00
-F00:0552       incrementZ:
-F00:0553       	.long 0
-               S01:00008800:  00 00 00 00
-F00:0554       
-F00:0555       all_objects:	
-F00:0556       	.long coords_cube
-               S01:00008804:  0C 88 00 00
-F00:0557       	.long cube
-               S01:00008808:  70 88 00 00
-F00:0558       
-F00:0559       coords_cube:
-F00:0560       	.long	8
-               S01:0000880C:  08 00 00 00
-F00:0561       	.long	-50,50,-50	;1
-               S01:00008810:  CE FF FF FF
-               S01:00008814:  32 00 00 00
-               S01:00008818:  CE FF FF FF
-F00:0562       	.long	-50,-50,-50	;2
-               S01:0000881C:  CE FF FF FF
-               S01:00008820:  CE FF FF FF
-               S01:00008824:  CE FF FF FF
-F00:0563       	.long	50,-50,-50	;3
-               S01:00008828:  32 00 00 00
-               S01:0000882C:  CE FF FF FF
-               S01:00008830:  CE FF FF FF
-F00:0564       	.long	50,50,-50	;4
-               S01:00008834:  32 00 00 00
-               S01:00008838:  32 00 00 00
-               S01:0000883C:  CE FF FF FF
+F00:0535       
+F00:0536       	MOV       R8,#0b01000000       ;**removed VSync trigger v0.05
+               S01:00008344:  40 80 A0 E3
+F00:0537       	STRB      R8,[R14,#0x18+2]     ;set IRQA mask to %01000000 = T1 only
+               S01:00008348:  1A 80 CE E5
+F00:0538       	MOV       R8,#0b10000000       ;R8,#%11000000
+               S01:0000834C:  80 80 A0 E3
+F00:0539       	STRB      R8,[R14,#0x28+2]     ;set IRQB mask to %11000000 = STx or SRx
+               S01:00008350:  2A 80 CE E5
+F00:0540       
+F00:0541       	MOV       R8,#hsyncline_low			; (hsyncline AND &00FF)>>0
+               S01:00008354:  7F 80 A0 E3
+F00:0542       	STRB      R8,[R14,#0x50+2]              ;T1 low byte, +2 for write
+               S01:00008358:  52 80 CE E5
+F00:0543       	MOV       R8,#hsyncline_high		; (hsyncline AND &FF00)>>8
+               S01:0000835C:  00 80 A0 E3
+F00:0544       	STRB      R8,[R14,#0x54+2]              ;T1 high byte, +2 for write
+               S01:00008360:  56 80 CE E5
+F00:0545       
+F00:0546       	LDRB      R8,vsyncbyte
+               S01:00008364:  A8 80 DF E5
+F00:0547       	RSB       R8,R8,#3
+               S01:00008368:  03 80 68 E2
+F00:0548       	STRB      R8,vsyncbyte
+               S01:0000836C:  A0 80 CF E5
+F00:0549       
+F00:0550       
+F00:0551       ;	ADR       R8,regtable
+F00:0552       ;	LDMIA     R8,{R9,R10,R11,R12}          ;reset table registers to defaults
+F00:0553       
+F00:0554       ; on remet le nombre de ligne a decrementer avant d'arriver à vsync
+F00:0555       	mov			R9,#position_ligne_hsync
+               S01:00008370:  E4 90 A0 E3
+F00:0556       	mov 		R8,#ylines                  ;reset yline counter
+               S01:00008374:  38 80 A0 E3
+F00:0557       	str			R8,[R9]
+               S01:00008378:  00 80 89 E5
+F00:0558       	
+F00:0559       	;MOV       R13,#ylines                  ;reset yline counter
+F00:0560       
+F00:0561       ; ----- QTM
+F00:0562       ;	LDRB      R8,qtmcontrol
+F00:0563       ;	TEQ       R8,#1
+F00:0564       ;	BNE       exitVScode                   ;back to IRQ mode and exit
 F00:0565       
-F00:0566       	.long	-50,50,50	;5
-               S01:00008840:  CE FF FF FF
-               S01:00008844:  32 00 00 00
-               S01:00008848:  32 00 00 00
-F00:0567       	.long	-50,-50,50	;6
-               S01:0000884C:  CE FF FF FF
-               S01:00008850:  CE FF FF FF
-               S01:00008854:  32 00 00 00
-F00:0568       	.long	50,-50,50	;7
-               S01:00008858:  32 00 00 00
-               S01:0000885C:  CE FF FF FF
-               S01:00008860:  32 00 00 00
-F00:0569       	.long	50,50,50	;8
-               S01:00008864:  32 00 00 00
-               S01:00008868:  32 00 00 00
-               S01:0000886C:  32 00 00 00
-F00:0570       
-F00:0571       cube:
-F00:0572       	.long	6
-               S01:00008870:  06 00 00 00
-F00:0573       	.long	7*8,6*8,5*8,4*8
-               S01:00008874:  38 00 00 00
-               S01:00008878:  30 00 00 00
-               S01:0000887C:  28 00 00 00
-               S01:00008880:  20 00 00 00
-F00:0574       	
-F00:0575       	.long	0*8,1*8,2*8,3*8
-               S01:00008884:  00 00 00 00
-               S01:00008888:  08 00 00 00
-               S01:0000888C:  10 00 00 00
-               S01:00008890:  18 00 00 00
-F00:0576       	.long	0*8,3*8,7*8,4*8
-               S01:00008894:  00 00 00 00
-               S01:00008898:  18 00 00 00
-               S01:0000889C:  38 00 00 00
-               S01:000088A0:  20 00 00 00
-F00:0577       	.long	3*8,2*8,6*8,7*8
-               S01:000088A4:  18 00 00 00
-               S01:000088A8:  10 00 00 00
-               S01:000088AC:  30 00 00 00
-               S01:000088B0:  38 00 00 00
-F00:0578       	.long	0*8,4*8,5*8,1*8
-               S01:000088B4:  00 00 00 00
-               S01:000088B8:  20 00 00 00
-               S01:000088BC:  28 00 00 00
-               S01:000088C0:  08 00 00 00
-F00:0579       	.long	7*8,6*8,5*8,4*8
-               S01:000088C4:  38 00 00 00
-               S01:000088C8:  30 00 00 00
-               S01:000088CC:  28 00 00 00
-               S01:000088D0:  20 00 00 00
-F00:0580       	.long	2*8,1*8,5*8,6*8
-               S01:000088D4:  10 00 00 00
-               S01:000088D8:  08 00 00 00
-               S01:000088DC:  28 00 00 00
-               S01:000088E0:  30 00 00 00
-F00:0581       
-F00:0582       coordonnees_transformees:	.space 256
-F00:0583       coordonnees_projetees:	.space 256
-F00:0584       
+F00:0566       ;rastersound:                  ;entered in FIQ mode, must exit via IRQ mode with SUBS PC,R14,#4
+F00:0567       ;	TEQP      PC,#%11<<26 OR %10  ;enter IRQ mode, IRQs/FIQs off
+F00:0568       ;	MOV       R0,R0               ;sync
+F00:0569       ;	STMFD     R13!,{R14}          ;stack R13_IRQ
+F00:0570       ;	TEQP      PC,#%11<<26 OR %11  ;enter SVC mode, IRQs/FIQs off
+F00:0571       ;	MOV       R0,R0               ;sync
+F00:0572       
+F00:0573       ;	STR       R13,tempr13         ;
+F00:0574       ;	LDRB      R13,dma_in_progress ;
+F00:0575       ;	TEQ       R13,#0              ;
+F00:0576       ;	LDRNE     R13,tempr13         ;
+F00:0577       ;	BNE       exitysoundcode      ;
+F00:0578       ;	STRB      PC,dma_in_progress  ;
+F00:0579       
+F00:0580       ;	adr		R13,startofstack	;FNlong_adr("",13,startofstack);
+F00:0581       ;	STMFD     R13!,{R14}          ;stack R14_SVC
+F00:0582       ;	LDR       R14,tempr13         ;
+F00:0583       ;	STMFD     R13!,{R14}          ;stack R13_SVC - we are now reentrant!!!
+F00:0584       ;	BL        rastersound_1       ;call rastersound routine - enables IRQs
 F00:0585       
-F00:0586       SINCOS:
-F00:0587               .long   0, 32768,402, 32765,804, 32758,1206, 32745,1607, 32728,2009, 32706,2410, 32679,2811, 32647
-               S01:00008AE4:  00 00 00 00
-               S01:00008AE8:  00 80 00 00
-               S01:00008AEC:  92 01 00 00
-               S01:00008AF0:  FD 7F 00 00
-               S01:00008AF4:  24 03 00 00
-               S01:00008AF8:  F6 7F 00 00
-               S01:00008AFC:  B6 04 00 00
-               S01:00008B00:  E9 7F 00 00
-               S01:00008B04:  47 06 00 00
-               S01:00008B08:  D8 7F 00 00
-               S01:00008B0C:  D9 07 00 00
-               S01:00008B10:  C2 7F 00 00
-               S01:00008B14:  6A 09 00 00
-               S01:00008B18:  A7 7F 00 00
-               S01:00008B1C:  FB 0A 00 00
-               S01:00008B20:  87 7F 00 00
-F00:0588               .long   3211, 32610,3611, 32568,4011, 32521,4409, 32469,4808, 32413,5205, 32351,5602, 32285,5997, 32214
-               S01:00008B24:  8B 0C 00 00
-               S01:00008B28:  62 7F 00 00
-               S01:00008B2C:  1B 0E 00 00
-               S01:00008B30:  38 7F 00 00
-               S01:00008B34:  AB 0F 00 00
-               S01:00008B38:  09 7F 00 00
-               S01:00008B3C:  39 11 00 00
-               S01:00008B40:  D5 7E 00 00
-               S01:00008B44:  C8 12 00 00
-               S01:00008B48:  9D 7E 00 00
-               S01:00008B4C:  55 14 00 00
-               S01:00008B50:  5F 7E 00 00
-               S01:00008B54:  E2 15 00 00
-               S01:00008B58:  1D 7E 00 00
-               S01:00008B5C:  6D 17 00 00
-               S01:00008B60:  D6 7D 00 00
-F00:0589               .long   6392, 32138,6786, 32057,7179, 31971,7571, 31881,7961, 31785,8351, 31685,8739, 31581,9126, 31471
-               S01:00008B64:  F8 18 00 00
-               S01:00008B68:  8A 7D 00 00
-               S01:00008B6C:  82 1A 00 00
-               S01:00008B70:  39 7D 00 00
-               S01:00008B74:  0B 1C 00 00
-               S01:00008B78:  E3 7C 00 00
-               S01:00008B7C:  93 1D 00 00
-               S01:00008B80:  89 7C 00 00
-               S01:00008B84:  19 1F 00 00
-               S01:00008B88:  29 7C 00 00
-               S01:00008B8C:  9F 20 00 00
-               S01:00008B90:  C5 7B 00 00
-               S01:00008B94:  23 22 00 00
-               S01:00008B98:  5D 7B 00 00
-               S01:00008B9C:  A6 23 00 00
-               S01:00008BA0:  EF 7A 00 00
-F00:0590               .long   9512, 31357,9896, 31237,10278, 31114,10659, 30985,11039, 30852,11416, 30714,11793, 30572,12167, 30425
-               S01:00008BA4:  28 25 00 00
-               S01:00008BA8:  7D 7A 00 00
-               S01:00008BAC:  A8 26 00 00
-               S01:00008BB0:  05 7A 00 00
-               S01:00008BB4:  26 28 00 00
-               S01:00008BB8:  8A 79 00 00
-               S01:00008BBC:  A3 29 00 00
-               S01:00008BC0:  09 79 00 00
-               S01:00008BC4:  1F 2B 00 00
-               S01:00008BC8:  84 78 00 00
-               S01:00008BCC:  98 2C 00 00
-               S01:00008BD0:  FA 77 00 00
-               S01:00008BD4:  11 2E 00 00
-               S01:00008BD8:  6C 77 00 00
-               S01:00008BDC:  87 2F 00 00
-               S01:00008BE0:  D9 76 00 00
-F00:0591               .long   12539, 30273,12910, 30117,13278, 29956,13645, 29791,14010, 29621,14372, 29447,14732, 29269,15090, 29086
-               S01:00008BE4:  FB 30 00 00
-               S01:00008BE8:  41 76 00 00
-               S01:00008BEC:  6E 32 00 00
-               S01:00008BF0:  A5 75 00 00
-               S01:00008BF4:  DE 33 00 00
-               S01:00008BF8:  04 75 00 00
-               S01:00008BFC:  4D 35 00 00
-               S01:00008C00:  5F 74 00 00
-               S01:00008C04:  BA 36 00 00
-               S01:00008C08:  B5 73 00 00
-               S01:00008C0C:  24 38 00 00
-               S01:00008C10:  07 73 00 00
-               S01:00008C14:  8C 39 00 00
-               S01:00008C18:  55 72 00 00
-               S01:00008C1C:  F2 3A 00 00
-               S01:00008C20:  9E 71 00 00
-F00:0592               .long   15446, 28898,15800, 28707,16151, 28511,16499, 28310,16846, 28106,17189, 27897,17530, 27684,17869, 27466
-               S01:00008C24:  56 3C 00 00
-               S01:00008C28:  E2 70 00 00
-               S01:00008C2C:  B8 3D 00 00
-               S01:00008C30:  23 70 00 00
-               S01:00008C34:  17 3F 00 00
-               S01:00008C38:  5F 6F 00 00
-               S01:00008C3C:  73 40 00 00
-               S01:00008C40:  96 6E 00 00
-               S01:00008C44:  CE 41 00 00
-               S01:00008C48:  CA 6D 00 00
-               S01:00008C4C:  25 43 00 00
-               S01:00008C50:  F9 6C 00 00
-               S01:00008C54:  7A 44 00 00
-               S01:00008C58:  24 6C 00 00
-               S01:00008C5C:  CD 45 00 00
-               S01:00008C60:  4A 6B 00 00
-F00:0593               .long   18204, 27245,18537, 27020,18868, 26790,19195, 26557,19519, 26319,19841, 26077,20159, 25832,20475, 25583
-               S01:00008C64:  1C 47 00 00
-               S01:00008C68:  6D 6A 00 00
-               S01:00008C6C:  69 48 00 00
-               S01:00008C70:  8C 69 00 00
-               S01:00008C74:  B4 49 00 00
-               S01:00008C78:  A6 68 00 00
-               S01:00008C7C:  FB 4A 00 00
-               S01:00008C80:  BD 67 00 00
-               S01:00008C84:  3F 4C 00 00
-               S01:00008C88:  CF 66 00 00
-               S01:00008C8C:  81 4D 00 00
-               S01:00008C90:  DD 65 00 00
-               S01:00008C94:  BF 4E 00 00
-               S01:00008C98:  E8 64 00 00
-               S01:00008C9C:  FB 4F 00 00
-               S01:00008CA0:  EF 63 00 00
-F00:0594               .long   20787, 25330,21097, 25073,21403, 24812,21706, 24547,22005, 24279,22301, 24007,22594, 23732,22884, 23453
-               S01:00008CA4:  33 51 00 00
-               S01:00008CA8:  F2 62 00 00
-               S01:00008CAC:  69 52 00 00
-               S01:00008CB0:  F1 61 00 00
-               S01:00008CB4:  9B 53 00 00
-               S01:00008CB8:  EC 60 00 00
-               S01:00008CBC:  CA 54 00 00
-               S01:00008CC0:  E3 5F 00 00
-               S01:00008CC4:  F5 55 00 00
-               S01:00008CC8:  D7 5E 00 00
-               S01:00008CCC:  1D 57 00 00
-               S01:00008CD0:  C7 5D 00 00
-               S01:00008CD4:  42 58 00 00
-               S01:00008CD8:  B4 5C 00 00
-               S01:00008CDC:  64 59 00 00
-               S01:00008CE0:  9D 5B 00 00
-F00:0595               .long   23170, 23170,23453, 22884,23732, 22594,24007, 22301,24279, 22005,24547, 21706,24812, 21403,25073, 21097
-               S01:00008CE4:  82 5A 00 00
-               S01:00008CE8:  82 5A 00 00
-               S01:00008CEC:  9D 5B 00 00
-               S01:00008CF0:  64 59 00 00
-               S01:00008CF4:  B4 5C 00 00
-               S01:00008CF8:  42 58 00 00
-               S01:00008CFC:  C7 5D 00 00
-               S01:00008D00:  1D 57 00 00
-               S01:00008D04:  D7 5E 00 00
-               S01:00008D08:  F5 55 00 00
-               S01:00008D0C:  E3 5F 00 00
-               S01:00008D10:  CA 54 00 00
-               S01:00008D14:  EC 60 00 00
-               S01:00008D18:  9B 53 00 00
-               S01:00008D1C:  F1 61 00 00
-               S01:00008D20:  69 52 00 00
-F00:0596               .long   25330, 20787,25583, 20475,25832, 20159,26077, 19841,26319, 19519,26557, 19195,26790, 18868,27020, 18537
-               S01:00008D24:  F2 62 00 00
-               S01:00008D28:  33 51 00 00
-               S01:00008D2C:  EF 63 00 00
-               S01:00008D30:  FB 4F 00 00
-               S01:00008D34:  E8 64 00 00
-               S01:00008D38:  BF 4E 00 00
-               S01:00008D3C:  DD 65 00 00
-               S01:00008D40:  81 4D 00 00
-               S01:00008D44:  CF 66 00 00
-               S01:00008D48:  3F 4C 00 00
-               S01:00008D4C:  BD 67 00 00
-               S01:00008D50:  FB 4A 00 00
-               S01:00008D54:  A6 68 00 00
-               S01:00008D58:  B4 49 00 00
-               S01:00008D5C:  8C 69 00 00
-               S01:00008D60:  69 48 00 00
-F00:0597               .long   27245, 18204,27466, 17869,27684, 17530,27897, 17189,28106, 16846,28310, 16499,28511, 16151,28707, 15800
-               S01:00008D64:  6D 6A 00 00
-               S01:00008D68:  1C 47 00 00
-               S01:00008D6C:  4A 6B 00 00
-               S01:00008D70:  CD 45 00 00
-               S01:00008D74:  24 6C 00 00
-               S01:00008D78:  7A 44 00 00
-               S01:00008D7C:  F9 6C 00 00
-               S01:00008D80:  25 43 00 00
-               S01:00008D84:  CA 6D 00 00
-               S01:00008D88:  CE 41 00 00
-               S01:00008D8C:  96 6E 00 00
-               S01:00008D90:  73 40 00 00
-               S01:00008D94:  5F 6F 00 00
-               S01:00008D98:  17 3F 00 00
-               S01:00008D9C:  23 70 00 00
-               S01:00008DA0:  B8 3D 00 00
-F00:0598               .long   28898, 15446,29086, 15090,29269, 14732,29447, 14372,29621, 14010,29791, 13645,29956, 13278,30117, 12910
-               S01:00008DA4:  E2 70 00 00
-               S01:00008DA8:  56 3C 00 00
-               S01:00008DAC:  9E 71 00 00
-               S01:00008DB0:  F2 3A 00 00
-               S01:00008DB4:  55 72 00 00
-               S01:00008DB8:  8C 39 00 00
-               S01:00008DBC:  07 73 00 00
-               S01:00008DC0:  24 38 00 00
-               S01:00008DC4:  B5 73 00 00
-               S01:00008DC8:  BA 36 00 00
-               S01:00008DCC:  5F 74 00 00
-               S01:00008DD0:  4D 35 00 00
-               S01:00008DD4:  04 75 00 00
-               S01:00008DD8:  DE 33 00 00
-               S01:00008DDC:  A5 75 00 00
-               S01:00008DE0:  6E 32 00 00
-F00:0599               .long   30273, 12539,30425, 12167,30572, 11793,30714, 11416,30852, 11039,30985, 10659,31114, 10278,31237, 9896
-               S01:00008DE4:  41 76 00 00
-               S01:00008DE8:  FB 30 00 00
-               S01:00008DEC:  D9 76 00 00
-               S01:00008DF0:  87 2F 00 00
-               S01:00008DF4:  6C 77 00 00
-               S01:00008DF8:  11 2E 00 00
-               S01:00008DFC:  FA 77 00 00
-               S01:00008E00:  98 2C 00 00
-               S01:00008E04:  84 78 00 00
-               S01:00008E08:  1F 2B 00 00
-               S01:00008E0C:  09 79 00 00
-               S01:00008E10:  A3 29 00 00
-               S01:00008E14:  8A 79 00 00
-               S01:00008E18:  26 28 00 00
-               S01:00008E1C:  05 7A 00 00
-               S01:00008E20:  A8 26 00 00
-F00:0600               .long   31357, 9512,31471, 9126,31581, 8739,31685, 8351,31785, 7961,31881, 7571,31971, 7179,32057, 6786
-               S01:00008E24:  7D 7A 00 00
-               S01:00008E28:  28 25 00 00
-               S01:00008E2C:  EF 7A 00 00
-               S01:00008E30:  A6 23 00 00
-               S01:00008E34:  5D 7B 00 00
-               S01:00008E38:  23 22 00 00
-               S01:00008E3C:  C5 7B 00 00
-               S01:00008E40:  9F 20 00 00
-               S01:00008E44:  29 7C 00 00
-               S01:00008E48:  19 1F 00 00
-               S01:00008E4C:  89 7C 00 00
-               S01:00008E50:  93 1D 00 00
-               S01:00008E54:  E3 7C 00 00
-               S01:00008E58:  0B 1C 00 00
-               S01:00008E5C:  39 7D 00 00
-               S01:00008E60:  82 1A 00 00
-F00:0601               .long   32138, 6392,32214, 5997,32285, 5602,32351, 5205,32413, 4808,32469, 4409,32521, 4011,32568, 3611
-               S01:00008E64:  8A 7D 00 00
-               S01:00008E68:  F8 18 00 00
-               S01:00008E6C:  D6 7D 00 00
-               S01:00008E70:  6D 17 00 00
-               S01:00008E74:  1D 7E 00 00
-               S01:00008E78:  E2 15 00 00
-               S01:00008E7C:  5F 7E 00 00
-               S01:00008E80:  55 14 00 00
-               S01:00008E84:  9D 7E 00 00
-               S01:00008E88:  C8 12 00 00
-               S01:00008E8C:  D5 7E 00 00
-               S01:00008E90:  39 11 00 00
-               S01:00008E94:  09 7F 00 00
-               S01:00008E98:  AB 0F 00 00
-               S01:00008E9C:  38 7F 00 00
-               S01:00008EA0:  1B 0E 00 00
-F00:0602               .long   32610, 3211,32647, 2811,32679, 2410,32706, 2009,32728, 1607,32745, 1206,32758, 804,32765, 402
-               S01:00008EA4:  62 7F 00 00
-               S01:00008EA8:  8B 0C 00 00
-               S01:00008EAC:  87 7F 00 00
-               S01:00008EB0:  FB 0A 00 00
-               S01:00008EB4:  A7 7F 00 00
-               S01:00008EB8:  6A 09 00 00
-               S01:00008EBC:  C2 7F 00 00
-               S01:00008EC0:  D9 07 00 00
-               S01:00008EC4:  D8 7F 00 00
-               S01:00008EC8:  47 06 00 00
-               S01:00008ECC:  E9 7F 00 00
-               S01:00008ED0:  B6 04 00 00
-               S01:00008ED4:  F6 7F 00 00
-               S01:00008ED8:  24 03 00 00
-               S01:00008EDC:  FD 7F 00 00
-               S01:00008EE0:  92 01 00 00
-F00:0603               .long   32768, 0,32765, -402,32758, -804,32745, -1206,32728, -1607,32706, -2009,32679, -2410,32647, -2811
-               S01:00008EE4:  00 80 00 00
-               S01:00008EE8:  00 00 00 00
-               S01:00008EEC:  FD 7F 00 00
-               S01:00008EF0:  6E FE FF FF
-               S01:00008EF4:  F6 7F 00 00
-               S01:00008EF8:  DC FC FF FF
-               S01:00008EFC:  E9 7F 00 00
-               S01:00008F00:  4A FB FF FF
-               S01:00008F04:  D8 7F 00 00
-               S01:00008F08:  B9 F9 FF FF
-               S01:00008F0C:  C2 7F 00 00
-               S01:00008F10:  27 F8 FF FF
-               S01:00008F14:  A7 7F 00 00
-               S01:00008F18:  96 F6 FF FF
-               S01:00008F1C:  87 7F 00 00
-               S01:00008F20:  05 F5 FF FF
-F00:0604               .long   32610, -3211,32568, -3611,32521, -4011,32469, -4409,32413, -4808,32351, -5205,32285, -5602,32214, -5997
-               S01:00008F24:  62 7F 00 00
-               S01:00008F28:  75 F3 FF FF
-               S01:00008F2C:  38 7F 00 00
-               S01:00008F30:  E5 F1 FF FF
-               S01:00008F34:  09 7F 00 00
-               S01:00008F38:  55 F0 FF FF
-               S01:00008F3C:  D5 7E 00 00
-               S01:00008F40:  C7 EE FF FF
-               S01:00008F44:  9D 7E 00 00
-               S01:00008F48:  38 ED FF FF
-               S01:00008F4C:  5F 7E 00 00
-               S01:00008F50:  AB EB FF FF
-               S01:00008F54:  1D 7E 00 00
-               S01:00008F58:  1E EA FF FF
-               S01:00008F5C:  D6 7D 00 00
-               S01:00008F60:  93 E8 FF FF
-F00:0605               .long   32138, -6392,32057, -6786,31971, -7179,31881, -7571,31785, -7961,31685, -8351,31581, -8739,31471, -9126
-               S01:00008F64:  8A 7D 00 00
-               S01:00008F68:  08 E7 FF FF
-               S01:00008F6C:  39 7D 00 00
-               S01:00008F70:  7E E5 FF FF
-               S01:00008F74:  E3 7C 00 00
-               S01:00008F78:  F5 E3 FF FF
-               S01:00008F7C:  89 7C 00 00
-               S01:00008F80:  6D E2 FF FF
-               S01:00008F84:  29 7C 00 00
-               S01:00008F88:  E7 E0 FF FF
-               S01:00008F8C:  C5 7B 00 00
-               S01:00008F90:  61 DF FF FF
-               S01:00008F94:  5D 7B 00 00
-               S01:00008F98:  DD DD FF FF
-               S01:00008F9C:  EF 7A 00 00
-               S01:00008FA0:  5A DC FF FF
-F00:0606               .long   31357, -9512,31237, -9896,31114, -10278,30985, -10659,30852, -11039,30714, -11416,30572, -11793,30425, -
-               S01:00008FA4:  7D 7A 00 00
-               S01:00008FA8:  D8 DA FF FF
-               S01:00008FAC:  05 7A 00 00
-               S01:00008FB0:  58 D9 FF FF
-               S01:00008FB4:  8A 79 00 00
-               S01:00008FB8:  DA D7 FF FF
-               S01:00008FBC:  09 79 00 00
-               S01:00008FC0:  5D D6 FF FF
-               S01:00008FC4:  84 78 00 00
-               S01:00008FC8:  E1 D4 FF FF
-               S01:00008FCC:  FA 77 00 00
-               S01:00008FD0:  68 D3 FF FF
-               S01:00008FD4:  6C 77 00 00
-               S01:00008FD8:  EF D1 FF FF
-               S01:00008FDC:  D9 76 00 00
-               S01:00008FE0:  79 D0 FF FF
-F00:0607               .long   30273, -12539,30117, -12910,29956, -13278,29791, -13645,29621, -14010,29447, -14372,29269, -14732,29086,
-               S01:00008FE4:  41 76 00 00
-               S01:00008FE8:  05 CF FF FF
-               S01:00008FEC:  A5 75 00 00
-               S01:00008FF0:  92 CD FF FF
-               S01:00008FF4:  04 75 00 00
-               S01:00008FF8:  22 CC FF FF
-               S01:00008FFC:  5F 74 00 00
-               S01:00009000:  B3 CA FF FF
-               S01:00009004:  B5 73 00 00
-               S01:00009008:  46 C9 FF FF
-               S01:0000900C:  07 73 00 00
-               S01:00009010:  DC C7 FF FF
-               S01:00009014:  55 72 00 00
-               S01:00009018:  74 C6 FF FF
-               S01:0000901C:  9E 71 00 00
-               S01:00009020:  0E C5 FF FF
-F00:0608               .long   28898, -15446,28707, -15800,28511, -16151,28310, -16499,28106, -16846,27897, -17189,27684, -17530,27466,
-               S01:00009024:  E2 70 00 00
-               S01:00009028:  AA C3 FF FF
-               S01:0000902C:  23 70 00 00
-               S01:00009030:  48 C2 FF FF
-               S01:00009034:  5F 6F 00 00
-               S01:00009038:  E9 C0 FF FF
-               S01:0000903C:  96 6E 00 00
-               S01:00009040:  8D BF FF FF
-               S01:00009044:  CA 6D 00 00
-               S01:00009048:  32 BE FF FF
-               S01:0000904C:  F9 6C 00 00
-               S01:00009050:  DB BC FF FF
-               S01:00009054:  24 6C 00 00
-               S01:00009058:  86 BB FF FF
-               S01:0000905C:  4A 6B 00 00
-               S01:00009060:  33 BA FF FF
-F00:0609               .long   27245, -18204,27020, -18537,26790, -18868,26557, -19195,26319, -19519,26077, -19841,25832, -20159,25583,
-               S01:00009064:  6D 6A 00 00
-               S01:00009068:  E4 B8 FF FF
-               S01:0000906C:  8C 69 00 00
-               S01:00009070:  97 B7 FF FF
-               S01:00009074:  A6 68 00 00
-               S01:00009078:  4C B6 FF FF
-               S01:0000907C:  BD 67 00 00
-               S01:00009080:  05 B5 FF FF
-               S01:00009084:  CF 66 00 00
-               S01:00009088:  C1 B3 FF FF
-               S01:0000908C:  DD 65 00 00
-               S01:00009090:  7F B2 FF FF
-               S01:00009094:  E8 64 00 00
-               S01:00009098:  41 B1 FF FF
-               S01:0000909C:  EF 63 00 00
-               S01:000090A0:  05 B0 FF FF
-F00:0610               .long   25330, -20787,25073, -21097,24812, -21403,24547, -21706,24279, -22005,24007, -22301,23732, -22594,23453,
-               S01:000090A4:  F2 62 00 00
-               S01:000090A8:  CD AE FF FF
-               S01:000090AC:  F1 61 00 00
-               S01:000090B0:  97 AD FF FF
-               S01:000090B4:  EC 60 00 00
-               S01:000090B8:  65 AC FF FF
-               S01:000090BC:  E3 5F 00 00
-               S01:000090C0:  36 AB FF FF
-               S01:000090C4:  D7 5E 00 00
-               S01:000090C8:  0B AA FF FF
-               S01:000090CC:  C7 5D 00 00
-               S01:000090D0:  E3 A8 FF FF
-               S01:000090D4:  B4 5C 00 00
-               S01:000090D8:  BE A7 FF FF
-               S01:000090DC:  9D 5B 00 00
-               S01:000090E0:  9C A6 FF FF
-F00:0611               .long   23170, -23170,22884, -23453,22594, -23732,22301, -24007,22005, -24279,21706, -24547,21403, -24812,21097,
-               S01:000090E4:  82 5A 00 00
-               S01:000090E8:  7E A5 FF FF
-               S01:000090EC:  64 59 00 00
-               S01:000090F0:  63 A4 FF FF
-               S01:000090F4:  42 58 00 00
-               S01:000090F8:  4C A3 FF FF
-               S01:000090FC:  1D 57 00 00
-               S01:00009100:  39 A2 FF FF
-               S01:00009104:  F5 55 00 00
-               S01:00009108:  29 A1 FF FF
-               S01:0000910C:  CA 54 00 00
-               S01:00009110:  1D A0 FF FF
-               S01:00009114:  9B 53 00 00
-               S01:00009118:  14 9F FF FF
-               S01:0000911C:  69 52 00 00
-               S01:00009120:  0F 9E FF FF
-F00:0612               .long   20787, -25330,20475, -25583,20159, -25832,19841, -26077,19519, -26319,19195, -26557,18868, -26790,18537,
-               S01:00009124:  33 51 00 00
-               S01:00009128:  0E 9D FF FF
-               S01:0000912C:  FB 4F 00 00
-               S01:00009130:  11 9C FF FF
-               S01:00009134:  BF 4E 00 00
-               S01:00009138:  18 9B FF FF
-               S01:0000913C:  81 4D 00 00
-               S01:00009140:  23 9A FF FF
-               S01:00009144:  3F 4C 00 00
-               S01:00009148:  31 99 FF FF
-               S01:0000914C:  FB 4A 00 00
-               S01:00009150:  43 98 FF FF
-               S01:00009154:  B4 49 00 00
-               S01:00009158:  5A 97 FF FF
-               S01:0000915C:  69 48 00 00
-               S01:00009160:  74 96 FF FF
-F00:0613               .long   18204, -27245,17869, -27466,17530, -27684,17189, -27897,16846, -28106,16499, -28310,16151, -28511,15800,
-               S01:00009164:  1C 47 00 00
-               S01:00009168:  93 95 FF FF
-               S01:0000916C:  CD 45 00 00
-               S01:00009170:  B6 94 FF FF
-               S01:00009174:  7A 44 00 00
-               S01:00009178:  DC 93 FF FF
-               S01:0000917C:  25 43 00 00
-               S01:00009180:  07 93 FF FF
-               S01:00009184:  CE 41 00 00
-               S01:00009188:  36 92 FF FF
-               S01:0000918C:  73 40 00 00
-               S01:00009190:  6A 91 FF FF
-               S01:00009194:  17 3F 00 00
-               S01:00009198:  A1 90 FF FF
-               S01:0000919C:  B8 3D 00 00
-               S01:000091A0:  DD 8F FF FF
-F00:0614               .long   15446, -28898,15090, -29086,14732, -29269,14372, -29447,14010, -29621,13645, -29791,13278, -29956,12910,
-               S01:000091A4:  56 3C 00 00
-               S01:000091A8:  1E 8F FF FF
-               S01:000091AC:  F2 3A 00 00
-               S01:000091B0:  62 8E FF FF
-               S01:000091B4:  8C 39 00 00
-               S01:000091B8:  AB 8D FF FF
-               S01:000091BC:  24 38 00 00
-               S01:000091C0:  F9 8C FF FF
-               S01:000091C4:  BA 36 00 00
-               S01:000091C8:  4B 8C FF FF
-               S01:000091CC:  4D 35 00 00
-               S01:000091D0:  A1 8B FF FF
-               S01:000091D4:  DE 33 00 00
-               S01:000091D8:  FC 8A FF FF
-               S01:000091DC:  6E 32 00 00
-               S01:000091E0:  5B 8A FF FF
-F00:0615               .long   12539, -30273,12167, -30425,11793, -30572,11416, -30714,11039, -30852,10659, -30985,10278, -31114,9896, 
-               S01:000091E4:  FB 30 00 00
-               S01:000091E8:  BF 89 FF FF
-               S01:000091EC:  87 2F 00 00
-               S01:000091F0:  27 89 FF FF
-               S01:000091F4:  11 2E 00 00
-               S01:000091F8:  94 88 FF FF
-               S01:000091FC:  98 2C 00 00
-               S01:00009200:  06 88 FF FF
-               S01:00009204:  1F 2B 00 00
-               S01:00009208:  7C 87 FF FF
-               S01:0000920C:  A3 29 00 00
-               S01:00009210:  F7 86 FF FF
-               S01:00009214:  26 28 00 00
-               S01:00009218:  76 86 FF FF
-               S01:0000921C:  A8 26 00 00
-               S01:00009220:  FB 85 FF FF
-F00:0616               .long   9512, -31357,9126, -31471,8739, -31581,8351, -31685,7961, -31785,7571, -31881,7179, -31971,6786, -32057
-               S01:00009224:  28 25 00 00
-               S01:00009228:  83 85 FF FF
-               S01:0000922C:  A6 23 00 00
-               S01:00009230:  11 85 FF FF
-               S01:00009234:  23 22 00 00
-               S01:00009238:  A3 84 FF FF
-               S01:0000923C:  9F 20 00 00
-               S01:00009240:  3B 84 FF FF
-               S01:00009244:  19 1F 00 00
-               S01:00009248:  D7 83 FF FF
-               S01:0000924C:  93 1D 00 00
-               S01:00009250:  77 83 FF FF
-               S01:00009254:  0B 1C 00 00
-               S01:00009258:  1D 83 FF FF
-               S01:0000925C:  82 1A 00 00
-               S01:00009260:  C7 82 FF FF
-F00:0617               .long   6392, -32138,5997, -32214,5602, -32285,5205, -32351,4808, -32413,4409, -32469,4011, -32521,3611, -32568
-               S01:00009264:  F8 18 00 00
-               S01:00009268:  76 82 FF FF
-               S01:0000926C:  6D 17 00 00
-               S01:00009270:  2A 82 FF FF
-               S01:00009274:  E2 15 00 00
-               S01:00009278:  E3 81 FF FF
-               S01:0000927C:  55 14 00 00
-               S01:00009280:  A1 81 FF FF
-               S01:00009284:  C8 12 00 00
-               S01:00009288:  63 81 FF FF
-               S01:0000928C:  39 11 00 00
-               S01:00009290:  2B 81 FF FF
-               S01:00009294:  AB 0F 00 00
-               S01:00009298:  F7 80 FF FF
-               S01:0000929C:  1B 0E 00 00
-               S01:000092A0:  C8 80 FF FF
-F00:0618               .long   3211, -32610,2811, -32647,2410, -32679,2009, -32706,1607, -32728,1206, -32745,804, -32758,402, -32765
-               S01:000092A4:  8B 0C 00 00
-               S01:000092A8:  9E 80 FF FF
-               S01:000092AC:  FB 0A 00 00
-               S01:000092B0:  79 80 FF FF
-               S01:000092B4:  6A 09 00 00
-               S01:000092B8:  59 80 FF FF
-               S01:000092BC:  D9 07 00 00
-               S01:000092C0:  3E 80 FF FF
-               S01:000092C4:  47 06 00 00
-               S01:000092C8:  28 80 FF FF
-               S01:000092CC:  B6 04 00 00
-               S01:000092D0:  17 80 FF FF
-               S01:000092D4:  24 03 00 00
-               S01:000092D8:  0A 80 FF FF
-               S01:000092DC:  92 01 00 00
-               S01:000092E0:  03 80 FF FF
-F00:0619               .long   0, -32768,-402, -32765,-804, -32758,-1206, -32745,-1607, -32728,-2009, -32706,-2410, -32679,-2811, -3264
-               S01:000092E4:  00 00 00 00
-               S01:000092E8:  00 80 FF FF
-               S01:000092EC:  6E FE FF FF
-               S01:000092F0:  03 80 FF FF
-               S01:000092F4:  DC FC FF FF
-               S01:000092F8:  0A 80 FF FF
-               S01:000092FC:  4A FB FF FF
-               S01:00009300:  17 80 FF FF
-               S01:00009304:  B9 F9 FF FF
-               S01:00009308:  28 80 FF FF
-               S01:0000930C:  27 F8 FF FF
-               S01:00009310:  3E 80 FF FF
-               S01:00009314:  96 F6 FF FF
-               S01:00009318:  59 80 FF FF
-               S01:0000931C:  05 F5 FF FF
-               S01:00009320:  79 80 FF FF
-F00:0620               .long   -3211, -32610,-3611, -32568,-4011, -32521,-4409, -32469,-4808, -32413,-5205, -32351,-5602, -32285,-5997,
-               S01:00009324:  75 F3 FF FF
-               S01:00009328:  9E 80 FF FF
-               S01:0000932C:  E5 F1 FF FF
-               S01:00009330:  C8 80 FF FF
-               S01:00009334:  55 F0 FF FF
-               S01:00009338:  F7 80 FF FF
-               S01:0000933C:  C7 EE FF FF
-               S01:00009340:  2B 81 FF FF
-               S01:00009344:  38 ED FF FF
-               S01:00009348:  63 81 FF FF
-               S01:0000934C:  AB EB FF FF
-               S01:00009350:  A1 81 FF FF
-               S01:00009354:  1E EA FF FF
-               S01:00009358:  E3 81 FF FF
-               S01:0000935C:  93 E8 FF FF
-               S01:00009360:  2A 82 FF FF
-F00:0621               .long   -6392, -32138,-6786, -32057,-7179, -31971,-7571, -31881,-7961, -31785,-8351, -31685,-8739, -31581,-9126,
-               S01:00009364:  08 E7 FF FF
-               S01:00009368:  76 82 FF FF
-               S01:0000936C:  7E E5 FF FF
-               S01:00009370:  C7 82 FF FF
-               S01:00009374:  F5 E3 FF FF
-               S01:00009378:  1D 83 FF FF
-               S01:0000937C:  6D E2 FF FF
-               S01:00009380:  77 83 FF FF
-               S01:00009384:  E7 E0 FF FF
-               S01:00009388:  D7 83 FF FF
-               S01:0000938C:  61 DF FF FF
-               S01:00009390:  3B 84 FF FF
-               S01:00009394:  DD DD FF FF
-               S01:00009398:  A3 84 FF FF
-               S01:0000939C:  5A DC FF FF
-               S01:000093A0:  11 85 FF FF
-F00:0622               .long   -9512, -31357,-9896, -31237,-10278, -31114,-10659, -30985,-11039, -30852,-11416, -30714,-11793, -30572,-
-               S01:000093A4:  D8 DA FF FF
-               S01:000093A8:  83 85 FF FF
-               S01:000093AC:  58 D9 FF FF
-               S01:000093B0:  FB 85 FF FF
-               S01:000093B4:  DA D7 FF FF
-               S01:000093B8:  76 86 FF FF
-               S01:000093BC:  5D D6 FF FF
-               S01:000093C0:  F7 86 FF FF
-               S01:000093C4:  E1 D4 FF FF
-               S01:000093C8:  7C 87 FF FF
-               S01:000093CC:  68 D3 FF FF
-               S01:000093D0:  06 88 FF FF
-               S01:000093D4:  EF D1 FF FF
-               S01:000093D8:  94 88 FF FF
-               S01:000093DC:  79 D0 FF FF
-               S01:000093E0:  27 89 FF FF
-F00:0623               .long   -12539, -30273,-12910, -30117,-13278, -29956,-13645, -29791,-14010, -29621,-14372, -29447,-14732, -29269
-               S01:000093E4:  05 CF FF FF
-               S01:000093E8:  BF 89 FF FF
-               S01:000093EC:  92 CD FF FF
-               S01:000093F0:  5B 8A FF FF
-               S01:000093F4:  22 CC FF FF
-               S01:000093F8:  FC 8A FF FF
-               S01:000093FC:  B3 CA FF FF
-               S01:00009400:  A1 8B FF FF
-               S01:00009404:  46 C9 FF FF
-               S01:00009408:  4B 8C FF FF
-               S01:0000940C:  DC C7 FF FF
-               S01:00009410:  F9 8C FF FF
-               S01:00009414:  74 C6 FF FF
-               S01:00009418:  AB 8D FF FF
-               S01:0000941C:  0E C5 FF FF
-               S01:00009420:  62 8E FF FF
-F00:0624               .long   -15446, -28898,-15800, -28707,-16151, -28511,-16499, -28310,-16846, -28106,-17189, -27897,-17530, -27684
-               S01:00009424:  AA C3 FF FF
-               S01:00009428:  1E 8F FF FF
-               S01:0000942C:  48 C2 FF FF
-               S01:00009430:  DD 8F FF FF
-               S01:00009434:  E9 C0 FF FF
-               S01:00009438:  A1 90 FF FF
-               S01:0000943C:  8D BF FF FF
-               S01:00009440:  6A 91 FF FF
-               S01:00009444:  32 BE FF FF
-               S01:00009448:  36 92 FF FF
-               S01:0000944C:  DB BC FF FF
-               S01:00009450:  07 93 FF FF
-               S01:00009454:  86 BB FF FF
-               S01:00009458:  DC 93 FF FF
-               S01:0000945C:  33 BA FF FF
-               S01:00009460:  B6 94 FF FF
-F00:0625               .long   -18204, -27245,-18537, -27020,-18868, -26790,-19195, -26557,-19519, -26319,-19841, -26077,-20159, -25832
-               S01:00009464:  E4 B8 FF FF
-               S01:00009468:  93 95 FF FF
-               S01:0000946C:  97 B7 FF FF
-               S01:00009470:  74 96 FF FF
-               S01:00009474:  4C B6 FF FF
-               S01:00009478:  5A 97 FF FF
-               S01:0000947C:  05 B5 FF FF
-               S01:00009480:  43 98 FF FF
-               S01:00009484:  C1 B3 FF FF
-               S01:00009488:  31 99 FF FF
-               S01:0000948C:  7F B2 FF FF
-               S01:00009490:  23 9A FF FF
-               S01:00009494:  41 B1 FF FF
-               S01:00009498:  18 9B FF FF
-               S01:0000949C:  05 B0 FF FF
-               S01:000094A0:  11 9C FF FF
-F00:0626               .long   -20787, -25330,-21097, -25073,-21403, -24812,-21706, -24547,-22005, -24279,-22301, -24007,-22594, -23732
-               S01:000094A4:  CD AE FF FF
-               S01:000094A8:  0E 9D FF FF
-               S01:000094AC:  97 AD FF FF
-               S01:000094B0:  0F 9E FF FF
-               S01:000094B4:  65 AC FF FF
-               S01:000094B8:  14 9F FF FF
-               S01:000094BC:  36 AB FF FF
-               S01:000094C0:  1D A0 FF FF
-               S01:000094C4:  0B AA FF FF
-               S01:000094C8:  29 A1 FF FF
-               S01:000094CC:  E3 A8 FF FF
-               S01:000094D0:  39 A2 FF FF
-               S01:000094D4:  BE A7 FF FF
-               S01:000094D8:  4C A3 FF FF
-               S01:000094DC:  9C A6 FF FF
-               S01:000094E0:  63 A4 FF FF
-F00:0627               .long   -23170, -23170,-23453, -22884,-23732, -22594,-24007, -22301,-24279, -22005,-24547, -21706,-24812, -21403
-               S01:000094E4:  7E A5 FF FF
-               S01:000094E8:  7E A5 FF FF
-               S01:000094EC:  63 A4 FF FF
-               S01:000094F0:  9C A6 FF FF
-               S01:000094F4:  4C A3 FF FF
-               S01:000094F8:  BE A7 FF FF
-               S01:000094FC:  39 A2 FF FF
-               S01:00009500:  E3 A8 FF FF
-               S01:00009504:  29 A1 FF FF
-               S01:00009508:  0B AA FF FF
-               S01:0000950C:  1D A0 FF FF
-               S01:00009510:  36 AB FF FF
-               S01:00009514:  14 9F FF FF
-               S01:00009518:  65 AC FF FF
-               S01:0000951C:  0F 9E FF FF
-               S01:00009520:  97 AD FF FF
-F00:0628               .long   -25330, -20787,-25583, -20475,-25832, -20159,-26077, -19841,-26319, -19519,-26557, -19195,-26790, -18868
-               S01:00009524:  0E 9D FF FF
-               S01:00009528:  CD AE FF FF
-               S01:0000952C:  11 9C FF FF
-               S01:00009530:  05 B0 FF FF
-               S01:00009534:  18 9B FF FF
-               S01:00009538:  41 B1 FF FF
-               S01:0000953C:  23 9A FF FF
-               S01:00009540:  7F B2 FF FF
-               S01:00009544:  31 99 FF FF
-               S01:00009548:  C1 B3 FF FF
-               S01:0000954C:  43 98 FF FF
-               S01:00009550:  05 B5 FF FF
-               S01:00009554:  5A 97 FF FF
-               S01:00009558:  4C B6 FF FF
-               S01:0000955C:  74 96 FF FF
-               S01:00009560:  97 B7 FF FF
-F00:0629               .long   -27245, -18204,-27466, -17869,-27684, -17530,-27897, -17189,-28106, -16846,-28310, -16499,-28511, -16151
-               S01:00009564:  93 95 FF FF
-               S01:00009568:  E4 B8 FF FF
-               S01:0000956C:  B6 94 FF FF
-               S01:00009570:  33 BA FF FF
-               S01:00009574:  DC 93 FF FF
-               S01:00009578:  86 BB FF FF
-               S01:0000957C:  07 93 FF FF
-               S01:00009580:  DB BC FF FF
-               S01:00009584:  36 92 FF FF
-               S01:00009588:  32 BE FF FF
-               S01:0000958C:  6A 91 FF FF
-               S01:00009590:  8D BF FF FF
-               S01:00009594:  A1 90 FF FF
-               S01:00009598:  E9 C0 FF FF
-               S01:0000959C:  DD 8F FF FF
-               S01:000095A0:  48 C2 FF FF
-F00:0630               .long   -28898, -15446,-29086, -15090,-29269, -14732,-29447, -14372,-29621, -14010,-29791, -13645,-29956, -13278
-               S01:000095A4:  1E 8F FF FF
-               S01:000095A8:  AA C3 FF FF
-               S01:000095AC:  62 8E FF FF
-               S01:000095B0:  0E C5 FF FF
-               S01:000095B4:  AB 8D FF FF
-               S01:000095B8:  74 C6 FF FF
-               S01:000095BC:  F9 8C FF FF
-               S01:000095C0:  DC C7 FF FF
-               S01:000095C4:  4B 8C FF FF
-               S01:000095C8:  46 C9 FF FF
-               S01:000095CC:  A1 8B FF FF
-               S01:000095D0:  B3 CA FF FF
-               S01:000095D4:  FC 8A FF FF
-               S01:000095D8:  22 CC FF FF
-               S01:000095DC:  5B 8A FF FF
-               S01:000095E0:  92 CD FF FF
-F00:0631               .long   -30273, -12539,-30425, -12167,-30572, -11793,-30714, -11416,-30852, -11039,-30985, -10659,-31114, -10278
-               S01:000095E4:  BF 89 FF FF
-               S01:000095E8:  05 CF FF FF
-               S01:000095EC:  27 89 FF FF
-               S01:000095F0:  79 D0 FF FF
-               S01:000095F4:  94 88 FF FF
-               S01:000095F8:  EF D1 FF FF
-               S01:000095FC:  06 88 FF FF
-               S01:00009600:  68 D3 FF FF
-               S01:00009604:  7C 87 FF FF
-               S01:00009608:  E1 D4 FF FF
-               S01:0000960C:  F7 86 FF FF
-               S01:00009610:  5D D6 FF FF
-               S01:00009614:  76 86 FF FF
-               S01:00009618:  DA D7 FF FF
-               S01:0000961C:  FB 85 FF FF
-               S01:00009620:  58 D9 FF FF
-F00:0632               .long   -31357, -9512,-31471, -9126,-31581, -8739,-31685, -8351,-31785, -7961,-31881, -7571,-31971, -7179,-32057
-               S01:00009624:  83 85 FF FF
-               S01:00009628:  D8 DA FF FF
-               S01:0000962C:  11 85 FF FF
-               S01:00009630:  5A DC FF FF
-               S01:00009634:  A3 84 FF FF
-               S01:00009638:  DD DD FF FF
-               S01:0000963C:  3B 84 FF FF
-               S01:00009640:  61 DF FF FF
-               S01:00009644:  D7 83 FF FF
-               S01:00009648:  E7 E0 FF FF
-               S01:0000964C:  77 83 FF FF
-               S01:00009650:  6D E2 FF FF
-               S01:00009654:  1D 83 FF FF
-               S01:00009658:  F5 E3 FF FF
-               S01:0000965C:  C7 82 FF FF
-               S01:00009660:  7E E5 FF FF
-F00:0633               .long   -32138, -6392,-32214, -5997,-32285, -5602,-32351, -5205,-32413, -4808,-32469, -4409,-32521, -4011,-32568
-               S01:00009664:  76 82 FF FF
-               S01:00009668:  08 E7 FF FF
-               S01:0000966C:  2A 82 FF FF
-               S01:00009670:  93 E8 FF FF
-               S01:00009674:  E3 81 FF FF
-               S01:00009678:  1E EA FF FF
-               S01:0000967C:  A1 81 FF FF
-               S01:00009680:  AB EB FF FF
-               S01:00009684:  63 81 FF FF
-               S01:00009688:  38 ED FF FF
-               S01:0000968C:  2B 81 FF FF
-               S01:00009690:  C7 EE FF FF
-               S01:00009694:  F7 80 FF FF
-               S01:00009698:  55 F0 FF FF
-               S01:0000969C:  C8 80 FF FF
-               S01:000096A0:  E5 F1 FF FF
-F00:0634               .long   -32610, -3211,-32647, -2811,-32679, -2410,-32706, -2009,-32728, -1607,-32745, -1206,-32758, -804,-32765,
-               S01:000096A4:  9E 80 FF FF
-               S01:000096A8:  75 F3 FF FF
-               S01:000096AC:  79 80 FF FF
-               S01:000096B0:  05 F5 FF FF
-               S01:000096B4:  59 80 FF FF
-               S01:000096B8:  96 F6 FF FF
-               S01:000096BC:  3E 80 FF FF
-               S01:000096C0:  27 F8 FF FF
-               S01:000096C4:  28 80 FF FF
-               S01:000096C8:  B9 F9 FF FF
-               S01:000096CC:  17 80 FF FF
-               S01:000096D0:  4A FB FF FF
-               S01:000096D4:  0A 80 FF FF
-               S01:000096D8:  DC FC FF FF
-               S01:000096DC:  03 80 FF FF
-               S01:000096E0:  6E FE FF FF
-F00:0635               .long   -32768, 0,-32765, 402,-32758, 804,-32745, 1206,-32728, 1607,-32706, 2009,-32679, 2410,-32647, 2811
-               S01:000096E4:  00 80 FF FF
-               S01:000096E8:  00 00 00 00
-               S01:000096EC:  03 80 FF FF
-               S01:000096F0:  92 01 00 00
-               S01:000096F4:  0A 80 FF FF
-               S01:000096F8:  24 03 00 00
-               S01:000096FC:  17 80 FF FF
-               S01:00009700:  B6 04 00 00
-               S01:00009704:  28 80 FF FF
-               S01:00009708:  47 06 00 00
-               S01:0000970C:  3E 80 FF FF
-               S01:00009710:  D9 07 00 00
-               S01:00009714:  59 80 FF FF
-               S01:00009718:  6A 09 00 00
-               S01:0000971C:  79 80 FF FF
-               S01:00009720:  FB 0A 00 00
-F00:0636               .long   -32610, 3211,-32568, 3611,-32521, 4011,-32469, 4409,-32413, 4808,-32351, 5205,-32285, 5602,-32214, 5997
-               S01:00009724:  9E 80 FF FF
-               S01:00009728:  8B 0C 00 00
-               S01:0000972C:  C8 80 FF FF
-               S01:00009730:  1B 0E 00 00
-               S01:00009734:  F7 80 FF FF
-               S01:00009738:  AB 0F 00 00
-               S01:0000973C:  2B 81 FF FF
-               S01:00009740:  39 11 00 00
-               S01:00009744:  63 81 FF FF
-               S01:00009748:  C8 12 00 00
-               S01:0000974C:  A1 81 FF FF
-               S01:00009750:  55 14 00 00
-               S01:00009754:  E3 81 FF FF
-               S01:00009758:  E2 15 00 00
-               S01:0000975C:  2A 82 FF FF
-               S01:00009760:  6D 17 00 00
-F00:0637               .long   -32138, 6392,-32057, 6786,-31971, 7179,-31881, 7571,-31785, 7961,-31685, 8351,-31581, 8739,-31471, 9126
-               S01:00009764:  76 82 FF FF
-               S01:00009768:  F8 18 00 00
-               S01:0000976C:  C7 82 FF FF
-               S01:00009770:  82 1A 00 00
-               S01:00009774:  1D 83 FF FF
-               S01:00009778:  0B 1C 00 00
-               S01:0000977C:  77 83 FF FF
-               S01:00009780:  93 1D 00 00
-               S01:00009784:  D7 83 FF FF
-               S01:00009788:  19 1F 00 00
-               S01:0000978C:  3B 84 FF FF
-               S01:00009790:  9F 20 00 00
-               S01:00009794:  A3 84 FF FF
-               S01:00009798:  23 22 00 00
-               S01:0000979C:  11 85 FF FF
-               S01:000097A0:  A6 23 00 00
-F00:0638               .long   -31357, 9512,-31237, 9896,-31114, 10278,-30985, 10659,-30852, 11039,-30714, 11416,-30572, 11793,-30425, 
-               S01:000097A4:  83 85 FF FF
-               S01:000097A8:  28 25 00 00
-               S01:000097AC:  FB 85 FF FF
-               S01:000097B0:  A8 26 00 00
-               S01:000097B4:  76 86 FF FF
-               S01:000097B8:  26 28 00 00
-               S01:000097BC:  F7 86 FF FF
-               S01:000097C0:  A3 29 00 00
-               S01:000097C4:  7C 87 FF FF
-               S01:000097C8:  1F 2B 00 00
-               S01:000097CC:  06 88 FF FF
-               S01:000097D0:  98 2C 00 00
-               S01:000097D4:  94 88 FF FF
-               S01:000097D8:  11 2E 00 00
-               S01:000097DC:  27 89 FF FF
-               S01:000097E0:  87 2F 00 00
-F00:0639               .long   -30273, 12539,-30117, 12910,-29956, 13278,-29791, 13645,-29621, 14010,-29447, 14372,-29269, 14732,-29086
-               S01:000097E4:  BF 89 FF FF
-               S01:000097E8:  FB 30 00 00
-               S01:000097EC:  5B 8A FF FF
-               S01:000097F0:  6E 32 00 00
-               S01:000097F4:  FC 8A FF FF
-               S01:000097F8:  DE 33 00 00
-               S01:000097FC:  A1 8B FF FF
-               S01:00009800:  4D 35 00 00
-               S01:00009804:  4B 8C FF FF
-               S01:00009808:  BA 36 00 00
-               S01:0000980C:  F9 8C FF FF
-               S01:00009810:  24 38 00 00
-               S01:00009814:  AB 8D FF FF
-               S01:00009818:  8C 39 00 00
-               S01:0000981C:  62 8E FF FF
-               S01:00009820:  F2 3A 00 00
-F00:0640               .long   -28898, 15446,-28707, 15800,-28511, 16151,-28310, 16499,-28106, 16846,-27897, 17189,-27684, 17530,-27466
-               S01:00009824:  1E 8F FF FF
-               S01:00009828:  56 3C 00 00
-               S01:0000982C:  DD 8F FF FF
-               S01:00009830:  B8 3D 00 00
-               S01:00009834:  A1 90 FF FF
-               S01:00009838:  17 3F 00 00
-               S01:0000983C:  6A 91 FF FF
-               S01:00009840:  73 40 00 00
-               S01:00009844:  36 92 FF FF
-               S01:00009848:  CE 41 00 00
-               S01:0000984C:  07 93 FF FF
-               S01:00009850:  25 43 00 00
-               S01:00009854:  DC 93 FF FF
-               S01:00009858:  7A 44 00 00
-               S01:0000985C:  B6 94 FF FF
-               S01:00009860:  CD 45 00 00
-F00:0641               .long   -27245, 18204,-27020, 18537,-26790, 18868,-26557, 19195,-26319, 19519,-26077, 19841,-25832, 20159,-25583
-               S01:00009864:  93 95 FF FF
-               S01:00009868:  1C 47 00 00
-               S01:0000986C:  74 96 FF FF
-               S01:00009870:  69 48 00 00
-               S01:00009874:  5A 97 FF FF
-               S01:00009878:  B4 49 00 00
-               S01:0000987C:  43 98 FF FF
-               S01:00009880:  FB 4A 00 00
-               S01:00009884:  31 99 FF FF
-               S01:00009888:  3F 4C 00 00
-               S01:0000988C:  23 9A FF FF
-               S01:00009890:  81 4D 00 00
-               S01:00009894:  18 9B FF FF
-               S01:00009898:  BF 4E 00 00
-               S01:0000989C:  11 9C FF FF
-               S01:000098A0:  FB 4F 00 00
-F00:0642               .long   -25330, 20787,-25073, 21097,-24812, 21403,-24547, 21706,-24279, 22005,-24007, 22301,-23732, 22594,-23453
-               S01:000098A4:  0E 9D FF FF
-               S01:000098A8:  33 51 00 00
-               S01:000098AC:  0F 9E FF FF
-               S01:000098B0:  69 52 00 00
-               S01:000098B4:  14 9F FF FF
-               S01:000098B8:  9B 53 00 00
-               S01:000098BC:  1D A0 FF FF
-               S01:000098C0:  CA 54 00 00
-               S01:000098C4:  29 A1 FF FF
-               S01:000098C8:  F5 55 00 00
-               S01:000098CC:  39 A2 FF FF
-               S01:000098D0:  1D 57 00 00
-               S01:000098D4:  4C A3 FF FF
-               S01:000098D8:  42 58 00 00
-               S01:000098DC:  63 A4 FF FF
-               S01:000098E0:  64 59 00 00
-F00:0643               .long   -23170, 23170,-22884, 23453,-22594, 23732,-22301, 24007,-22005, 24279,-21706, 24547,-21403, 24812,-21097
-               S01:000098E4:  7E A5 FF FF
-               S01:000098E8:  82 5A 00 00
-               S01:000098EC:  9C A6 FF FF
-               S01:000098F0:  9D 5B 00 00
-               S01:000098F4:  BE A7 FF FF
-               S01:000098F8:  B4 5C 00 00
-               S01:000098FC:  E3 A8 FF FF
-               S01:00009900:  C7 5D 00 00
-               S01:00009904:  0B AA FF FF
-               S01:00009908:  D7 5E 00 00
-               S01:0000990C:  36 AB FF FF
-               S01:00009910:  E3 5F 00 00
-               S01:00009914:  65 AC FF FF
-               S01:00009918:  EC 60 00 00
-               S01:0000991C:  97 AD FF FF
-               S01:00009920:  F1 61 00 00
-F00:0644               .long   -20787, 25330,-20475, 25583,-20159, 25832,-19841, 26077,-19519, 26319,-19195, 26557,-18868, 26790,-18537
-               S01:00009924:  CD AE FF FF
-               S01:00009928:  F2 62 00 00
-               S01:0000992C:  05 B0 FF FF
-               S01:00009930:  EF 63 00 00
-               S01:00009934:  41 B1 FF FF
-               S01:00009938:  E8 64 00 00
-               S01:0000993C:  7F B2 FF FF
-               S01:00009940:  DD 65 00 00
-               S01:00009944:  C1 B3 FF FF
-               S01:00009948:  CF 66 00 00
-               S01:0000994C:  05 B5 FF FF
-               S01:00009950:  BD 67 00 00
-               S01:00009954:  4C B6 FF FF
-               S01:00009958:  A6 68 00 00
-               S01:0000995C:  97 B7 FF FF
-               S01:00009960:  8C 69 00 00
-F00:0645               .long   -18204, 27245,-17869, 27466,-17530, 27684,-17189, 27897,-16846, 28106,-16499, 28310,-16151, 28511,-15800
-               S01:00009964:  E4 B8 FF FF
-               S01:00009968:  6D 6A 00 00
-               S01:0000996C:  33 BA FF FF
-               S01:00009970:  4A 6B 00 00
-               S01:00009974:  86 BB FF FF
-               S01:00009978:  24 6C 00 00
-               S01:0000997C:  DB BC FF FF
-               S01:00009980:  F9 6C 00 00
-               S01:00009984:  32 BE FF FF
-               S01:00009988:  CA 6D 00 00
-               S01:0000998C:  8D BF FF FF
-               S01:00009990:  96 6E 00 00
-               S01:00009994:  E9 C0 FF FF
-               S01:00009998:  5F 6F 00 00
-               S01:0000999C:  48 C2 FF FF
-               S01:000099A0:  23 70 00 00
-F00:0646               .long   -15446, 28898,-15090, 29086,-14732, 29269,-14372, 29447,-14010, 29621,-13645, 29791,-13278, 29956,-12910
-               S01:000099A4:  AA C3 FF FF
-               S01:000099A8:  E2 70 00 00
-               S01:000099AC:  0E C5 FF FF
-               S01:000099B0:  9E 71 00 00
-               S01:000099B4:  74 C6 FF FF
-               S01:000099B8:  55 72 00 00
-               S01:000099BC:  DC C7 FF FF
-               S01:000099C0:  07 73 00 00
-               S01:000099C4:  46 C9 FF FF
-               S01:000099C8:  B5 73 00 00
-               S01:000099CC:  B3 CA FF FF
-               S01:000099D0:  5F 74 00 00
-               S01:000099D4:  22 CC FF FF
-               S01:000099D8:  04 75 00 00
-               S01:000099DC:  92 CD FF FF
-               S01:000099E0:  A5 75 00 00
-F00:0647               .long   -12539, 30273,-12167, 30425,-11793, 30572,-11416, 30714,-11039, 30852,-10659, 30985,-10278, 31114,-9896,
-               S01:000099E4:  05 CF FF FF
-               S01:000099E8:  41 76 00 00
-               S01:000099EC:  79 D0 FF FF
-               S01:000099F0:  D9 76 00 00
-               S01:000099F4:  EF D1 FF FF
-               S01:000099F8:  6C 77 00 00
-               S01:000099FC:  68 D3 FF FF
-               S01:00009A00:  FA 77 00 00
-               S01:00009A04:  E1 D4 FF FF
-               S01:00009A08:  84 78 00 00
-               S01:00009A0C:  5D D6 FF FF
-               S01:00009A10:  09 79 00 00
-               S01:00009A14:  DA D7 FF FF
-               S01:00009A18:  8A 79 00 00
-               S01:00009A1C:  58 D9 FF FF
-               S01:00009A20:  05 7A 00 00
-F00:0648               .long   -9512, 31357,-9126, 31471,-8739, 31581,-8351, 31685,-7961, 31785,-7571, 31881,-7179, 31971,-6786, 32057
-               S01:00009A24:  D8 DA FF FF
-               S01:00009A28:  7D 7A 00 00
-               S01:00009A2C:  5A DC FF FF
-               S01:00009A30:  EF 7A 00 00
-               S01:00009A34:  DD DD FF FF
-               S01:00009A38:  5D 7B 00 00
-               S01:00009A3C:  61 DF FF FF
-               S01:00009A40:  C5 7B 00 00
-               S01:00009A44:  E7 E0 FF FF
-               S01:00009A48:  29 7C 00 00
-               S01:00009A4C:  6D E2 FF FF
-               S01:00009A50:  89 7C 00 00
-               S01:00009A54:  F5 E3 FF FF
-               S01:00009A58:  E3 7C 00 00
-               S01:00009A5C:  7E E5 FF FF
-               S01:00009A60:  39 7D 00 00
-F00:0649               .long   -6392, 32138,-5997, 32214,-5602, 32285,-5205, 32351,-4808, 32413,-4409, 32469,-4011, 32521,-3611, 32568
-               S01:00009A64:  08 E7 FF FF
-               S01:00009A68:  8A 7D 00 00
-               S01:00009A6C:  93 E8 FF FF
-               S01:00009A70:  D6 7D 00 00
-               S01:00009A74:  1E EA FF FF
-               S01:00009A78:  1D 7E 00 00
-               S01:00009A7C:  AB EB FF FF
-               S01:00009A80:  5F 7E 00 00
-               S01:00009A84:  38 ED FF FF
-               S01:00009A88:  9D 7E 00 00
-               S01:00009A8C:  C7 EE FF FF
-               S01:00009A90:  D5 7E 00 00
-               S01:00009A94:  55 F0 FF FF
-               S01:00009A98:  09 7F 00 00
-               S01:00009A9C:  E5 F1 FF FF
-               S01:00009AA0:  38 7F 00 00
-F00:0650               .long   -3211, 32610,-2811, 32647,-2410, 32679,-2009, 32706,-1607, 32728,-1206, 32745,-804, 32758,-402, 32765
-               S01:00009AA4:  75 F3 FF FF
-               S01:00009AA8:  62 7F 00 00
-               S01:00009AAC:  05 F5 FF FF
-               S01:00009AB0:  87 7F 00 00
-               S01:00009AB4:  96 F6 FF FF
-               S01:00009AB8:  A7 7F 00 00
-               S01:00009ABC:  27 F8 FF FF
-               S01:00009AC0:  C2 7F 00 00
-               S01:00009AC4:  B9 F9 FF FF
-               S01:00009AC8:  D8 7F 00 00
-               S01:00009ACC:  4A FB FF FF
-               S01:00009AD0:  E9 7F 00 00
-               S01:00009AD4:  DC FC FF FF
-               S01:00009AD8:  F6 7F 00 00
-               S01:00009ADC:  6E FE FF FF
-               S01:00009AE0:  FD 7F 00 00
-F00:0651       
-F00:0652       
-F00:0653       	; r3 = xmin
-F00:0654       	; r4 = xmax
-F00:0655       	; r5 = ymin
-F00:0656       	; r6 = ymax
-F00:0657       	mov r3,#320
-               S01:00009AE4:  05 3D A0 E3
-F00:0658       	mov r4,#0
-               S01:00009AE8:  00 40 A0 E3
-F00:0659       	mov r5,#300
-               S01:00009AEC:  4B 5F A0 E3
-F00:0660       	mov r6,#0
-               S01:00009AF0:  00 60 A0 E3
-F00:0661       	; reste r7-r12 = 6 registres
+F00:0586       ;	MOV       R14,#0              ;...on return IRQs/FIQs will be off
+F00:0587       ;	STRB      R14,dma_in_progress ;
+F00:0588       ;	LDMFD     R13,{R13,R14}       ;restore R14_SVC and R13_SVC
+F00:0589       
+F00:0590       ;exitysoundcode:
+F00:0591       ;	TEQP      PC,#%11<<26 OR %10  ;back to IRQ mode
+F00:0592       ;	MOV       R0,R0               ;sync
+F00:0593       
+F00:0594       ;	LDMFD     R13!,{R14}
+F00:0595       ;	SUBS      PC,R14,#4           ;return to foreground
+F00:0596       
+F00:0597       ; changement couleur border
+F00:0598       	mov   r9,#0x3400000               
+               S01:0000837C:  0D 95 A0 E3
+F00:0599       	mov   r8,#4070  
+               S01:00008380:  0F 8C A0 E3 E6 80 88 E3
+F00:0600       ; border	
+F00:0601       	;orr   r1,r1,#0x40000000            
+F00:0602       	orr   r8,r8,#0x00000000
+               S01:00008388:  00 80 88 E3
+F00:0603       	str   r8,[r9]  
+               S01:0000838C:  00 80 89 E5
+F00:0604       
+F00:0605       ; memc control register:
+F00:0606       ; 0b 110 110 111 000 0 1 0 0 01 00 00 11 00
+F00:0607       ; 11011011100001000100001100
+F00:0608       ; 0x36E110C ?
+F00:0609       ; 0x3620000
+F00:0610       
+F00:0611       ;	ldr		R8,valeur_control_memc
+F00:0612       ;	str		R8,[R8]
+F00:0613       
+F00:0614       ; vinit = 0x3600000
+F00:0615       ; vstart = 0x3620000 = 0
+F00:0616       ; vend = 0x3640000 = 26
+F00:0617       
+F00:0618       ; vinit = 0
+F00:0619       ;	mov	R9,#0x3600000
+F00:0620       ;	mov	R8,#0
+F00:0621       ;	add	R8,R8,R9
+F00:0622       ;	str	R8,[R8]
+F00:0623       
+F00:0624       ; vstart = 0
+F00:0625       ;	mov	R9,#0x3620000
+F00:0626       ;	mov	R8,#104
+F00:0627       ;	add	R8,R8,R9
+F00:0628       ;	str	R8,[R8]
+F00:0629       ; vend = 26
+F00:0630       ;	mov	R9,#0x3640000
+F00:0631       ;	mov	R8,#208
+F00:0632       ;	add	R8,R8,R9
+F00:0633       ;	str	R8,[R8]
+F00:0634       	
+F00:0635       
+F00:0636       
+F00:0637       ;	ldr	r8,screenaddr1_MEMC
+F00:0638       ;	mov r8,r8,lsr #4
+F00:0639       ;	mov r8,r8,lsl #2
+F00:0640       ;	mov r9,#0x3600000
+F00:0641       ;	add r8,r8,r9
+F00:0642       ;	str r8,[r8]
+F00:0643       	
+F00:0644       
+F00:0645       ;	ldr		R8,valeur_control_memc_normale
+F00:0646       ;	str		R8,[R8]
+F00:0647       
+F00:0648       
+F00:0649       ; vinit = 0
+F00:0650       ;	mov	R9,#0x3600000
+F00:0651       ;	mov	R8,#0
+F00:0652       ;	add	R8,R8,R9
+F00:0653       ;	str	R8,[R8]
+F00:0654       
+F00:0655       ; vstart = 0
+F00:0656       	mov	R9,#0x3620000
+               S01:00008390:  62 98 A0 E3 03 94 89 E3
+F00:0657       	mov	R8,#0
+               S01:00008398:  00 80 A0 E3
+F00:0658       	add	R8,R8,R9
+               S01:0000839C:  09 80 88 E0
+F00:0659       	str	R8,[R8]
+               S01:000083A0:  00 80 88 E5
+F00:0660       ; vend = 26
+F00:0661       	mov	R9,#0x3640000
+               S01:000083A4:  D9 97 A0 E3
+F00:0662       	mov	R8,#104*200
+               S01:000083A8:  51 8C A0 E3 40 80 88 E3
+F00:0663       	add	R8,R8,R9
+               S01:000083B0:  09 80 88 E0
+F00:0664       	str	R8,[R8]
+               S01:000083B4:  00 80 88 E5
+F00:0665       
+F00:0666       ; changement couleur border
+F00:0667       	mov   r9,#0x3400000               
+               S01:000083B8:  0D 95 A0 E3
+F00:0668       	mov   r8,#0  
+               S01:000083BC:  00 80 A0 E3
+F00:0669       ; border	
+F00:0670       	;orr   r1,r1,#0x40000000            
+F00:0671       	orr   r8,r8,#0x00000000
+               S01:000083C0:  00 80 88 E3
+F00:0672       	str   r8,[r9]
+               S01:000083C4:  00 80 89 E5
+F00:0673       
+F00:0674       
+F00:0675       	
+F00:0676       exitVScode:
+F00:0677       
+F00:0678       
+F00:0679       
+F00:0680       
+F00:0681       	TEQP      PC,#0x0C000002			; %000011<<26 OR %10 ;36 A4 back to IRQ mode
+               S01:000083C8:  83 F3 3F E3
+F00:0682       	MOV       R0,R0                  ;37 A8 sync IRQ registers
+               S01:000083CC:  00 00 A0 E1
+F00:0683       	SUBS      PC,R14,#4              ;38 AC return to foreground
+               S01:000083D0:  04 F0 5E E2
+F00:0684       
+F00:0685       
+F00:0686       valeur_control_memc:		.long 0x36E170C
+               S01:000083D4:  0C 17 6E 03
+F00:0687       ; 0b 110 110 111 000 0 1 0 1 11 00 00 11 00
+F00:0688       ;0b11011011100001011100001100
+F00:0689       ; OK default : 0x36E150C
+F00:0690       ; continous : 0x36E170C
+F00:0691       valeur_control_memc_normale:		.long 0x36E150C
+               S01:000083D8:  0C 15 6E 03
+F00:0692       
+F00:0693       saveR14_firq_local:	.long 0
+               S01:000083DC:  00 00 00 00
+F00:0694       ; ---------------------
+F00:0695       ; variables RM
+F00:0696       os_version:		.long      0         ;1 byte &A0 for Arthur 0.3/1.2, &A1 for RO2, &A3 for RO3.0, &A4 for RO3.1
+               S01:000083E0:  00 00 00 00
+F00:0697       fiqoriginal:	
+F00:0698       .long      0         ;R8
+               S01:000083E4:  00 00 00 00
+F00:0699       .long      0         ;R9
+               S01:000083E8:  00 00 00 00
+F00:0700       .long      0         ;R10
+               S01:000083EC:  00 00 00 00
+F00:0701       .long      0         ;R11
+               S01:000083F0:  00 00 00 00
+F00:0702       .long      0         ;R12
+               S01:000083F4:  00 00 00 00
+F00:0703       .long      0         ;R13
+               S01:000083F8:  00 00 00 00
+F00:0704       .long      0         ;R14
+               S01:000083FC:  00 00 00 00
+F00:0705       
+F00:0706       oldIRQa:	.long	0				; ancien vecteur IRQ A du système
+               S01:00008400:  00 00 00 00
+F00:0707       oldIRQb:	.long	0				; ancien vecteur IRQ B du système
+               S01:00008404:  00 00 00 00
+F00:0708       newIRQfirstinst:	.long	0	
+               S01:00008408:  00 00 00 00
+F00:0709       oldIRQbranch:		.long 	0
+               S01:0000840C:  00 00 00 00
+F00:0710       oldIRQaddress:		.long	0
+               S01:00008410:  00 00 00 00
+F00:0711       
+F00:0712       vsyncbyte:		.long 	0
+               S01:00008414:  00 00 00 00
+F00:0713       
+F00:0714       ; pointeurs proches	
+F00:0715       		.p2align		4
+F00:0716       pointeur_module97:		.long	module97
+               S01:00008420:  00 85 00 00
+F00:0717       couleur:	.long	0x7f7f7f7f
+               S01:00008424:  7F 7F 7F 7F
+F00:0718       couleur2:	.long	0x1e1e1e1e
+               S01:00008428:  1E 1E 1E 1E
+F00:0719       screenaddr1:	.long 0
+               S01:0000842C:  00 00 00 00
+F00:0720       screenaddr2:	.long 0
+               S01:00008430:  00 00 00 00
+F00:0721       screenaddr1_MEMC:	.long 0
+               S01:00008434:  00 00 00 00
+F00:0722       screenaddr2_MEMC:	.long 0
+               S01:00008438:  00 00 00 00
+F00:0723       
+F00:0724       ;pointeur_XOS_ServiceCall: .long toto
+F00:0725       ;toto:
+F00:0726       ;	.byte "XOS_ServiceCall",0
+F00:0727       
+F00:0728       
+F00:0729       	.p2align 8
+F00:0730       
+F00:0731       ; datas lointaines
+F00:0732       		.p2align 4
+F00:0733       module97:		.incbin	"97,ffa"
+               S01:00008500:  00 00 00 00 F0 00 00 00 F8 00 00 00 00 01 00 00
+               S01:00008510:  34 00 00 00 3B 00 00 00 68 00 00 00 00 00 00 00
+F00:0734       
+F00:0735       
+F00:0736       
+F00:0737       
+F00:0738       ; ------------------------------------------------------------------
+F00:0739       ;
+F00:0740       ; code principal de l'interruption FIQ
+F00:0741       ;
+F00:0742       ; calé entre 0x18 et 0x58
+F00:0743       ;
+F00:0744       ; ------------------------------------------------------------------
+F00:0745       
+F00:0746       
+F00:0747       pointeur_fiqbase:		.long	fiqbase
+               S01:000086D4:  D8 86 00 00
+F00:0748       fiqbase:              ;copy to &18 onwards, 57 instructions max
+F00:0749                             ;this pointer must be relative to module
+F00:0750       
+F00:0751       		.incbin		"build\fiqrmi.bin"
+               S01:000086D8:  43 F3 3F E3 00 00 A0 E1 32 E6 A0 E3 14 80 DE E5
+               S01:000086E8:  40 00 18 E3 8C F0 9F 05 16 80 CE E5 2A E0 CE E5
+F00:0752       
+F00:0753       
+F00:0754       fiqend:
+F00:0755       
+F00:0756       
 
 
 Sections:
@@ -2044,70 +1103,87 @@ S01  seg8000
 
 
 Sources:
-F00  test.asm
+F00  rmrebuild.asm
 F01  swis.h.asm
 
 
 Symbols:
-cube EXPR(34928=0x8870) ABS 
-coords_cube EXPR(34828=0x880c) ABS 
-incrementZ EXPR(34816=0x8800) UNUSED ABS 
-incrementY EXPR(34812=0x87fc) UNUSED ABS 
-incrementX EXPR(34808=0x87f8) UNUSED ABS 
-matrice EXPR(34756=0x87c4) UNUSED ABS 
-face_visible EXPR(34716=0x879c) UNUSED ABS 
-face_invisible EXPR(34732=0x87ac) ABS 
-.contplus1 EXPR(34592=0x8720) ABS 
-.divide_enddivY EXPR(34580=0x8714) UNUSED ABS 
-.nextdivY EXPR(34556=0x86fc) ABS 
-.startdivY EXPR(34540=0x86ec) ABS 
-.cont11 EXPR(34532=0x86e4) ABS 
-.contplus EXPR(34508=0x86cc) ABS 
-.divide_enddivX EXPR(34496=0x86c0) UNUSED ABS 
-.nextdivX EXPR(34472=0x86a8) ABS 
-.startdivX EXPR(34456=0x8698) ABS 
-.cont2 EXPR(34448=0x8690) ABS 
-.cont1 EXPR(34428=0x867c) ABS 
-boucle_divisions_calcpoints EXPR(34396=0x865c) ABS 
-coordonnees_projetees EXPR(35300=0x89e4) ABS 
-distance_z EXPR(34748=0x87bc) ABS 
-pointeur_en_cours_liste_points EXPR(34740=0x87b4) ABS 
-nb_points_en_cours EXPR(34744=0x87b8) ABS 
-boucle_calc_points EXPR(34248=0x85c8) ABS 
-coordonnees_transformees EXPR(35044=0x88e4) ABS 
-all_objects EXPR(34820=0x8804) ABS 
-numero_objet EXPR(34792=0x87e8) ABS 
-angleZ EXPR(34804=0x87f4) ABS 
-angleY EXPR(34800=0x87f0) ABS 
-angleX EXPR(34796=0x87ec) ABS 
-SINCOS EXPR(35556=0x8ae4) ABS 
-save_R14 EXPR(34752=0x87c0) ABS 
-debug_string EXPR(34024=0x84e8) ABS 
-last_vsync EXPR(33976=0x84b8) ABS 
-debug_write_vsync_count EXPR(33980=0x84bc) ABS 
-vsync_count EXPR(33972=0x84b4) ABS 
-boucle EXPR(33872=0x8450) ABS 
-event_handler EXPR(33924=0x8484) ABS 
-calc3D EXPR(34036=0x84f4) ABS 
-scr_bank EXPR(33800=0x8408) UNUSED ABS 
-main EXPR(33804=0x840c) ABS 
-stack_base EXPR(33800=0x8408) ABS 
-Start EXPR(32768=0x8000) UNUSED ABS 
+fiqend EXPR(34752=0x87c0) UNUSED ABS 
+fiqbase EXPR(34520=0x86d8) ABS 
+module97 EXPR(34048=0x8500) ABS 
+saveR14_firq_local EXPR(33756=0x83dc) UNUSED ABS 
+valeur_control_memc_normale EXPR(33752=0x83d8) UNUSED ABS 
+valeur_control_memc EXPR(33748=0x83d4) UNUSED ABS 
+kbd_stack EXPR(33572=0x8324) UNUSED ABS 
+nextkeybyte EXPR(33571=0x8323) UNUSED ABS 
+keycounter EXPR(33568=0x8320) ABS 
+kbd_received EXPR(33528=0x82f8) UNUSED ABS 
+exitVScode EXPR(33736=0x83c8) ABS 
+RM_check_keyboard EXPR(33512=0x82e8) ABS 
+RM_clearkeybuffer EXPR(33496=0x82d8) UNUSED ABS 
+keybyte1 EXPR(33569=0x8321) ABS 
+sortie_keycheck EXPR(33492=0x82d4) ABS 
+keybyte2 EXPR(33570=0x8322) ABS 
+waitloop_vbl EXPR(33452=0x82ac) ABS 
+vsyncbyte EXPR(33812=0x8414) ABS 
+newIRQfirstinst EXPR(33800=0x8408) ABS 
+notHSync EXPR(33588=0x8334) ABS 
+FIQ_notHSync_valeur EXPR(192=0xc0) 
+pointeur_fiqbase EXPR(34516=0x86d4) ABS 
+oldIRQaddress EXPR(33808=0x8410) ABS 
+oldIRQbranch EXPR(33804=0x840c) ABS 
+oldIRQb EXPR(33796=0x8404) ABS 
+oldIRQa EXPR(33792=0x8400) ABS 
+fiqoriginal EXPR(33764=0x83e4) ABS 
+os_version EXPR(33760=0x83e0) ABS 
+save_lr EXPR(33140=0x8174) ABS 
+RM_release EXPR(33372=0x825c) ABS 
+toucheclavier EXPR(33096=0x8148) ABS 
+exit EXPR(33060=0x8124) ABS 
+RM_scankeyboard EXPR(33468=0x82bc) ABS 
+RM_wait_VBL EXPR(33448=0x82a8) ABS 
+boucle EXPR(33044=0x8114) ABS 
+RM_start EXPR(33144=0x8178) ABS 
+RM_init EXPR(33100=0x814c) ABS 
+.clsall4 EXPR(32984=0x80d8) ABS 
+couleur2 EXPR(33832=0x8428) ABS 
+boucle_triangle_ligne EXPR(32944=0x80b0) ABS 
+couleur EXPR(33828=0x8424) ABS 
+screenaddr2_MEMC EXPR(33848=0x8438) ABS 
+screenaddr1_MEMC EXPR(33844=0x8434) ABS 
+screenaddr2 EXPR(33840=0x8430) ABS 
+screenaddr1 EXPR(33836=0x842c) ABS 
+pointeur_module97 EXPR(33824=0x8420) ABS 
+main EXPR(32768=0x8000) UNUSED ABS 
+XOS_ServiceCall EXPR(131120=0x20030) 
+BKP EXPR(281477=0x44b85) UNUSED 
+RasterMan_ReadScanAddr EXPR(294539=0x47e8b) UNUSED 
+RasterMan_ClearKeyBuffer EXPR(294538=0x47e8a) UNUSED 
+RasterMan_ScanKeyboard EXPR(294537=0x47e89) UNUSED 
+RasterMan_QTMParamAddr EXPR(294536=0x47e88) UNUSED 
+RasterMan_SetMEMCRegister EXPR(294535=0x47e87) UNUSED 
+RasterMan_SetVIDCRegister EXPR(294534=0x47e86) UNUSED 
+RasterMan_ReadScanline EXPR(294533=0x47e85) UNUSED 
+RasterMan_Wait EXPR(294530=0x47e82) UNUSED 
+RasterMan_Release EXPR(294529=0x47e81) UNUSED 
+RasterMan_Install EXPR(294528=0x47e80) UNUSED 
+RasterMan_SetTables EXPR(294531=0x47e83) UNUSED 
+RasterMan_Version EXPR(294532=0x47e84) UNUSED 
 QTM_SetSampleSpeed EXPR(294473=0x47e49) UNUSED 
 QTM_Stop EXPR(294466=0x47e42) UNUSED 
 QTM_Start EXPR(294465=0x47e41) UNUSED 
 QTM_Load EXPR(294464=0x47e40) UNUSED 
 OS_ConvertHex8 EXPR(212=0xd4) UNUSED 
-OS_ConvertHex4 EXPR(210=0xd2) 
+OS_ConvertHex4 EXPR(210=0xd2) UNUSED 
 OS_ConvertHex2 EXPR(209=0xd1) UNUSED 
-Event_VSync EXPR(4=0x4) 
-EventV EXPR(16=0x10) 
+Event_VSync EXPR(4=0x4) UNUSED 
+EventV EXPR(16=0x10) UNUSED 
 ErrorV EXPR(1=0x1) UNUSED 
-OS_AddToVector EXPR(71=0x47) 
-OS_Release EXPR(32=0x20) 
+OS_AddToVector EXPR(71=0x47) UNUSED 
+OS_Release EXPR(32=0x20) UNUSED 
 OS_Claim EXPR(31=0x1f) UNUSED 
 VD_ScreenStart EXPR(148=0x94) UNUSED 
-DynArea_Screen EXPR(2=0x2) UNUSED 
+DynArea_Screen EXPR(2=0x2) 
 IKey_Space EXPR(157=0x9d) UNUSED 
 IKey_RightClick EXPR(244=0xf4) UNUSED 
 IKey_LeftClick EXPR(246=0xf6) UNUSED 
@@ -2116,14 +1192,15 @@ OSByte_ReadKey EXPR(129=0x81) UNUSED
 OSByte_WriteDisplayBank EXPR(113=0x71) UNUSED 
 OSByte_WriteVDUBank EXPR(112=0x70) UNUSED 
 OSByte_Vsync EXPR(19=0x13) UNUSED 
-OSByte_EventDisable EXPR(13=0xd) 
-OSByte_EventEnable EXPR(14=0xe) 
+OSByte_EventDisable EXPR(13=0xd) UNUSED 
+OSByte_EventEnable EXPR(14=0xe) UNUSED 
+OS_Module EXPR(30=0x1e) UNUSED 
 OS_ConvertCardinal4 EXPR(216=0xd8) UNUSED 
-OS_ReadDynamicArea EXPR(92=0x5c) UNUSED 
+OS_ReadDynamicArea EXPR(92=0x5c) 
 OS_ReadMonotonicTime EXPR(66=0x42) UNUSED 
 OS_ReadVduVariables EXPR(49=0x31) UNUSED 
 OS_GenerateError EXPR(43=0x2b) UNUSED 
-OS_ChangeDynamicArea EXPR(42=0x2a) UNUSED 
+OS_ChangeDynamicArea EXPR(42=0x2a) 
 OS_BreakPt EXPR(23=0x17) UNUSED 
 OS_Exit EXPR(17=0x11) 
 OS_File EXPR(8=0x8) UNUSED 
@@ -2131,9 +1208,19 @@ OS_Word EXPR(7=0x7) UNUSED
 XOS_Byte EXPR(131078=0x20006) UNUSED 
 OS_Byte EXPR(6=0x6) 
 OS_NewLine EXPR(3=0x3) UNUSED 
-OS_WriteO EXPR(2=0x2) 
+OS_WriteO EXPR(2=0x2) UNUSED 
 OS_WriteC EXPR(0=0x0) 
-Screen_Mode EXPR(13=0xd) 
+saveR14_firq EXPR(224=0xe0) UNUSED 
+position_ligne_hsync EXPR(228=0xe4) 
+hsyncline_high EXPR(0=0x0) 
+hsyncline_low EXPR(127=0x7f) 
+hsyncline EXPR(127=0x7f) 
+vsyncreturn_high EXPR(127=0x7f) 
+vsyncreturn_low EXPR(230=0xe6) 
+vsyncreturn EXPR(32742=0x7fe6) 
+ylines EXPR(56=0x38) 
+IKey_Escape EXPR(157=0x9d) UNUSED 
+Screen_Mode EXPR(97=0x61) 
 __VASM EXPR(0=0x0) INTERNAL 
 __MSDOSFS EXPR(0=0x0) INTERNAL 
 

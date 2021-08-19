@@ -1,0 +1,2 @@
+C:\Users\Eric\source\repos\techtech_lire_palettefond\Debug\techtech_lire_palettefond.exe
+C:\Users\Eric\source\repos\techtech_lire_palettefond\Debug\techtech_lire_palettefond.pdb

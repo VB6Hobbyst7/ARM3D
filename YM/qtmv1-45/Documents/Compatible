@@ -1,0 +1,10 @@
+Compatibility notes for QTM v1.45                © Steve Harrison, 1993-2013
+----------------------------------------------------------------------------
+
+QTM v1.45 is compatible with ALL RISC OS-based computers from the earliest
+Arthur 0.30 systems to the latest 32-bit Risc OS 5 Raspberry Pi. (Simple eh?)
+
+
+QTM can also be run on most Windows PC and Mac's, using one of the excellent
+array of Acorn Archimedes and Risc PC emulators, including Arculator, RPCEmu,
+Virtual Acorn, Archie and RedSquirrel!

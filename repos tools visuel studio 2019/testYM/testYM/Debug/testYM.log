@@ -1,0 +1,123 @@
+﻿  testYM.cpp
+  Ymload.cpp
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(65,3): error C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(140,43): error C2664: 'void CYmMusic::setLastError(char *)' : impossible de convertir l'argument 1 de 'const char [25]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(140,17): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\YmMusic.h(174,7): message : voir la déclaration de 'CYmMusic::setLastError'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(148,34): error C2664: 'void CYmMusic::setLastError(char *)' : impossible de convertir l'argument 1 de 'const char [16]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(148,17): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\YmMusic.h(174,7): message : voir la déclaration de 'CYmMusic::setLastError'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(175,41): error C2664: 'void CYmMusic::setLastError(char *)' : impossible de convertir l'argument 1 de 'const char [22]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(175,18): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\YmMusic.h(174,7): message : voir la déclaration de 'CYmMusic::setLastError'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(182,40): error C2664: 'void CYmMusic::setLastError(char *)' : impossible de convertir l'argument 1 de 'const char [22]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(182,17): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\YmMusic.h(174,7): message : voir la déclaration de 'CYmMusic::setLastError'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(223,52): error C2664: 'void CYmMusic::setLastError(char *)' : impossible de convertir l'argument 1 de 'const char [32]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(223,18): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\YmMusic.h(174,7): message : voir la déclaration de 'CYmMusic::setLastError'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(287,34): error C2664: 'char *mstrdup(char *)' : impossible de convertir l'argument 1 de 'const char [8]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(287,25): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(60,7): message : voir la déclaration de 'mstrdup'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(288,36): error C2664: 'char *mstrdup(char *)' : impossible de convertir l'argument 1 de 'const char [8]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(288,27): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(60,7): message : voir la déclaration de 'mstrdup'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(289,51): error C2664: 'char *mstrdup(char *)' : impossible de convertir l'argument 1 de 'const char [22]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(289,28): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(60,7): message : voir la déclaration de 'mstrdup'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(290,31): error C2664: 'char *mstrdup(char *)' : impossible de convertir l'argument 1 de 'const char [5]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(290,25): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(60,7): message : voir la déclaration de 'mstrdup'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(291,43): error C2664: 'char *mstrdup(char *)' : impossible de convertir l'argument 1 de 'const char [15]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(291,27): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(60,7): message : voir la déclaration de 'mstrdup'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(304,34): error C2664: 'char *mstrdup(char *)' : impossible de convertir l'argument 1 de 'const char [8]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(304,25): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(60,7): message : voir la déclaration de 'mstrdup'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(305,36): error C2664: 'char *mstrdup(char *)' : impossible de convertir l'argument 1 de 'const char [8]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(305,27): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(60,7): message : voir la déclaration de 'mstrdup'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(306,30): error C2664: 'char *mstrdup(char *)' : impossible de convertir l'argument 1 de 'const char [1]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(306,28): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(60,7): message : voir la déclaration de 'mstrdup'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(307,31): error C2664: 'char *mstrdup(char *)' : impossible de convertir l'argument 1 de 'const char [5]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(307,25): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(60,7): message : voir la déclaration de 'mstrdup'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(308,43): error C2664: 'char *mstrdup(char *)' : impossible de convertir l'argument 1 de 'const char [15]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(308,27): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(60,7): message : voir la déclaration de 'mstrdup'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(322,34): error C2664: 'char *mstrdup(char *)' : impossible de convertir l'argument 1 de 'const char [8]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(322,25): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(60,7): message : voir la déclaration de 'mstrdup'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(323,36): error C2664: 'char *mstrdup(char *)' : impossible de convertir l'argument 1 de 'const char [8]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(323,27): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(60,7): message : voir la déclaration de 'mstrdup'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(324,30): error C2664: 'char *mstrdup(char *)' : impossible de convertir l'argument 1 de 'const char [1]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(324,28): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(60,7): message : voir la déclaration de 'mstrdup'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(325,39): error C2664: 'char *mstrdup(char *)' : impossible de convertir l'argument 1 de 'const char [13]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(325,25): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(60,7): message : voir la déclaration de 'mstrdup'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(326,43): error C2664: 'char *mstrdup(char *)' : impossible de convertir l'argument 1 de 'const char [15]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(326,27): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(60,7): message : voir la déclaration de 'mstrdup'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(330,58): error C2664: 'void CYmMusic::setLastError(char *)' : impossible de convertir l'argument 1 de 'const char [39]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(330,18): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\YmMusic.h(174,7): message : voir la déclaration de 'CYmMusic::setLastError'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(338,44): error C2664: 'void CYmMusic::setLastError(char *)' : impossible de convertir l'argument 1 de 'const char [24]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(338,19): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\YmMusic.h(174,7): message : voir la déclaration de 'CYmMusic::setLastError'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(386,32): error C2664: 'char *mstrdup(char *)' : impossible de convertir l'argument 1 de 'const char [5]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(386,26): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(60,7): message : voir la déclaration de 'mstrdup'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(390,32): error C2664: 'char *mstrdup(char *)' : impossible de convertir l'argument 1 de 'const char [5]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(390,26): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(60,7): message : voir la déclaration de 'mstrdup'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(394,43): error C2664: 'char *mstrdup(char *)' : impossible de convertir l'argument 1 de 'const char [15]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(394,27): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(60,7): message : voir la déclaration de 'mstrdup'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(401,44): error C2664: 'void CYmMusic::setLastError(char *)' : impossible de convertir l'argument 1 de 'const char [24]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(401,19): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\YmMusic.h(174,7): message : voir la déclaration de 'CYmMusic::setLastError'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(438,31): error C2664: 'char *mstrdup(char *)' : impossible de convertir l'argument 1 de 'const char [5]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(438,25): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(60,7): message : voir la déclaration de 'mstrdup'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(439,44): error C2664: 'char *mstrdup(char *)' : impossible de convertir l'argument 1 de 'const char [16]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(439,27): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(60,7): message : voir la déclaration de 'mstrdup'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(463,44): error C2664: 'void CYmMusic::setLastError(char *)' : impossible de convertir l'argument 1 de 'const char [24]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(463,19): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\YmMusic.h(174,7): message : voir la déclaration de 'CYmMusic::setLastError'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(512,33): error C2664: 'char *mstrdup(char *)' : impossible de convertir l'argument 1 de 'const char [6]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(512,26): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(60,7): message : voir la déclaration de 'mstrdup'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(516,33): error C2664: 'char *mstrdup(char *)' : impossible de convertir l'argument 1 de 'const char [6]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(516,26): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(60,7): message : voir la déclaration de 'mstrdup'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(526,46): error C2664: 'char *mstrdup(char *)' : impossible de convertir l'argument 1 de 'const char [18]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(526,27): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(60,7): message : voir la déclaration de 'mstrdup'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(530,38): error C2664: 'void CYmMusic::setLastError(char *)' : impossible de convertir l'argument 1 de 'const char [19]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(530,18): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\YmMusic.h(174,7): message : voir la déclaration de 'CYmMusic::setLastError'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(546,67): error C2664: 'void CYmMusic::setLastError(char *)' : impossible de convertir l'argument 1 de 'const char [51]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(546,15): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\YmMusic.h(174,7): message : voir la déclaration de 'CYmMusic::setLastError'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(565,17): error C2664: 'void CYmMusic::setLastError(char *)' : impossible de convertir l'argument 1 de 'const char [1]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(565,15): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\YmMusic.h(174,7): message : voir la déclaration de 'CYmMusic::setLastError'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(584,33): error C2664: 'void CYmMusic::setLastError(char *)' : impossible de convertir l'argument 1 de 'const char [15]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(584,17): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\YmMusic.h(174,7): message : voir la déclaration de 'CYmMusic::setLastError'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(595,31): error C2664: 'void CYmMusic::setLastError(char *)' : impossible de convertir l'argument 1 de 'const char [13]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(595,17): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\YmMusic.h(174,7): message : voir la déclaration de 'CYmMusic::setLastError'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(606,37): error C2664: 'void CYmMusic::setLastError(char *)' : impossible de convertir l'argument 1 de 'const char [19]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(606,17): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\YmMusic.h(174,7): message : voir la déclaration de 'CYmMusic::setLastError'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(581,8): error C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(654,31): error C2664: 'void CYmMusic::setLastError(char *)' : impossible de convertir l'argument 1 de 'const char [13]' en 'char *'
+C:\Users\Eric\source\repos\testYM\testYM\Ymload.cpp(654,17): message : La conversion d'un littéral de chaîne perd le qualificateur const (voir /Zc:strictStrings)
+C:\Users\Eric\source\repos\testYM\testYM\YmMusic.h(174,7): message : voir la déclaration de 'CYmMusic::setLastError'
+  YmUserInterface.cpp
+  Génération de code en cours...

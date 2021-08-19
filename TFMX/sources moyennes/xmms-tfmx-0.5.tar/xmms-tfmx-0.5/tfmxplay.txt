@@ -1,0 +1,73 @@
+tfmx-play 0.15
+
+  by Jonathan H. Pickard
+  (marxmarv@anime.net)
+
+Rule number one is that -h shows the usage.  All the info about the cool
+features is in here.  There's no proper readme file because the one I
+wrote got eaten by a stupid tar command.
+
+COPYRIGHT
+---------
+The tfmx-play package, including the tfmx-play executable, its sources, and
+its accompanying documentation, is copyright (C) 1996 Jonathan H. Pickard.
+This package may not be redistributed, and is only available from the
+author's <a href="http://www.anime.net/~marxmarv/tfmx.html">WWW page</a>, or
+by direct communication with the author.
+
+This is so because:
+* I get some idea of how widespread the use of this package is.
+* People are more or less forced to read the cautionary statements about this
+  software being highly highly alpha, etc.
+* People are more or less forced into knowing who the author is =:^)
+
+Of course, it would be trivial to simply pass the files along to a friend,
+or to use them in the commercial venture _du jour_, but I can't vouch for
+the safety of your system or your pets should you do so.  You'd be stupid to
+do so anyway, as the fully debugged version will probably be under a
+BSD-style copyright.  So, if you reeeeally want to steal my code or put it in
+a demo, hang out for a few months so that it doesn't make _me_ look bad.
+
+USE
+---
+The included binary is in ELF format.  If you want to build your own, just
+type "make" and it will use the default compiling tools.  No sweat.  If
+you're using a libc older than 5.3.9, you should uncomment the -DNO_SCHED
+line to avoid compiler errors.  (If you're using libc 5.3, you may have to
+adjust the /usr/include/sched.h file because of a typo on the libc guys'
+part.  Figures.)
+
+This version includes stereo "blend" to make better sound for headphone
+wearers.  Degrees of blend run from 2 (full stereo) to 0 (full mono).  Note
+that this is changed from prior versions which had blend!  I decided to have
+one level of blend that I considered comfortable to keep from slowing things
+too severely.
+
+This version also includes a simple low-pass filter with four settings: off,
+high, medium, and low (describing the cutoff frequencies).  Don't ask me to
+give you exact ratios of the cutoff frequencies; I don't know or understand
+the math behind weighted-sum filters.  Approximately, though, the time
+constants of the filter are: high=1.2, medium=1.5, low=2.4, referenced to
+the playback frequency.  This sounds reasonable-ish.  If anyone has the real
+numbers, please send 'em.
+
+This player should play _most_ stuff.  I know for a fact that it plays all
+_my_ stuff rather well =:^) , and I did use some twisted TFMX constructs in
+places.  Otherwise known to play are MasterBlazer, Apidya (mostly), Turrican
+II and III (all?), and JimPower.  Most TFMX-1.5 stuff (Turrican, et al) sound
+broken in some places, and admittedly, it's not my highest priority to fix
+it.
+
+NOTE: Turrican III title tune could use a little patch if you don't hear any
+lead lines in song 1.  History behind this was, the module as ripped crashed
+most TFMX players.  I modified the thing with a hex editor (converting the
+offending commands to wait's) and passed the version around.  Unfortunately,
+the wait paralyzed the whole soundmacro for 5 seconds before it would give
+us audio.  Anyway, I have the (un?)fixed MDAT available.  Email me if you
+need it and you can't find it on my web page.
+
+Email any (other) bug reports, suggestions, or even snide comments to
+marxmarv@anime.net.
+
+Thanks!
+-jhp

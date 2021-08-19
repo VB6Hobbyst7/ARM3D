@@ -1,0 +1,89 @@
+Errors and error numbers for QTM v1.45           © Steve Harrison, 1993-2013
+----------------------------------------------------------------------------
+
+   The block of error numbers used by QTM has been allocated by Acorn, these
+numbers are in the range &00809E00 -> &00809EFF.
+
+
+Number  | Error message                 | Reason for error
+________|_______________________________|___________________________________
+        |                               |
+&809E00 | Not enough memory in RMA to   | QTM has tried to load a song, but
+        | load song, requires at least: | could not claim enough RMA, and
+        | xxxK free                     | has had to abort the loading
+        |                               | process.
+        |                               |
+&809E01 | Unsupported song format, or   | After loading, QTM has attempted
+        | corrupt file                  | to read the song data, but has
+        |                               | found the information to be in an
+        |                               | unrecognised format, or too badly
+        |                               | corrupted to risk playing.
+        |                               |
+&809E02 | Sequence number out of range  | The 'QTMPos' command (or SWI) has
+        |                               | been told to jump to a sequence
+        |                               | number larger than the highest
+        |                               | sequence in the song.
+        |                               |
+&809E03 | Event number out of range     | An event number > 63 or < 0 has
+        |                               | passed to a SWI (QTM_Pos or
+        |                               | QTM_ReadNoteWord).
+        |                               |
+&809E04 | Effect number out of range    | The effect disable routine has
+        |                               | received a parameter higher than
+        |                               | &F - the highest effect number.
+        |                               |
+&809E05 | No song loaded                | A command has been called, which
+        |                               | requires a song to be loaded into
+        |                               | QTM, before it can operate.
+        |                               |
+&809E06 | Not enough space in RMA to    | QTM could not extend it's RMA
+        | initialise song               | block by enough to convert a 15
+        |                               | inst song into a 31 inst song
+        |                               | (which is required by the playing
+        |                               | routines).
+        |                               |
+&809E07 | Volume level out of range     | The volume specified was not in
+        |                               | the range 0-64, and so could not
+        |                               | be used.
+        |                               |
+&809E08 | Sample speed out of range     | The sample speed given was outside
+        |                               | the range 16-100uS, which are the
+        |                               | only sensible values to use.
+        |                               |
+&809E09 | Channel number out of range   | A channel number larger than 8, or
+        |                               | smaller than 1 was specified when
+        |                               | QTM wasn't expecting it.
+        |                               |
+&809E0A | Sample number out of range    | An attempt to access a non-
+        |                               | existent sample was made (<>1-64).
+        |                               |
+&809E0B | Note number out of range      | The PlaySample SWI was given an
+        |                               | illegal note or pitch to play.
+        |                               |
+&809E0C | Illegal address passed to QTM | An address was passed to either
+        |                               | QTM_PlayRawSample or
+        |                               | QTM_RegisterSample, that RISC OS
+        |                               | didn't recognise as legal
+        |                               | 'Paged in' memory address.
+        |                               |
+&809E0D | Bad number of channels        | QTM_SoundControl was told to use
+        |                               | a number of channels outside the
+        |                               | range 0-8.
+        |                               |
+&809E0E | Song time could not be        | When attempting to calculate the
+        | calculated or song lasts over | amount of time used by the current
+        | 9 hours!                      | song, QTM over-ran the length of
+        |                               | a word (31 bits for +ve numbers)!
+        |                               |
+&809E0F | Bad VU controller state       | The QTM VU bar controller was
+        |                               | passed a controller type out of
+        |                               | the range 0-3.
+        |                               |
+&809E10 | Speed/tempo value out of      | An illegal speed or tempo setting
+        | range                         | was passed to SWI QTM_SetSpeed.
+        |                               |
+        |                               |
+&809E11 | Pattern number out of range   | A pattern number larger than the
+        |                               | highest pattern in the song was
+        |                               | passed to a SWI.
+________|_______________________________|___________________________________

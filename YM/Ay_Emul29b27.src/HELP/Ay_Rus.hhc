@@ -1,0 +1,217 @@
+<HTML>
+<!--Sitemap 1.0-->
+<OBJECT type="text/site properties">
+</OBJECT>
+<UL>
+	<LI><OBJECT type="text/sitemap">
+		<param name="Name" value="Знакомство">
+		</OBJECT>
+	<UL>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Что делает Эмулятор AY-3-8910/12">
+			<param name="Local" value="html-rus/ay_r0qjz.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r0qjz.htm">Что делает Эмулятор AY-3-8910/12</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Что нового в этой версии">
+			<param name="Local" value="html-rus/ay_r5odz.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r5odz.htm">Что нового в этой версии</A><BR>
+	</UL>
+	<LI><OBJECT type="text/sitemap">
+		<param name="Name" value="Использование Эмулятора">
+		</OBJECT>
+	<UL>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Элементы управления главного окна">
+			<param name="Local" value="html-rus/ay_r6qyb.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r6qyb.htm">Элементы управления главного окна</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Окно &quot;Миксер&quot;">
+			<param name="Local" value="html-rus/ay_r6dki.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r6dki.htm">Окно &quot;Миксер&quot;</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Окно &quot;Инструменты&quot;">
+			<param name="Local" value="html-rus/ay_r6gs3.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r6gs3.htm">Окно &quot;Инструменты&quot;</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Окно &quot;Список проигрывания&quot;">
+			<param name="Local" value="html-rus/ay_r03p0.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r03p0.htm">Окно &quot;Список проигрывания&quot;</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Диалог &quot;Настройка элемента списка&quot;">
+			<param name="Local" value="html-rus/ay_r66nh.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r66nh.htm">Диалог &quot;Настройка элемента списка&quot;</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Диалог &quot;Информация в заголовке файла&quot;">
+			<param name="Local" value="html-rus/ay_r0che.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r0che.htm">Диалог &quot;Информация в заголовке файла&quot;</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Командная строка">
+			<param name="Local" value="html-rus/ay_r8d7p.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r8d7p.htm">Командная строка</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Горячие клавиши">
+			<param name="Local" value="html-rus/ay_r3ygj.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r3ygj.htm">Горячие клавиши</A><BR>
+	</UL>
+	<LI><OBJECT type="text/sitemap">
+		<param name="Name" value="Странное поведение Эмулятора">
+		</OBJECT>
+	<UL>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Порядок проигрывания">
+			<param name="Local" value="html-rus/ay_r31ki.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r31ki.htm">Порядок проигрывания</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Зацикливание мелодии">
+			<param name="Local" value="html-rus/ay_r1xev.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r1xev.htm">Зацикливание мелодии</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Запуск эмулятора">
+			<param name="Local" value="html-rus/ay_r22lo.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r22lo.htm">Запуск эмулятора</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Открытие файлов">
+			<param name="Local" value="html-rus/ay_r288e.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r288e.htm">Открытие файлов</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Конвертирование из OUT и ZXAY">
+			<param name="Local" value="html-rus/ay_r23ll.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r23ll.htm">Конвертирование из OUT и ZXAY</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Прокрутка мелодий">
+			<param name="Local" value="html-rus/ay_r6lrm.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r6lrm.htm">Прокрутка мелодий</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Как прервать конвертирование">
+			<param name="Local" value="html-rus/ay_r2qgm.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r2qgm.htm">Как прервать конвертирование</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Управление окнами">
+			<param name="Local" value="html-rus/ay_r2r72.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r2r72.htm">Управление окнами</A><BR>
+	</UL>
+	<LI><OBJECT type="text/sitemap">
+		<param name="Name" value="Форматы файлов">
+		</OBJECT>
+	<UL>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="OUT">
+			<param name="Local" value="html-rus/ay_r9wok.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r9wok.htm">OUT</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="ZXAY">
+			<param name="Local" value="html-rus/ay_r65a1.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r65a1.htm">ZXAY</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="ZX50">
+			<param name="Local" value="html-rus/ay_r631s.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r631s.htm">ZX50</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="STC">
+			<param name="Local" value="html-rus/ay_r099f.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r099f.htm">STC</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="ASC">
+			<param name="Local" value="html-rus/ay_r8obn.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r8obn.htm">ASC</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="FXM">
+			<param name="Local" value="html-rus/ay_r94dp.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r94dp.htm">FXM</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="YM">
+			<param name="Local" value="html-rus/ay_r0625.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r0625.htm">YM</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="VTX">
+			<param name="Local" value="html-rus/ay_r0irc.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r0irc.htm">VTX</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="PSG">
+			<param name="Local" value="html-rus/ay_r9zqf.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r9zqf.htm">PSG</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="AY">
+			<param name="Local" value="html-rus/ay_r04vt.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r04vt.htm">AY</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="AYM">
+			<param name="Local" value="html-rus/ay_r8oml.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r8oml.htm">AYM</A><BR>
+	</UL>
+	<LI><OBJECT type="text/sitemap">
+		<param name="Name" value="Поддержка Эмулятора">
+		</OBJECT>
+	<UL>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Распространение">
+			<param name="Local" value="html-rus/ay_r9kby.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r9kby.htm">Распространение</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Архивы музыки">
+			<param name="Local" value="html-rus/ay_r0luw.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r0luw.htm">Архивы музыки</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Файлы обшивок">
+			<param name="Local" value="html-rus/ay_r97w3.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r97w3.htm">Файлы обшивок</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Официальная страничка Эмулятора">
+			<param name="Local" value="html-rus/ay_r7a91.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r7a91.htm">Официальная страничка Эмулятора</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Связь с автором">
+			<param name="Local" value="html-rus/ay_r033g.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r033g.htm">Связь с автором</A><BR>
+	</UL>
+	<LI><OBJECT type="text/sitemap">
+		<param name="Name" value="Авторы и сочувствующие">
+		</OBJECT>
+	<UL>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Благодарности">
+			<param name="Local" value="html-rus/ay_r5okv.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r5okv.htm">Благодарности</A><BR>
+		<LI><OBJECT type="text/sitemap">
+			<param name="Name" value="Авторы">
+			<param name="Local" value="html-rus/ay_r3wmr.htm">
+			</OBJECT>
+			<A HREF="html-rus/ay_r3wmr.htm">Авторы</A><BR>
+	</UL>
+</UL>
+</HTML>

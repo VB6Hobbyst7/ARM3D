@@ -1,0 +1,7 @@
+﻿  linking libnxtest1.elf
+  c:/devkitpro/devkita64/bin/../lib/gcc/aarch64-none-elf/10.2.0/../../../../aarch64-none-elf/bin/ld.exe: C:/devkitPro/libnx/lib\libnx.a(switch_crt0.o): in function `_start':
+  /home/fincs/pacman-packages/libnx/src/libnx-4.0.0/nx/source/runtime/switch_crt0.s:70: undefined reference to `main'
+collect2.exe : error : ld returned 1 exit status
+  make[1]: *** [/opt/devkitpro/libnx/switch_rules:80: /home/Eric/source/repos/libnxtest1/libnxtest1/libnxtest1.elf] Error 1
+  make: *** [Makefile:165: build] Error 2
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Microsoft\VC\v160\Microsoft.MakeFile.Targets(46,5): error MSB3073: La commande "make" s'est arrêtée avec le code 2.

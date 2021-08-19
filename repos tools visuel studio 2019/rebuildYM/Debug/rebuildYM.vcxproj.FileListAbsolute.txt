@@ -1,0 +1,2 @@
+C:\Users\Eric\source\repos\rebuildYM\Debug\rebuildYM.exe
+C:\Users\Eric\source\repos\rebuildYM\Debug\rebuildYM.pdb

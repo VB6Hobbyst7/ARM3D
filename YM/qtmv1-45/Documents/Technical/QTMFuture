@@ -1,0 +1,282 @@
+Possible ideas and plan for future of QTM...                      SH 01/12/13
+-----------------------------------------------------------------------------
+
+Goals
+-----
+Long term: focus QTM as the music and sound sample handler of choice for
+modern 32 bit Risc OS hardware, by implementing full 16 bit sound DMA fill
+routines, adding 16 bit sample handling/scheduling for in-game sound effects
+and supporting a 16 bit sample ProTracker format.
+
+Medium term (made progress with v1.45): maintain/improve functionality, so that a 'QTM Editor' can be written which makes use of the QTM module, without needing lots of custom (version specific) calls and additional code.
+
+Short term (achieved with QTM v1.45): continue to improve 32 bit support, add increased functionality for handling in-game sound effects.
+
+Ideas - in no particular order
+------------------------------
+
+SWI QTM_MusicOption (possible change)
+-------------------
+ - add a new option to retain QTM as sound handler after stopping song
+     - QTM_Pause / Stop / Clear leave QTM sound handler and leave 100Hz int
+ - finalise experimental option to play 4-channel music on channels 5-8 [complete v1.45] (or 'swap channels?' 1-8 now 8-1 ? [no longer pursued])
+
+
+SWI QTM_Start / QTM_SoundControl (possible change)
+--------------------------------
+ - both currently initialise QTM sound system (no change)
+ - change SoundControl to also initialise QTM tracker interrupt on 100Hz
+   (this was previously only done by Start)
+ - change QTM_Start to set flag for 'song playing', but SoundControl not
+ - would allow a PlayNoteEffect (or similar) call, to play a ProTracker
+effect on a currently playing sample/sound effect even if no music playing
+ - would minimise SWIs called by QTM_Stop/QTM_Pause/etc. if sound retained.
+
+
+SWI QTM_Pause / Stop / Clear (possible change)
+----------------------------
+ - change so clears 'song playing' flag (but doesn't release 100Hz int) if
+'retain QTM sound system' flag is set... In which case we need to:
+     - backup music DMA, only clear music DMA channels, leave SFX playing
+     - QTM_Clear also then clears backup
+ - If 'retain QTM' flag not set, we release sound handler int and 100hz int
+
+
+x SWI QTM_SetSpeed (thought...)
+x ------------
+x  Allow R0=0 ??? - Speed to be set at 0 (current SWI ignores R0=0)
+x
+x Following this, issuing SYS"QTM_Pos",x,y will play the event line x,y but
+x then stop and not progress further (assuming no F on that line, or B, or
+x D)...  To allow this to work, we need a flag so QTM remains in control of
+x sound after QTM_Pause / Stop (currently returns to Risc OS after either
+x of these)
+x
+x On reflection **NO** setting speed to 0 by this method is a **bad** idea,
+x very fiddley,
+x would require many changes to playing code, SWI code, etc. and it
+x effectively adds duplication of QTM_Pause/Stop... all for minimal benefit
+x in order to introduce a 'bodge' method to play a single event line (which
+x only editors would use).
+x - much better would be to add a shiny new SWI, QTM_PlayEvent...see below:
+
+
+SWI QTM_PlayEvent (possible new SWI)
+-----------------
+ R0=seq, R1=event (as QTM_Pos)
+ - This enables sound system, moves position to specified seq, pos and plays
+this event (all channels) by direct call to Play routine 'GetNewNote'. Just
+this event is played, music does not continue after.
+ - In normal use, song should be stopped or paused before calling this SWI.
+(Should we return error if not? Alternatively, this SWI plays the single
+event, then stops the music playing? Or it just jumps to the event, and
+allows music to continue - effectively doing the same as QTM_Pos?)
+ - (add 'R2=specific channel' - no point, an editor could use SWI playsample
+for that)
+
+
+SWI QTM_WriteChannelData (possible new SWI)
+------------------------
+R0=channel (1-8)
+R1=new sample number
+R2=new pitch
+R3=new lin volume
+R4=new effect code
+
+Reading of these values has now been implemented with QTM v1.45's new SWI QTM_ReadChannelData.
+
+
+SWI QTM_ConversionTables (possible new SWI)
+------------------------
+                                     Returns R0=8bit log to lin table
+                                             R1=amiga pitch to nearest note
+                                             R2=note to amiga pitch
+
+
+SWI QTM_ReinitSequenceTable (possible new SWI)
+---------------------------
+ - rereads sequence table and number of patterns, set max entries as
+appropriate
+ - note this does not recalculate sample addresses based on number of
+patterns
+     - it is assumed that if you are editing no. of patterns, you will have
+already relocated the samples to a suitable alternative position, using
+QTM_RegisterSample
+ - Alternatively, to reinit the whole song, use QTM_Load R0=-1, R1=-1
+
+
+SWI QTM_Load R0=-1, R1=-1 (possible change)
+-------------------------
+ - reinitialises the whole song and all associated calculated/sample
+entries/sizes/etc. values
+ - Note: * no RMA is released
+         * no lin/log sample conversion is performed
+
+
+SWI QTM_ConvertSampleData (possible new SWI)
+-------------------------
+ On entry R0 = source format (0 = 8 bit log, 1 = 8 bit lin)
+          R1 = target conversion format (0 = 8 bit log, 1 = 8 bit lin)
+          R2 = start address
+          R3 = length of source data to convert
+          R4 = destination address (may be same as R2) or -1 to read required
+               length
+ On exit  If R4 <> -1 on entry, registers preserved
+          If R4 = -1 on entry, R4 = calculated length of converted data
+ - This allows for future 16bit sample conversion, and for compressed sample
+expansion
+
+
+SWI QTM_InternalOp (possible new SWI) - maybe this should be a service call?
+------------------
+ - R0=1 = userload initialise
+ - R1=pointer to version number of userload module
+ - R2=pointer to address of user init/swi/service/exit address table
+Internal SWI or service call? issued by QTM at the start of a userload
+initialise, to inform a running QTM module that a userload module is about to
+initialise. The running QTM module may set R0=0 on exit, after patching the
+userload address table to 'claim', or may exit VS to abort userload.
+
+Currently QTM would ignore this as userload version opperate entirely
+separately. Future QTM versions may inspect the userload version number, and
+providing it is not a 'custom' version they could then poke their own
+swi/service/exit addresses into the userload version, so the userload
+application can run the most up to date QTM. However QTM needs to be fully
+reentrant for that to be possible. A controlling QTM module would need to set
+a flag/counter so it doesn't exit until it receives enough userload_exit
+calls, so that it is not controlling any other userloaded modules...
+
+ - R0=2 = userload exit
+ - R1=pointer to version number of userload module
+ - R2=pointer to address of user init/swi/service/exit address table
+Internal SWI issued by QTM at the start of a userload exit. If a running
+module has previously claimed the initialise call, it must now perform exit
+and shut down clean up on this instance of the module.
+
+
+SWI QTM_Pos (possible change)
+-----------
+ - allow jump to seq position 127 whatever the max is, *if bit 31 set*
+
+
+SWI QTM_Save (possible new SWI)
+------------
+ - temp. converts log to lin on saving, or uses short buffer to do that,
+while saving?
+ - option to save as log? + QTM log sample marker (4LOG, 8LOG perhaps?)
+ - need to investigate how much data is lost due to multiple lin/log/lin/etc.
+conversions.
+
+
+SWI QTM_EditorOptions (possible new SWI)
+---------------------
+ - allow option to force linear sample data, with special routine to carry
+out log conversion during DMA?
+
+
+SWI QTM_PlaySampleAsMusic (possible new SWI)
+-------------------------
+
+R0=channel (1-8)
+R1=sample number (0-31)
+R2=amiga note (0-72)
+R3=volume (0-64)
+
+Current QTM 'play sample' SWIs play the sample outside of the music routine,
+so music volume and music effects have no impact on the playing sample. This
+is ideal for in-game sound effects and audio samples, however not ideal for
+writing tracker software, or playing samples to mix with music.
+
+QTM_PlaySampleAsMusic plays a sample via the music play routine. This means
+any subsequent music 'effects' will impact the playing sample, and the sample
+volume is scaled according to the music volume.
+
+
+New SWI ideas (beyond QTM v1.45...)
+
+
+SWI "QTM_ReinitMusic"
+---------------------
+
+R0=reason code
+
+   =00 - reinitialise all no. of sequences, no. of patterns, all sample variables, and number of channels. [useful after changing number of channels]
+         this will stop the music playing, and carry out a full reinit, except samples will not be converted log/lin
+         error will be reported if format is invalid, but music will not be cleared - correct the format and reinitialise, do not issue QTM_Start after receiving an error from this SWI. This SWI will reinstall module samples in the QTM sample table, wiping any samples in the range 1-31 which have been registered using QTM_RegisterSample.
+
+   =01 - reinitialise maximum sequence number
+
+   =02 - reinitialise maximum pattern number - rescans sequence table for maximum pattern number, but does not affect sample start positions (useful if editor has reregistered samples elsewhere in memory using QTM_RegisterSample, less useful if editing in module format, as the maximum pattern number will affect sample start if samples are still in module format - use R0=00 instead)
+
+   =03 - reread sample(s) length/repeats (R1=-1 for all samples, else =1 to 31 for a single sample)
+
+
+SWI "QTM_ConvertSampleData"
+---------------------------
+
+R0=conversion type:
+
+ 00=return 8 bit conversion table addresses
+
+    On exit R1=pointer to 256 byte, 8 bit linear to 8 bit log table
+            R2=pointer to 256 byte, 8 bit log to 8 bit linear table
+
+
+ 01=convert 8-bit linear to 8-bit log
+
+     R1=start address of memory
+     R2=destination address (can be the same as R1)
+     R3=length of source data to convert
+
+ 02=convert 8-bit log to 8-bit linear
+
+     R1=start address of memory
+     R2=destination address (can be the same as R1)
+     R3=length of source data to convert
+
+ 03=convert 16-bit linear to 8-bit linear
+
+     R1=start address of memory
+     R2=destination address (can be the same as R1)
+     R3=length of source data to convert (note desintation length will be half the source length)
+
+
+Other possible changes
+----------------------
+
+Move OS version into a variable during initialisation currenlty OS_Byte 129
+is used multiple times in many different places. [completed in v1.45]
+
+
+Plan: Refocus QTM for Risc PC and later
+---------------------------------------
+ - make use of greater speed on Arm6+ hardware by defaulting to 8 channel,
+with TSS enabled and 4-channel music on 5-8 (or 'reversed' channels?) [v1.45 now initialises with TSS enabled and, volume defaults to 48, on RISC OS 5]
+
+ - consider initialising QTM sound system and setting 8 channels/TSS on
+loading to avoid volume changes going from 1 channel system beep to 8
+channel/TSS. Users can then load QTM in Boot sequence, and set their amp up
+accordingly... (this will be fine providing they don't load any non-QTM
+music/games/etc...)
+
+ - Depreciate pre-compiled Arm2/250 8bit sound support, by replacing the
+large unlooped DMA fill routines by a quick self-assembly of these on
+loading. This will reduce module size by half, although Arm2/3 machines will
+need a bit of spare RMA to expand the code into... (should Arm3 drop support
+for using Arm2 routines when cache is off?)
+
+
+QTM 16bit v2.00 ???
+-------------------
+ - proper 16bit linear DMA fill routine, avoiding lin-log sample conversion
+ - maintain support for 8bit computers, even 16bit format can be kept by
+simple conversion
+ - add 'QTM_UnrecognisedFormat' conversion service call system
+ - post RO3.1 use DynamicArea 'QTM music' and 'QTM samples'
+ - add support for 16bit ProTracker music (does a 'standard' exist?)
+    - could create own format eg. 'Q16b' module format using 16bit samples
+(with increase max sample size from 128kb to 256kb or 1Mb?). Possibly adding
+LZWD compression for the sample area.
+    - own format is only practical if supplied with an editor
+    - would prefer if another suitable 16bit format is already out in the
+open

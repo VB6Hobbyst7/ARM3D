@@ -183,17 +183,17 @@ boucle:
 
 	ldr		r3,screenaddr1
 	ldr		r4,screenaddr2
-	eorgt		r3,r3,r4		; swap r3,r4 
-	eorgt		r4,r3,r4
-	eorgt		r3,r3,r4
+	eor		r3,r3,r4		; swap r3,r4 
+	eor		r4,r3,r4
+	eor		r3,r3,r4
 	str		r3,screenaddr1
 	str		r4,screenaddr2
 
 	ldr		r3,screenaddr1_MEMC
 	ldr		r4,screenaddr2_MEMC
-	eorgt		r3,r3,r4		; swap r3,r4 
-	eorgt		r4,r3,r4
-	eorgt		r3,r3,r4
+	eor		r3,r3,r4		; swap r3,r4 
+	eor		r4,r3,r4
+	eor		r3,r3,r4
 	str		r3,screenaddr1_MEMC
 	str		r4,screenaddr2_MEMC
 

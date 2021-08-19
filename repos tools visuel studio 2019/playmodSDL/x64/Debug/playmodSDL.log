@@ -1,0 +1,9 @@
+﻿  playmodSDL.cpp
+playmodSDL.obj : error LNK2019: symbole externe non résolu SDL_GetError référencé dans la fonction SDL_main
+playmodSDL.obj : error LNK2019: symbole externe non résolu SDL_CreateWindow référencé dans la fonction SDL_main
+playmodSDL.obj : error LNK2019: symbole externe non résolu SDL_DestroyWindow référencé dans la fonction SDL_main
+playmodSDL.obj : error LNK2019: symbole externe non résolu SDL_Delay référencé dans la fonction SDL_main
+playmodSDL.obj : error LNK2019: symbole externe non résolu SDL_Init référencé dans la fonction SDL_main
+playmodSDL.obj : error LNK2019: symbole externe non résolu SDL_Quit référencé dans la fonction SDL_main
+MSVCRTD.lib(exe_main.obj) : error LNK2019: symbole externe non résolu main référencé dans la fonction "int __cdecl invoke_main(void)" (?invoke_main@@YAHXZ)
+C:\Users\Eric\source\repos\playmodSDL\x64\Debug\playmodSDL.exe : fatal error LNK1120: 7 externes non résolus

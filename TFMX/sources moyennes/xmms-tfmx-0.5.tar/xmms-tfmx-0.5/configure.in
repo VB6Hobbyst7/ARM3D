@@ -1,0 +1,42 @@
+dnl -*- m4 -*-
+dnl Process this file with autoconf to produce a configure script.
+
+AC_INIT(src/tfmx.h)
+AM_INIT_AUTOMAKE(xmms-tfmx, 0.5)
+
+AC_ARG_WITH(plugindir,
+[  --with-plugindir=DIR    where this plugin should be installed
+                           (defaut: xmms_prefix/lib/xmms/Input)])
+
+dnl Checks for programs.
+AC_PROG_CC
+AC_PROG_INSTALL
+AC_PROG_MAKE_SET
+
+dnl Initialize libtool
+AM_DISABLE_STATIC
+AM_PROG_LIBTOOL
+
+if eval "test x$CC = xgcc"; then
+   CFLAGS="$CFLAGS -Wall -Wimplicit"
+fi
+
+AC_SUBST(CFLAGS)
+
+dnl Check for GTK+
+AM_PATH_GTK(1.2.0,,
+  AC_MSG_ERROR(Test for GTK failed.), gthread)
+
+if test "x$with_plugindir" = "x"; then
+  AC_PATH_PROG(XMMS, xmms)
+  xmmsdir=`echo $XMMS | sed s@bin/xmms@lib@`/xmms/Input
+else
+  xmmsdir=$with_plugindir
+fi
+
+AC_SUBST(xmmsdir)
+
+AC_OUTPUT(Makefile \
+src/Makefile)
+
+echo "Plugin will be installed in $xmmsdir"

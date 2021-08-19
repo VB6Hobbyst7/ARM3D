@@ -1,0 +1,62 @@
+<!doctype html><HTML><HEAD><META HTTP-EQUIV="Content-Type" Content="text/html; charset=Windows-1251"><LINK REL="stylesheet" TYPE="text/css" HREF="Ay_Emul.css"></HEAD><BODY>
+
+<H1><A NAME="whatdo"></A>What is AY-3-8910/12 Emulator</H1>
+
+<P>"ZX Spectrum Sound Chip Emulator" is designed for playing music for AY-3-8912 sound chip (or its analogs are AY-3-8910 and YM2149F). Emulator emulates these sound chips and does not require real ones. Additionally emulator can play CD's audio tracks and MIDI-files. Optional BASS.DLL v2.2 by Ian Luck can be used for playing MP3 and MOD music.</P>
+
+<P>Emulator can play files of next types.</P>
+<pre>
+1. Dumps of registers were recorded in many computers emulators:
+	- OUT (recorded in ZX Spectrum emulator 'Z80' v3.xx by G.A. Lunter);
+	- PSG (recorded in ZX Spectrum emulator 'Z80 Stealth' by Mr.Kirill, and in many other emulators);
+	- EPSG (recorded in ZX Spectrum emulator 'Z80 Stealth');
+	- YM ('StSound Project' by Leonard/Oxygen files, supported YM2, YM3, YM3b, YM5 and YM6 subtypes);
+	- VTX ('Vortex Project' by V_Soft files);
+	- ZXAY (designed specially for Ay_Emul).
+2. Popular ZX Spectrum musical editors’ modules:
+	- STC – Sound Tracker v1.xx;
+	- PSC – Pro Sound Creator v1.xx;
+	- ASC – ASC Sound Master v0.xx–2.xx;
+	- PT1, PT2, PT3 – Pro Tracker v1.xx–3.xx, Vortex Tracker II v1.0;
+	- STP – Sound Tracker Pro;
+	- FTC – Fast Tracker v1.xx;
+	- FLS – Flash Tracker;
+	- SQT – SQ-Tracker;
+	- GTR – Global Tracker v1.x;
+	- FXM – Fuxoft AY Language;
+	- AY of AMAD subtype – Amadeus modules, FXM analog;
+	- PSM – Pro Sound Maker.
+3. ZX Spectrum’s or Amstrad CPC’s memory dumps with player for Z80 processor:
+	- AY of EMUL subtype (DeliAY and AYPlay projects files);
+	- AYM (RDOSPLAY project files).
+4. CD audio tracks (CDA). Emulator can work with several CD drives.
+5. MIDI-files:
+	- MID, MIDI – standard MIDI-files;
+	- RMI – MID-files in RIFF-container;
+	- KAR – standard MID-files with song texts for karaoke;
+	- XMI – Miles Design XMIDI format.
+6. Files are played by BASS library:
+	- MP3, MP2, MP1 – MPEG 1 encoded sound record;
+	- OGG –Vorbis encoded sound record;
+	- WAV – sound record; for all that have codec installed in the system;
+	- WMA – Windows Media encoded sound record (through basswma.dll);
+	- MO3 – modules with MP3/OGG encoded samples;
+	- IT – Impulse Tracker;
+	- XM – Fast Tracker 2;
+	- S3M – Scream Tracker 3;
+	- MTM – MultiTracker;
+	- MOD – generic module format;
+	- UMX – Unreal Tournament music package.
+</pre>
+<P>Emulator supports playlist files of Winamp (M3U) and of own format (AYL). AYL can contain full info about each item.</P>
+
+<P>Emulator can be used as powerful tool for working with AY/YM data files. Built-in Speccy music ripper can to find modules of many ZX Spectrum musical editors in any source data. Emulator can convert modules to WAV, ZXAY, VTX, YM6 or PSG formats. Emulator can play digital sound is stored in OUT, ZXAY, EPSG, AY or AYM files. Beeper music in AY and AYM formats are supported too. Emulator can play all special effects are used by Atari ST musicians and stored in YM2, YM5 and YM6 formats.</P>
+
+<P>Skin-files can change view of emulator main window.</P>
+
+<P>BASS.DLL library is loaded only before playing corresponding file and unloaded immediately after stopping playing.</P>
+
+<P>System requirements: Windows 95 or compatible; for work processor 386 or greater is required; for playing sound card with support of 8 or 16 bit Stereo or Mono digital sound at any sample frequency in range from 8000 to 300000 Hz and high performance processor (Pentium 133 is tested). Some beeper music in AY and AYM files require Pentium 166 MHz and higher. By default emulator uses special filter which requires more powerful processor, but it gives more quality sound chip and beeper emulation. For playing extra file types of BASS.DLL require DirectX 3 or above, for MOD music additionally processor with MMX is required.</P>
+
+</BODY>
+</HTML>

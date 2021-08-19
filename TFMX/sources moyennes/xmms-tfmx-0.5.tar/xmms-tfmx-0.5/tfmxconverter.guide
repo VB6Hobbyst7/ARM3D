@@ -1,0 +1,400 @@
+@database TFMX-Converter documentation
+@$VER:TFMX-Converter doc V1.0
+@author Alexis Nasr (The Cyborg/NGC)
+@Wordwrap
+@node main "Summary"
+
+                               TFMX-Converter v1.0
+                               ~~~~~~~~~~~~~~~~~~~
+                                       by
+                                The Cyborg/N.G.C@{fg text}@{ub}@{uu} (Alexis NASR) ©94-95
+
+                         [Doc $VER:1.0 - 11 Apr 1995]
+
+                   @{" 1. Introduction                          " LINK intro}
+
+                   @{" 2. Description of the interface          " LINK interface}
+
+                   @{" 3. Description of the format             " LINK format}
+
+                   @{" 4. Conclusion                            " LINK conclusion}
+@endnode
+
+
+@node intro "1. Introduction"
+
+@{fg highlight}@{b}@{u}1. Introduction@{fg text}@{ub}@{uu}
+
+
+        Have you ever heard (adapted word :) of the TFMX Music-format?
+
+        "No":I don't believe you!Then Scratch this tool (spread it first ;-)
+
+        "Yes":Aaah...a good point!
+
+Well If you like this format,you surely have noticed that besides its GREAT
+musical possibilities,the TFMX is somehow annoying to handle,for some reasons:
+
+ * The files are split in mdat/smpl,so:
+
+       -That makes it REALLY an horror when you have to copy a few
+        modules for friends!Have to browse in the dir to choose the 
+        corresponding smpl etc...seems nothing? Try with more than 10 mods &
+        you'll see what I mean.
+
+        -Directory reading is awfully SLOW.(I have 134 modules=>268 files!!!)
+
+        -I don't like it this way *:-)
+
+
+ * Another problem is that this format includes the 1.5/Pro/7V formats in fact,
+   and it is not always possible to distinguish these.Well,in the new TFMX
+   Eagleplayers (available since EP1.54),Blackbird & myself tried to make the
+   testroutines as correct as possible,but since then,we got new modules,that
+   were badly recognized.Once again,we fixed the testroutines so everything is
+   fine,but...BUT Chris Huelsbeck (the author of this master format) had
+   made TFMX a 'secret' format,used only in games.That's why mostly all the
+   modules that can be found come from games.That explains why there is NO 100%
+   reliable sign that indicates the kind of the module.
+
+   An old 'TFMX-Tracker' ("TFMX-editor") had been released,but it was
+   awfully bugged,and REALLY oooold .Maybe some people have tried to make
+   their own editor,that could explain that some mods are rather weird,kind
+   of hybrid structures between 1.5/7V etc...
+
+   All this to say that if new 'weird' TFMX modules are to come (which we do
+   hope,anyway),it may happen that they aren't correctly recognized.
+
+   That's why this converter stores the TYPE (1.5/pro/7v) IN the module!
+   Much easier to recognize,eh?Most of time,automatic recognition will be
+   OK,you'll just be able to 'force' the few badly detected mods.
+
+
+So what?
+--------
+You surely won't have to use this Program often!!
+
+In fact,I suppose you'll just use it now to convert all your mods,and once
+upon a time when you get new ones...
+
+Anyway,I think the interface is far too nice considering the number of times
+you'll use it (once? ha ha ha).But I like making useless stuff (?) (UUUrgh ;-)
+
+
+To use the new "TFMX." modules,you'll need the following Eagleplayers:
+        TFMX1.5:        V1.9 (EP_version= 6)
+        TFMX_Pro:       V2.36            15
+        TFMX_7v         V2.34            15
+
+They're just the same players as in EP1.54,but I've added the support of
+the new format for loading & saving.
+(-->Files are saved in the same format as they were loaded)
+
+I talked of Eagleplayer,but it is likely that this format will be also
+supported by Delitracker.And also all the other players (Hippoplayer,Empy,etc)
+if their authors get a hand on this doc *;-)
+
+
+DISCLAIMER:
+***********
+
+This program is FREEWARE.
+
+I've heavily tested it and it seems quite Ok,but,remember that you use it
+at your own risks etc etc...('The author takes no responsability' etc etc...
+just take any other program doc & read the usual disclaimer crap.I'm really
+fed up with this useless [again :] part)
+
+@endnode
+
+
+@node interface "2. The Interface"
+
+@{fg highlight}@{b}@{u}2. The Interface@{fg text}@{ub}@{uu}
+
+This tool needs:
+        -OS 2.0+ (v37+)
+
+        -Reqtools.library v38+ (ReqTools is © Nico François)
+
+        -you should put TFMX-Converter in the list of xData's clients,if you
+         want to decrunch files.
+
+
+so let's describe the gadgets:
+
+
+* "Module type" cycle gadget
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+When you convert modules (in whatever way,as you'll see later),it's THIS
+gadget that sets the kind of the module:
+
+        - Automatic Check:Classic!Uses the same recognition routines that
+          in the corresponding Eagleplayers.(no surprise).It's the default
+          and will fit in 99% of cases.
+
+        - Force as 1.5/Pro/7V:guess what!When a module is badly recognized
+          (You see it quickly:usually the player makes a Guru ;-),you can
+          try with setting one of the 2 other TFMX-subformats.Easy,no?
+
+        - Don't define.The module is defined as 'not checked',so that the
+          players will use their own checkroutines.
+          (With automatic-checked/forced modules,the players rely on this
+          info and don't try to check by themselves)
+
+
+* "Delete files"
+~~~~~~~~~~~~~~~~
+AFTER the conversion is done,the source modules are deleted.
+
+Note:There is a kind of bug with xData,which made me lose half a day searching
+for a bug that didn't exist:If you use fast devices (HD,RAM:...),often the
+delay between loading-saving-deleting is very short,and xData still has locks
+on the source file!!So,you see the problem?Yes,the deleting fails!When xData
+has finished (& removed its T: temporary files),everything would be Ok.
+For example,deleting works with crunched files on FLOPPIES.Or uncrunched
+files on any device you want.(Am I clear? ;-).
+[The fault is xData's!]
+        
+
+
+* "Join MDAT. +SMPL. File(s) to TFMX."
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The most useful option,he he...
+
+Choose the files to be converted,then a destination-directory.
+The operations will then be performed (no pause option,sorry).
+
+Note:All the paths of the requesters are memorized.
+
+Note2:The modules types are set according to the cycle gadget.
+
+Note3:All the files are saved UNCRUNCHED...You'll have to recrunch them.
+(think about it when saving on small capacity devices like floppies:)
+
+These notes apply for the all the converting-operations.
+
+
+
+* Split TFMX. File(s) back to MDAT+SMPL
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+May be useful if one day,the authors decide to release the editor (or maybe
+it's done already??)...So you can get back 'standard' modules.
+
+(of course,the type gadget is useless here)
+
+
+
+* Modify a TFMX. module type
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+For 'finetuning' moduletype :)
+
+
+@endnode
+
+
+@node format "3. Description of the format"
+
+@{fg highlight}@{b}@{u}3. Description of the format@{fg text}@{ub}@{uu}
+
+"format" is a big word,huhu...
+
+This part should interest only coders (and only Musicplayers/Rippers ones?)
+
+
+Structure of the module:
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+-TFMX Header
+-MDAT data
+-SMPL data
+
+
+The TFMX Header structure is very simple:
+
+        RSRESET
+TFhd_head:	rs.l	1	;dc.l "TFHD" for recognition
+TFhd_offset	rs.l	1	;dc.l	TFhd_sizeof
+TFhd_type:	rs.b	1	;module type :0/1/2/3 (bit 7=FORCED)
+TFhd_version:	rs.b	1	;currently 0
+TFhd_mdatsize:	rs.l	1
+TFhd_smplsize:	rs.l	1
+TFhd_sizeof:	rs.w	0
+
+
+
+
+
+Some details:
+~~~~~~~~~~~~~
+* Please keep this nice & easy 'TFHD' (no "TfHd","tfhd",etc...)
+
+* TFhd_offset:here you should store the current TFHD_sizeof value.This is
+  only for evolution purpose (very unlikely to happen!).Anyway DO FILL this
+  field,and as explained later,NEVER assume the header has a fixed size
+  (tfhd_sizeof).Always use the TFHD_offset size!
+  And if you want to extend the structure (??) PLEASE tell me about it.
+  (No protracker-mess here!Now that TFMX has a kind of recognition,let's
+  preserve it,no?)
+
+* Tfhd_type:
+        1=1.5   )
+        2=Pro   )       Quite easy,no?
+        3=7V    )
+
+        0=Unchecked.    I added this one,if for some reason you don't want
+                        or cannot check the type.
+                        (For example,ExoticRipper just says 'TFMX1.5/pro/7v')
+                        (Hi Marley!!Hope you'll use this format now)
+
+If the format is FORCED,please set bit 7 (+128).It may be useful.
+
+
+* "some pseudocode..." :
+
+  mdat_addr= ModuleAddr+(tfhd_offset)
+  smpl_addr= ModuleAddr+(tfhd_offset)+(tfhd_mdatsize)
+
+
+                                Some examples:
+                                --------------
+
+
+Here is the TFMX_1.5 Checkroutine skeleton:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+This should make it clear enough.
+
+
+TFMX_Check:
+		SF	TFHD_Flag               ;internal flag:0=old else new
+		move.l	DTG_ChkData(a5),a1      ;a1=Module address
+		move.l	a1,a6
+		cmp.l	#"TFHD",(a1)
+		bne.s	.OLDMODULE		;not a 'TFMX.*" module :[
+		move.b	tfhd_type(a1),d0
+		move.b	d0,modtype
+		and.l	#127,d0                 ;clear the "Forced" flagbit
+		beq.s	.NONCHECKEDMODULE	;is TFMX.* but unchecked type
+		cmp.b	#1,d0                   ;type 1=1.5
+		bne.s	.err			;is TFMX.* & NOT the good type
+		ST	TFHD_flag
+		bra.s	.ok
+
+.NONCHECKEDMODULE:
+		ST	TFHD_flag
+		add.l	tfhd_offset(a1),a1      ;now point on the mdat struct,
+		move.l	a1,a6                   ;so that checking is done
+                                                ;[tfhd_offset rules!]
+
+.OLDMODULE:	moveq	#-1,d0                  ;checkroutine...
+		move.l	a6,a0
+		cmpi.l	#"TFMX",(a0)
+		bne.s	.ChkEnd
+		move.l	6(a0),d0
+		move.b	5(a0),d0
+		ror.l	#8,d0
+		cmpi.l	#"SONG",d0
+		beq.s	.ChkEnd
+.ok:		move.b	#1,modtype
+		moveq	#0,d0
+.ChkEnd		rts
+.err:		moveq	#-1,d0
+		rts
+
+TFHD_flag:	dc.w	0
+TFHD_adr:	dc.l	0               ;init these after loading
+TFHD_size:	dc.l	0               ;
+modtype:	dc.b	0
+		even
+
+
+
+How to get the addresses:
+~~~~~~~~~~~~~~~~~~~~~~~~~
+        	move.l	TFHD_adr,a0
+		move.l	a0,a1
+		move.l	TFHD_size,d0
+
+		add.l	tfhd_offset(a0),a1              ;now point on MDAT data
+		move.l	a1,MDAT_adr
+		move.l	tfhd_mdatsize(a0),mdat_size
+		add.l	mdat_size(pc),a1                ;same for SMPL
+		move.l	a1,smpl_adr
+		move.l	tfhd_smplsize(a0),smpl_size
+
+
+Don't tell me it's hard :)
+
+And if you modify a module before saving it,don't forget to set the
+corresponding TFHD_type/mdatsize/smplsize fields...
+
+
+
+                                Have fun!
+@endnode
+
+@node conclusion "4. Conclusion"
+
+@{fg highlight}@{b}@{u}4. Conclusion@{fg text}@{ub}@{uu}
+
+
+I already spent too much time on this totally useless proggy...let's make
+it short!
+
+
+Hellos & Thanks fly to:         (RANDOMIZE=ON)
+
+        * Ian O'Connor for  'The Designer' ,the most powerful gadtools
+        interface builder I've ever seen.['MUI'?what's that? oh yes the
+        tool that needs a 200 Kb library...hey,you have an OS in ROM you
+        know.Of course some people prefer Disk-based systems....Have a look
+        at Windoze hmmmm.I know I'm making a very ugly criticizing of a very
+        good tool (MUI),but even if it's very powerful for the user,the coder
+        and everybody is happy,I DON'T like it.Point.I'm a stupid,stubborn
+        idiot I know I know...It must be that,yes...]
+
+
+        * Nico François for his superb library...Just a pleasure using it...
+
+
+        * Buggs/Defect for his TFMX-Moral support etc etc..
+          (you too make nice letters,hehe ;-)
+
+        
+        * Gryzor (haha t'as vu Nico? Moi aussi j'ai fait un convertisseur
+          de mods...arf arf voui bon c'est sur que...sacré moi!)
+
+
+        * All the other members of NGC,specially the two other TFMX-madmen,
+          Blackbird & Xelis of course! Hot thanx also to Xulax for his (as
+          usual) very cute Icon.
+
+        * Of course,and even if they don't give a damn and will probably
+          never read these lines:Chris Huelsbeck & Jochen Hippel:
+          thank you both for this (these) excellent format!
+          Even if 'technically' the TFMX is 10 times better than the Protracker
+          you made the editor available only to a few users...Of course as
+          TFMX has far more options than the ptk,it's more complicated to 
+          make tunes,but...don't worry,release the editor and I think you'll
+          do lots of happy Musicians! (Here it is...I'm beginning to make
+          strange dreams..tsss :)
+
+
+If for any reasons you want to contact me:
+
+
+                write to:                       Alexis NASR
+                                       27,Rue Formigé,Résidence Renoir
+                                         33110 Le Bouscat (FRANCE)
+
+
+French Minitel users can use:   3614/15 RTEL (BAL 'The Cyborg/NGC')
+
+
+
+                                        Have a good day (night?)....
+
+
+
+@endnode
+@endnode

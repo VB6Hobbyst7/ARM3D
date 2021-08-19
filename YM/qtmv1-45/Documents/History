@@ -1,0 +1,304 @@
+Updates to QTM in version 1.45                   © Steve Harrison, 1993-2013
+----------------------------------------------------------------------------
+
+Originally released by the Acorn User magazine in June 1994, QTM continued to
+be developed and maintained by the original author, Steve Harrison until the
+v1.40 full source code release in 2001.
+
+In 2012, however, QTM was updated by Jeffrey Lee for full 32-bit Risc OS 5
+compatibility and in 2013 Steve Harrison has rejoined the QTM development.
+
+A brief summary, in reverse order, of all the improvements made to QTM since
+version 1.21 is given below:
+
+
+v1.45 (Steve Harrison/Jeffrey Lee) 27/12/2013
+-----
+Improvements:
+ - FastTracker 8 channel support added!
+ - FastTracker 6 channel support added! (the first QTM 6 channel music support)
+ - Octalyser 6 and 8 channel detection added (similar format to FastTracker)
+ - Added full 6-octave support incl. fine tuning, arpeggio and pitch slides
+ - Additional partial support for extra low 7th/8th octaves (for converter use)
+ - PlaySample SWIs updated to allow notes 1-72 (6-octaves)
+ - StarTrekker 8 channel music now converted to FastTracker on loading
+ - RPCEmu detection and patch to run QTM at 48uS improving the emulated sound
+ - *QTMTransparent added to control Transparent Sound System (TSS)
+ - TSS enabled by default on RISC OS 5
+ - QTM now allows 4 channel music to play on channel 5-8 (see QTM_SoundControl)
+ - New SWIs QTM_ReadChannelData and QTM_ReadNoteWord added
+ - SWI QTM_PlaySample/PlayRawSample 'auto channel detection' vastly improved
+ - Music files with no samples (eg. mod.Zilch) are now allowed
+ - QTM's 8 bit 'fake' DMA buffer kept at 208 bytes/channel whatever DMA size
+ - QTM's song time calculator, QTM_ReadPlayingTime, can now return centiseconds
+ - QTMDisplay, a full featured tracker display, is included with this release
+
+Bug fixes:
+ - Huge bug fix for 6/8-channel music, repeating effects (slides, arpeggio,
+etc.) were only checked on channels 1-4, so did not play correctly on
+channels 5-8, now fixed.
+ - Fixed bug: QTM reselected 4 channel output after loading a 4 channel music
+module, even when QTM_SoundControl had been used to set 8 channel output.
+ - Fixed bug which caused QTM's play routine to update the current channel's
+DMA pitch, on every note, even blank notes. This stopped sound effects
+samples playing correctly on the same channels as music (even blank music
+channels)
+ - QTM v1.45 copes correctly with Raspberry Pi's RISC OS sound system having
+a fixed DMA buffer of 256 bytes (previous Acorn machines defaulted to 208
+bytes). QTM now detects whether RISC OS has selected QTM's requested DMA size
+(208 bytes) and if not, QTM's DMA calculations use the actual DMA size
+selected, not assuming 208 bytes. This means samples don't annoyingly 'pop'
+or 'click' at random...and it sounds so much better! Great result :)
+ - Fixed bug which caused crash on initialising the TransparentSoundSystem
+under RO5 on the Beagleboard, as QTM's copy of the RISC OS sound handler was
+not set correctly until after QTM DMA handler initialised. Wasn't a problem
+on older systems, but crashed Beagleboard due to a DMA call after
+initialisation.
+ - Fixed bug in QTM DMA, VU bar & fake DMA buffer code - there was no check
+for blank address pointer, so if all other data valid but address=0, DMA
+would take place from address 0 (and did not abort!), however VUbar and fake
+DMA code did abort... Now fixed!
+
+v1.44 (Steve Harrison) [unreleased development test version]
+-----
+
+v1.43 (Steve Harrison/Jeffrey Lee) 17/6/2013
+-----
+Improvements:
+ - !QTMmini, !MiniVUBrs and 'exelrelax1' music provided in release archive
+ - Added source CRC validation, now anyone can re-assemeble release module
+ - Removed loud 'pop' heard each time QTM loaded new tracks on Raspberry Pi.
+ - 'F-00' now stops song playing but retains QTM as sound DMA handler. Use
+   *QTMPause/Stop/Clear (or SWIs) to release the QTM sound system.
+ - Corrected function names FNmcr and FNmrc in source (no effect on module)
+ - On the 26th anniversary of the first Archimedes Operating System "Arthur
+   0.30", QTM is now *compatible* with Arthur! Previous versions did run,
+   but resulted in a long stream of 'abort' errors while music played. Only
+   a minor tweak was needed (removing PSR flag restore on IRQ return) and
+   now QTM runs smoothly on Arthur OS.
+
+Bug fixes:
+ - Fixed effect 'F-00' (stop song) from crashing 32-bit systems.
+ - Fixed 'no song loaded' bug if QTM was sound handler before player started
+ - ARM detection code rewritten to avoid clashing with a bug in FPEmulator
+   v4.12-4.31 that stopped QTM loading on ARM2/ARM250 if FPEmulator present
+
+
+v1.42 (Steve Harrison/Jeffrey Lee) 20/4/2013
+-----
+Fixes a bug in the 32bit compatible handling of SWI "QTM_SoundControl"
+Fixes 'unknown SWI' compilation problems on pre-RiscOS3.6 computers
+Adds support to compile QTM with different DMA sound buffer lengths
+Fixes a bug in SWIs QTM_Pause/QTM_Stop which could cause a crash on 32bit
+machines
+Fixes an unaligned load in SWI QTM_Info that was causing issues on ARMv6/v7
+
+
+v1.41 (Jeffrey Lee) 26/4/2012
+-----
+32bit & ARMv7 compatibility release
+
+** Updated code base to be 26/32bit neutral
+ - On 26bit systems, SWIs will continue to preserve flags as before
+ - On 32bit systems, flags will be corrupted
+ - Addition of extra module header entries means that user mode entry points
+have now been moved from QTMaddr+40 to QTMaddr+52
+
+** Fixed a couple of unaligned loads/stores that were causing issues on
+ARMv6/v7
+
+** Added a RISC OS 4 style service call table to ensure efficient performance
+on RISC OS 4+
+
+** Added new method of determining sound system sample rate on machines with
+16bit sound.
+ - Now it just reads the sample rate via Sound_SampleRate instead of
+attempting to calculate it manually, or relying on the potentially inaccurate
+uS sample period.
+
+** Bugs fixed from older versions
+ - Fixed SWI QTM_Pos returning a bad error pointer if R1 was out of range
+
+
+v1.40
+-----
+8-channel music + full source code released (18/4/2001).
+
+** 8-channel StarTrekker music is now supported by QTM **
+ - QTM now loads and plays 8-channel StarTrekker songs (filetype &CB6).
+ - Use !TrackConv (available on the QTM website) to convert
+Trackers/Symphonies/Desktop Trackers to the StarTrekker 8-channel format.
+
+** Fixes for 16bit sound RiscPCs **
+ - While re-coding QTM's VU bar routines for 8-channels, it became apparent
+that 16bit sound RiscPCs do not have an 8bit log sound DMA buffer available
+for programmers to examine and produce 'real' VU bars or sound channel
+osciloscopes. So QTM v1.40 now produces it's own 'fake' 8-channel 8bit DMA
+buffer for such purposes.
+ - SWI QTM_DMABuffer when called on 16bit sound RiscPCs now (rather than
+returning the RISC OS 16bit sound buffer address) now generates it's own
+'fake' 8-bit sound buffer and returns that address. This buffer is then
+suitable for unmodified 8-bit osciloscope/vu bar/etc. routines allowing them
+to run correctly on RiscPCs. The SWI works as previously on 8bit sound
+computers, returning the RISC OS 8bit sound buffer address.
+ - QTM's VU bar routines updated to handle 8 channels, and the 'real' VU bar
+routines completely re-coded so that they no longer depend on the RISC OS
+8bit sound buffer, and instead calculate the vu levels from the actual sample
+data being played by QTM (works on all computers inc. 16bit sound RiscPCs).
+
+** Bugs fixed from older versions
+ - v1.29 source code release failed to load the 8bit logarithmic to linear
+sample conversion table 'LOGtable' during assembly of the module! This
+resulted in SWI QTM_Clear with R0=-1 blanking the songs samples rather than
+converting them back to linear format! Also 'real' VU bars always returned 0.
+ - Previously QTM_DMABuffer returned the address of the RISC OS 16bit sound
+buffer, not an 8bit buffer, when running on 16bit sound computers. Now it has
+been recoded (see above) to generate an 8bit buffer itself and return that
+address, allowing osciloscope programs to run correctly on newer computers.
+ - 'real' VU bars completely re-written. Now these are calculated from QTM's
+sample data, rather than the RISC OS sound buffer (avoiding 16bit sound
+problems, see above), and a smoother algorithim is used for the VU level -
+where an accumulated average volume over the DMA fill is used, rather than
+the highest value.
+
+
+v1.30 (unreleased) 1997-1999
+-----
+Served as a test version of QTM 'Turbo' which was never finished. The need to
+release the 'Turbo' version of QTM has been almost completely removed by the
+large increase in computer speeds with the StrongARM RiscPCs. QTM 'Turbo'
+used highly optimised DMA filling routines which greatly improved performance
+on 8bit sound Arm3/Arm2 computers, by using neat processor tricks such as
+disabling (rarely used) FIQs when possible to get access to the FIQ bank of
+registers - then switching PSR modes as required to give QTM's DMA filler
+code access to 7 extra PSR registers!
+
+Although the code worked well, reducing QTM's processor usage by up to 40%
+during normal playing of 4-channel songs...a small disadvantage was that on
+older computers, accessing the floppy drive would sometimes fail - because
+the old 1770-disc controller required FIQs for this operation, and QTM had
+disabled them...! There were ways round that problem, but computers were
+speeding up exponentially and my time and effort had then moved to degree and
+PhD work...so QTM 'Turbo' lost out :-(.
+
+v1.30 also acted as a test version for 8-channel music support, using the
+StarTrekker 8-channel format and also for multiple song handling and
+multiplexing allowing 'DJ'-style mixing of ProTracker songs! Hopefully these
+routines shall find their way into future versions of QTM if there is demand
+for them (ie. if you are interested, let me know!).
+
+v1.29
+-----
+Full source code released! (21/9/2000)
+
+** Essentially the same as QTM v1.28, however some ancient (unused) code
+removed from the source files, and the QTM web-address added to the module
+help field (*HELP QTMTracker).
+
+
+v1.28
+-----
+Special version for XenonII '97 (Acorn User release)
+
+** Added 'Automatic channel' when using sample-playing SWIs (R0=-1)
+ - see SWI QTM_PlaySample and SWI QTM_PlayRawSample for more details
+
+
+v1.27
+-----
+Loads of new features!
+
+** Interrupt handling system added!
+ - An absolute essential for jukebox programmers and demo coders! See help
+   files for more information.
+ - SWI QTM_MusicInterrupt added to claim the interrupt.
+
+** Whole new way of using QTM
+ - QTM can now be loaded and run from anywhere in the memory map! Ideal for
+   game and demo programmers. See help file 'UserLoad' for information.
+
+** Option SWI added
+ - SWI QTM_MusicOptions added to allow control over default music player
+   options in QTM.
+
+** Bugs fixed from older versions
+ - SWI QTM_Pos no longer blanks user samples when changing sequence
+ - Playing a sample on a channel that has been removed using SWI
+   QTM_RemoveChannel now actually works without messing up the pitch! (This
+   bug has existed since v1.20!)
+ - Changing from 8 to 4 channels now correctly clears information on samples
+   playing on channels 5-8, so they don't restart when 8 channels selected!
+ - QTM_Load bug fixed where a disc error would cause QTM not to release RMA
+   reserved for a song.
+
+Incase you think these bugs must have been annoying and made QTM unuseable,
+think again! No-one actually reported any of these bugs to me, and I only
+discovered them during the vigorous tests QTM v1.27 was put through!
+
+
+v1.26
+-----
+
+(never released, contained specialised code for a commercial application
+which was never finished)
+
+
+v1.25
+-----
+Major improvements all round :-)
+
+** Amiga pitch translation now perfect
+ - Finally got the correct Amiga sound clock timings for PAL machines (all my
+   manuals are American, so gave the NTSC timings!). The difference in QTMs
+   pitches is not normally noticeable, but on some music that uses long
+   samples playing sequentially you should find that the samples now link
+   perfectly with no gaps or overlaps :).
+
+** New volume handling system
+ - Music volume can now be scaled independently from the sample/sound effects
+   volume, very useful in games!
+ - SWI QTM_MusicVolume and SWI QTM_SampleVolume added to control new volumes
+
+** Major bug fix!
+ - Somehow a nasty bug crept through all the testing on QTM v1.24, with it's
+   improved RiscPC speed. This bug caused most Arm250 machines to throw up an
+   internal error when QTM attempted to play. The bug has now been squashed,
+   leaving QTM v1.25 running perfectly on all Arm250 machines!
+
+Also fixed a typo in one of the error messages (obviously the error doesn't
+occur often or someone would have reported the typo!).
+
+
+v1.24
+-----
+MASSIVE speed improvements on RiscPC / Arm600+ machines!
+ - After finally getting my hands on a RiscPC for half an hour of vigorous
+QTM testing, a previously undiscovered bug (which affects only Arm600+
+machines) surfaced. This caused QTM to do a lot more work with the sound DMA
+handlers than was required on these machines... This problem has been removed
+in QTM v1.24. See the 'Technical' help file for more information.
+
+
+v1.23
+-----
+QTM_Stereo problems fixed, doesn't affect OS settings & doesn't die!
+QTM_Load mega-improved, correctly detects non-ProTracker songs EVERY TIME!
+ - also now works with QTM_Load -1
+ - better RMA handling with QTM_Load -1, now uses RMA block size for length
+
+
+v1.22
+-----
+New QTM_Load type (esp. for tracker-conversion programs), R0=-1 on entry
+F-00 speed effect bug fixed
+All SWIs called in module now X... SWIs
+E-Dx effect improved (note delay)
+QTM is now fully VIDC enhancer compatible!
+New, faster & compact, division routine (AU)
+QTM_SetSampleSpeed, R0<24, 8 channel bug fixed
+** Totally new sound control routines!
+   - QTM_SetSampleSpeed no longer affects OS (if QTM off)
+   - RISC OS 3 new-computer bug code-a-round
+   - OS lin->log and log-scale tables in sound block!
+   - Channel-overrun code now returns (incase it's ever called!)
+Channel DMA blocks reduced from 32 to 24 bytes (size reductions everywhere!)

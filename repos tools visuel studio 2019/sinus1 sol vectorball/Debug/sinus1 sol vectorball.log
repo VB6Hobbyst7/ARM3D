@@ -1,0 +1,3 @@
+﻿  sinus1 sol vectorball.cpp
+C:\Users\Eric\source\repos\sinus1 sol vectorball\sinus1 sol vectorball.cpp(62,44): warning C4244: '=' : conversion de 'double' en 'int', perte possible de données
+  sinus1 sol vectorball.vcxproj -> C:\Users\Eric\source\repos\sinus1 sol vectorball\Debug\sinus1 sol vectorball.exe

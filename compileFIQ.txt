@@ -1,0 +1,261 @@
+F00:0001       ; ------------------------------------------------------------------
+F00:0002       ;
+F00:0003       ; code principal de l'interruption FIQ
+F00:0004       ;
+F00:0005       ; calé entre 0x18 et 0x58
+F00:0006       ;
+F00:0007       ; ------------------------------------------------------------------
+F00:0008       
+F00:0009       ; valeurs fixes RMA
+F00:0010       .equ	vsyncreturn,	7142						; 7142 vsyncreturn=7168+16-1-48   +   vsyncreturn+=7
+F00:0011       .equ	vsyncreturn_low,		(vsyncreturn & 0x00FF)>>0
+F00:0012       .equ	vsyncreturn_high,		((vsyncreturn & 0xFF00)>>8)
+F00:0013       
+F00:0014       .equ	vsyncreturn_ligne199,			7142+(197*128)+127-64-48						; vsyncreturn=7168+16-1-48   +   vsyncreturn+=7
+F00:0015       .equ	vsyncreturn_low_ligne199,		(vsyncreturn_ligne199 & 0x00FF)>>0
+F00:0016       .equ	vsyncreturn_high_ligne199,		((vsyncreturn_ligne199 & 0xFF00)>>8)
+F00:0017       
+F00:0018       	.org	0x18
+F00:0019       
+F00:0020       FIQ_startofcode:
+F00:0021       ; IRQ arriven 0x18, on force le mode FIRQ pour récuperer les registres donc tout tourne en mode FIRQ
+F00:0022       			TEQP      PC,#0x0C000001					; 1 18: %11<<26 OR %01			  ; keep IRQs and FIQs off, change to FIQ mode : irq et fiq OFF
+               S01:00000018:  43 F3 3F E3
+F00:0023       			MOV       R0,R0               				; 2 1C: nop to sync FIQ registers
+               S01:0000001C:  00 00 A0 E1
+F00:0024       
+F00:0025       ; FIQ registers
+F00:0026       ;
+F00:0027       ;R8 = tmp
+F00:0028       ;R9 = tmp
+F00:0029       ;R10 = tmp ( obligatoire pour routine keyboard )
+F00:0030       ;R11 = 
+F00:0031       ;R12 = destination couleur 0 = 0x3400000 
+F00:0032       ;R13 = table_couleur0_vstart_vend : table source : couleur 0, vstart, vend, pour chaque ligne
+F00:0033       ;R14 = 0x3200000	- utilisation permanente
+F00:0034       
+F00:0035       			LDRB      R8,[R14,#0x14+0]       	; 4 24 IOC : load irq_A triggers ***BUG to v0.13*** v0.14 read &14+0 was reading st
+               S01:00000020:  14 80 DE E5
+F00:0036       			TST       R8,#0b01000000        	; 5 28 bit 3 = Vsync, bit 6 = T1 trigger (HSync)			
+               S01:00000024:  40 00 18 E3
+F00:0037       ; on saute en VSYNC
+F00:0038       			LDREQ     PC,FIQ_notHSync			; 6 2C			; FIQ_notHSync 	    ; 5 28 *v0.14 if not T1, then go to VSync/Keyboard code*
+               S01:00000028:  90 F0 9F 05
+F00:0039       			STRB      R8,[R14,#0x14+2]       	; 7 30  IOC :  (v0.14 moved past branch) clear all interrupt triggers
+               S01:0000002C:  16 80 CE E5
+F00:0040       
+F00:0041       ; les modifs MEMC et VIDC vont ici	
+F00:0042       			ldr		R8,[R13],#4					; 8  34   couleur 0
+               S01:00000030:  04 80 9D E4
+F00:0043       ; R12 = destination couleur 0 = 0x3400000 
+F00:0044       			str		R8,[R12]					; 9  38   met la couleur 0
+               S01:00000034:  00 80 8C E5
+F00:0045       
+F00:0046       			ldmia	R13!,{r8-r9}				; 10 3C
+               S01:00000038:  00 03 BD E8
+F00:0047       ; modif de vstart
+F00:0048       			str		R8,[R8]			; vstart	; 11 44
+               S01:0000003C:  00 80 88 E5
+F00:0049       ; modif de vend
+F00:0050       			str		R9,[R9]			; vend		; 13 48
+               S01:00000040:  00 90 89 E5
+F00:0051       			STRB      R14,[R14,#0x28+2]       	;14 40 *v0.14* set IRQB mask to %00000000 = no STx, SRx IRQs now
+               S01:00000044:  2A E0 CE E5
+F00:0052       			ldr		  R8,position_ligne_hsync 	;15 44  nb lignes restantes avant fin d ecran
+               S01:00000048:  94 80 9F E5
+F00:0053       			SUBS      R8,R8,#1				  	;18 50  -1
+               S01:0000004C:  01 80 58 E2
+F00:0054       			str		  R8,position_ligne_hsync	;19 54  
+               S01:00000050:  8C 80 8F E5
+F00:0055       ; si nb_ligne > 0				
+F00:0056       			BGT		  fin_hsync					;20 58
+               S01:00000054:  06 00 00 CA
+F00:0057       ; nb lignes restantes = 0 , relancer vsyncreturn
+F00:0058       ; only get here (EQ) if at last line on screen
+F00:0059       
+F00:0060       			MOV       R8,#0b00001000 	        ;16 5C
+               S01:00000058:  08 80 A0 E3
+F00:0061       			STRB      R8,[R14,#0x18+2]           ;17 60    set IRQA mask to %00001000 = VSync only n/r unless likely to do <256?
+               S01:0000005C:  1A 80 CE E5
+F00:0062       
+F00:0063       			MOV       R8,#vsyncreturn_low_ligne199		;18 64 (vsyncreturn AND &00FF)>>0		;32 94   or ldr r8,vsyncvalue
+               S01:00000060:  75 80 A0 E3
+F00:0064       			STRB      R8,[R14,#0x50+2]           ;19 68 T1 low byte, +2 for write
+               S01:00000064:  52 80 CE E5
+F00:0065       			MOV       R8,#vsyncreturn_high_ligne199		;20 6C				; (vsyncreturn AND &FF00)>>8;34 9C   or mov r8,r8,lsr#8
+               S01:00000068:  7E 80 A0 E3
+F00:0066       			STRB      R8,[R14,#0x54+2]           ;21 70 T1 high byte, +2 for write
+               S01:0000006C:  56 80 CE E5
+F00:0067       			STRB      R8,[R14,#0x58+2]           ;22 74 T1_go = reset T1
+               S01:00000070:  5A 80 CE E5
+F00:0068       
+F00:0069       ; FIQ_exitcode:
+F00:0070       fin_hsync:
+F00:0071       			TEQP      PC,#0x0C000002			;25 80 %000011<<26 OR %10 ;27 80 back to IRQ mode, maintain 'GT', Z clear
+               S01:00000074:  83 F3 3F E3
+F00:0072       			MOV       R0,R0                 	;26 84 sync IRQ registers
+               S01:00000078:  00 00 A0 E1
+F00:0073       			SUBS      PC,R14,#4             	;27 88 return to foreground
+               S01:0000007C:  04 F0 5E E2
+F00:0074       
+F00:0075       			nop									; 12		
+               S01:00000080:  00 00 A0 E1
+F00:0076       			nop									; 3 20			
+               S01:00000084:  00 00 A0 E1
+F00:0077       			nop									;23 78
+               S01:00000088:  00 00 A0 E1
+F00:0078       			nop									;24 7C		
+               S01:0000008C:  00 00 A0 E1
+F00:0079       			nop									; 16
+               S01:00000090:  00 00 A0 E1
+F00:0080       			nop									; 17
+               S01:00000094:  00 00 A0 E1
+F00:0081       			nop								;33 98
+               S01:00000098:  00 00 A0 E1
+F00:0082       			nop								;34 9C
+               S01:0000009C:  00 00 A0 E1
+F00:0083       			nop								;35 A0
+               S01:000000A0:  00 00 A0 E1
+F00:0084       			nop								;36 A4
+               S01:000000A4:  00 00 A0 E1
+F00:0085       			nop								;37 A8
+               S01:000000A8:  00 00 A0 E1
+F00:0086       			nop								;38 AC
+               S01:000000AC:  00 00 A0 E1
+F00:0087       			nop								;39 B0
+               S01:000000B0:  00 00 A0 E1
+F00:0088       
+F00:0089       			;LDRB      R8,[R14,#0x14+0]     ; 3 20 load irq_A triggers ***BUG to v0.13*** v0.14 read &14+0 was reading status at 
+F00:0090       			;TST       R8,#0b01000000       ; 4 24 bit 3 = Vsync, bit 6 = T1 trigger (HSync)
+F00:0091       			;LDREQ     PC,FIQ_notHSync		; 5 28			; FIQ_notHSync 	    ; 5 28 *v0.14 if not T1, then go to VSync/Keyboard code*
+F00:0092       
+F00:0093       			;STRB      R8,[R14,#0x14+2]     ; 6 2C (v0.14 moved past branch) clear all interrupt triggers
+F00:0094       
+F00:0095       
+F00:0096       ; sauvegarde R4-R7
+F00:0097       ;			MOV       R14,#FIQ_tempstack  ; 7 30
+F00:0098       ;			STMIA     R14,{R4-R7}         ; 8 34
+F00:0099       
+F00:0100       
+F00:0101       ;			MOV       R8,#0x3400000        ; 9 38
+F00:0102       ;			LDMIA     R9!,{R4-R7}         ;10 3C load 4 VIDC parameters
+F00:0103       ;			STMIA     R8,{R4-R7}          ;11 40 store 4
+F00:0104       ;			LDMIA     R10!,{R4-R7}        ;12 44
+F00:0105       ;			STMIA     R8,{R4-R7}          ;13 48 ...8
+F00:0106       ;			LDMIA     R11!,{R4-R7}        ;14 4C
+F00:0107       ;			STMIA     R8,{R4-R7}          ;15 50 ...12
+F00:0108       ;			LDMIA     R11!,{R4-R7}        ;16 54
+F00:0109       ;			STMIA     R8,{R4-R7}          ;17 58 ...16
+F00:0110       
+F00:0111       ;			LDMIA     R12!,{R4-R5}        ;18 5C load 2 MEMC paramters
+F00:0112       ;			CMP       R4,#0x3600000        ;19 60
+F00:0113       ;			STRGE     R4,[R4]             ;20 64 it's a MEMC reg, so write
+F00:0114       ;			CMP       R5,#0x3600000        ;21 68
+F00:0115       ;			STRGE     R5,[R5]             ;22 6C it's a MEMC reg, so write
+F00:0116       
+F00:0117       ; restaure R4-R7
+F00:0118       ;			LDMIA     R14,{R4-R7}         ;23 70
+F00:0119       		
+F00:0120       ;			MOV       R14,#0x3200000       ;24 74 reset R14 to IOC address
+F00:0121       ;			STRB      R14,[R14,#0x28+2]    ;25 78 *v0.14* set IRQB mask to %00000000 = no STx, SRx IRQs now
+F00:0122       			
+F00:0123       ;*************************************************************************
+F00:0124       
+F00:0125       ;			SUBS      R13,R13,#1             ;26 7C
+F00:0126       ;			TEQGTP    PC,#0x0C000002		 ;27 80 : %000011<<26 OR %10 ;27 80 back to IRQ mode, maintain 'GT', Z clear
+F00:0127       ;			MOV       R0,R0                  ;28 84 sync IRQ registers
+F00:0128       ;			SUBGTS    PC,R14,#4              ;29 88 return to foreground
+F00:0129       
+F00:0130       ; only get here (EQ) if at last line on screen
+F00:0131       
+F00:0132       ;			MOV       R8,#0b00001000       ;30 8C
+F00:0133       ;			STRB      R8,[R14,#0x18+2]     ;31 90 set IRQA mask to %00001000 = VSync only n/r unless likely to do <256?
+F00:0134       ;
+F00:0135       ;			MOV       R8,#vsyncreturn_low		; (vsyncreturn AND &00FF)>>0		;32 94   or ldr r8,vsyncvalue
+F00:0136       ;			STRB      R8,[R14,#0x50+2]               ;33 98 T1 low byte, +2 for write
+F00:0137       ;			MOV       R8,#vsyncreturn_high						; (vsyncreturn AND &FF00)>>8;34 9C   or mov r8,r8,lsr#8
+F00:0138       ;			STRB      R8,[R14,#0x54+2]               ;35 A0 T1 high byte, +2 for write
+F00:0139       ;			STRB      R8,[R14,#0x58+2]               ;36 A4 T1_go = reset T1
+F00:0140       
+F00:0141       ;FIQ_exitcode:
+F00:0142       ;			TEQP      PC,#0x0C000002		 ; %000011<<26 OR %10 ;37 A8 back to IRQ mode
+F00:0143       ;			MOV       R0,R0                  ;38 AC sync IRQ registers
+F00:0144       ;			SUBS      PC,R14,#4              ;39 90 return to foreground
+F00:0145       
+F00:0146       .long      0                      ;40 &B4 n/r
+               S01:000000B4:  00 00 00 00
+F00:0147       .long      0                      ;41 &B8 n/r
+               S01:000000B8:  00 00 00 00
+F00:0148       .long      0                      ;42 &BC n/r
+               S01:000000BC:  00 00 00 00
+F00:0149       
+F00:0150       FIQ_notHSync:                    ;*NEED TO ADJUST REF. IN swi_install IF THIS MOVES FROM &C0*
+F00:0151       .long      0x1234                      ;43 &C0 pointer to notHSync ***quad aligned***
+               S01:000000C0:  34 12 00 00
+F00:0152       
+F00:0153       .long      0x3620000              ;44 &C4 n/r
+               S01:000000C4:  00 00 62 03
+F00:0154       .long      0x3640000              ;45 &C8 n/r
+               S01:000000C8:  00 00 64 03
+F00:0155       .long      0                      ;46 &CC n/r
+               S01:000000CC:  00 00 00 00
+F00:0156       
+F00:0157       
+F00:0158       FIQ_tempstack:
+F00:0159       .long      0x1234                 ;47 &D0 R4 ***quad aligned***
+               S01:000000D0:  34 12 00 00
+F00:0160       .long      0                      ;48 &D4 R5
+               S01:000000D4:  00 00 00 00
+F00:0161       .long      0                      ;49 &D8 R6
+               S01:000000D8:  00 00 00 00
+F00:0162       .long      0                      ;50 &DC R7
+               S01:000000DC:  00 00 00 00
+F00:0163       .long      0                      ;51 &E0 n/r
+               S01:000000E0:  00 00 00 00
+F00:0164       position_ligne_hsync:
+F00:0165       .long      0                      ;52 &E4 n/r
+               S01:000000E4:  00 00 00 00
+F00:0166       .long      0                      ;53 &E8 n/r
+               S01:000000E8:  00 00 00 00
+F00:0167       .long      0                      ;54 &EC n/r
+               S01:000000EC:  00 00 00 00
+F00:0168       .long      0                      ;55 &F0 n/r
+               S01:000000F0:  00 00 00 00
+F00:0169       .long      0                      ;56 &F4 n/r
+               S01:000000F4:  00 00 00 00
+F00:0170       .long      0                      ;57 &F8 n/r
+               S01:000000F8:  00 00 00 00
+F00:0171       
+F00:0172       .byte      "rSTm"                 ;58 &FC
+               S01:000000FC:  72 53 54 6D
+F00:0173       
+F00:0174       FIQ_endofcode:
+F00:0175       
+F00:0176       ; ----------- fin du .org
+
+
+Sections:
+S01  seg18
+
+
+Sources:
+F00  fiqRM.asm
+
+
+Symbols:
+FIQ_endofcode EXPR(256=0x100) UNUSED ABS 
+FIQ_tempstack EXPR(208=0xd0) UNUSED ABS 
+fin_hsync EXPR(116=0x74) ABS 
+position_ligne_hsync EXPR(228=0xe4) ABS 
+FIQ_notHSync EXPR(192=0xc0) ABS 
+FIQ_startofcode EXPR(24=0x18) UNUSED ABS 
+vsyncreturn_high_ligne199 EXPR(126=0x7e) 
+vsyncreturn_low_ligne199 EXPR(117=0x75) 
+vsyncreturn_ligne199 EXPR(32373=0x7e75) 
+vsyncreturn_high EXPR(27=0x1b) UNUSED 
+vsyncreturn_low EXPR(230=0xe6) UNUSED 
+vsyncreturn EXPR(7142=0x1be6) 
+__VASM EXPR(0=0x0) INTERNAL 
+__MSDOSFS EXPR(0=0x0) INTERNAL 
+
+There have been no errors.

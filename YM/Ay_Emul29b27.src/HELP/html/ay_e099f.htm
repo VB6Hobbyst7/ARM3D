@@ -1,0 +1,23 @@
+<!doctype html><HTML><HEAD><META HTTP-EQUIV="Content-Type" Content="text/html; charset=Windows-1251"><LINK REL="stylesheet" TYPE="text/css" HREF="Ay_Emul.css"></HEAD><BODY>
+
+<H1><A NAME="stc"></A>STC</H1>
+
+<P>These files are created by ZX Spectrum program ST Song Compiler v1.2 or by built-in compiler of Sound Tracker (version from 1.1 to 1.3 of ST produces compatible modules). Simplified structure of STC module follows.</P>
+<pre>
+Offset  Number of byte  Name                    Description
++0      1               Delay                   Minimal number of interrupts between notes of track
++1      2               Positions Pointer       Pointer to Positions table
++3      2               Ornaments Pointer       Pointer to Ornaments table
++5      2               Patterns Pointer        Pointer to Patterns table
++7      18              Identifier              String 'SONG BY ST COMPILE'
++25     2               Size                    Length of all module
++27     Size-27         Data                    Other data
+</pre>
+<P>Many STC files have Identifier 'SOUND TRACKER v1.3' and they can be played in AY Emulator too. What is more, Identifier can contain any data, and many authors store in it name of song and so on. Also field Size can contain wrong data (for example, zero) or last two chars of song title.</P>
+
+<P>Files of Super Sonic by KLAV are fully compatible with Sound Tracker, so you can simply give it STC extension to play in Ay_Emul (emulator cannot detect them by structure).</P>
+
+<P>ZXS-files of ZXMUS.EXE Version 1.02 Beta by Super Dima from Kaluga are full analog of STC.</P>
+
+</BODY>
+</HTML>

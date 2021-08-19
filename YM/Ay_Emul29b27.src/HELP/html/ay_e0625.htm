@@ -1,0 +1,83 @@
+<!doctype html><HTML><HEAD><META HTTP-EQUIV="Content-Type" Content="text/html; charset=Windows-1251"><LINK REL="stylesheet" TYPE="text/css" HREF="Ay_Emul.css"></HEAD><BODY>
+
+<H1><A NAME="ym"></A>YM</H1>
+
+<P>Arnaud Carre (Leonard/OXYGENE) designs this format for his emulator ST-Sound. First this emulator was an Atari ST sound chip emulator, but now this is a Multi-Computer Sound Emulator.</P>
+
+<P>Now this project consists of many programs (players, converters) and archives of music. But Speccy's archives are in very bad condition.</P>
+
+<P>Don't forget to set chip frequency to 2 000 000 Hz for Atari and to 1 000 000 Hz for Amstrad while listening YM2, YM3 and YM3b files with Atari and Amstrad music (this subtypes not consists data about frequency).</P>
+
+<P>So, for AY Emulator any YM file is LHA archive (type 5), created by LHA.EXE version 2.00 or older with -h0 switch (header type 0) by Haruyasu Yoshizaki. This archive consists of one file with any name. Its available formats are next.</P>
+
+<P><B>YM2</B></P>
+
+<P>First four bytes is ASCII string 'YM2!'. Its structure like YM3, but information about samples can be stored additionally. All YM2-samples are fixed and stored in player (these are samples from Mad Max's music).</P>
+
+<P><B>YM3</B></P>
+
+<P>First four bytes are ASCII string 'YM3!'. Next bytes are data block of AY chip registers values. Registers are updates one time in one interrupt (VBL). If music length is N interrupts, then block consist first N bytes for register 0, further N bytes for register 1 and so on, in total N*14 bytes. If in current interrupt was no outing to register 13 then byte of data block for this interrupt and for this register has value 255.</P>
+
+<P><B>YM3b</B></P>
+
+<P>First four bytes are ASCII string 'YM3b'. Next bytes are data block (see YM3 description). And last four bytes are DWORD data: number of VBL for looping melody.</P>
+
+<P><B>YM5</B></P>
+
+<P>This format consists of additional information: chip frequency, player frequency, title, author name, comment and specific Atari ST data (Digi-Drum and SID-Sound effects).</P>
+
+<P>From YMFORMAT.TXT:</P>
+
+<P>---------------------------cut here-------------------</P>
+<pre>
+Offset  Size    Type            Comment
+0       4       DWORD           ID of YM5 format. ('YM5!')
+4       8       string[8]       Check String ('LeOnArD!')
+12      4       DWORD           Nb of valid VBL of the file.
+16      4       DWORD           Song attributes (see bellow)
+20      2       WORD            Nb of digi-drum sample (can be 0)
+22      4       DWORD           YM2149 External frequency in Hz
+                                (ex:2000000 for ATARI-ST version,
+                                1000000 for AMSTRAD CPC)
+26      2       WORD            Player frequency in Hz
+                                (Ex: 50Hz for almost player)
+28      4       DWORD           Vbl number to loop the song.
+                                (0 is default)
+32      2       WORD            Size (in bytes) of future
+                                additional data.
+                                (must be 0 for the moment)
+
+For each digidrum sample:
+{
+..      4       DWORD           sample size
+..      ?       BYTES           sample data (8bits per sample)
+}
+
+..      ?       NT-String       Name of the song.
+..      ?       NT-String       Name of the author.
+..      ?       NT-String       Comments (YM file converter ?!)
+..      ?                       All YM2149 registers.
+..      4       DWORD           End-File check. ('End!')
+</pre>
+<P>---------------------------cut here-------------------</P>
+
+<P><B>Remarks.</B></P>
+
+<P>1) VBL – Vertical Blank Time (interrupt).</P>
+
+<P>2) Numeric data (WORD and DWORD) stored in MOTOROLA order (from hi byte to lo).</P>
+
+<P>3) Data block contents now values for 16 registers (14 AY registers plus 2 virtual registers for Atari special effects).</P>
+
+<P>4) If bit 0 of field Song Attributes is set, data block are stored in YM3-style order (interleaved). If this bit is reset, then data block consists first 16 bytes of first VBL, then next 16 bytes for second VBL and so on. In second case YM5 file is compressed more badly.</P>
+
+<P><B>YM6</B></P>
+
+<P>This format is equivalent of YM5, but can content yet two another special Atari ST effects is Sinus-SID and Sync Buzzer and can to play any two of special effects at one time.</P>
+
+<P>AY Emulator supports all special effects in YM5 and YM6 files.</P>
+
+<P>More info about YM files can be found in official ST-Sound package or on ST-Sound Project Homepage (<a href="http://leonard.oxg.free.fr/" target="_blank">http://leonard.oxg.free.fr</a>). Some time ago author's STSoundLibrary with sources was released.</P>
+
+</BODY>
+</HTML>

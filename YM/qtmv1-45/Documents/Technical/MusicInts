@@ -1,0 +1,63 @@
+Music interrupt list for QTM v1.45                © Steve Harrison, 1993-2013
+-----------------------------------------------------------------------------
+
+QTM supports a user-interrupt system, which can inform a program using QTM
+when various events occur while the playing of the song. For details on how
+to set up and use the interrupt system, see SWI QTM_MusicInterrupt in the SWI
+help file.
+
+Below are details of the two interrupts QTM generates at the moment, future
+versions of QTM may expand on this feature.
+
+
+MusicInterrupt_SongEnded                                              &000000
+-----------------------------------------------------------------------------
+
+On entry: R0=0 (interrupt number)
+          R1 holds flags giving the cause of this interrupt:
+
+                meaning if set
+
+        bit 0   last event of song has been played, song has ended.
+        bit 1   a 'B' (jump sequence) effect has jumped to an earlier point
+                in the song so the song is now repeating.
+        bit 2   an 'F-00' (stop song) effect has been played and the song is
+                about to stop. ('F' effects have to be enabled and bit 2 of
+                the music options word must be clear for this bit to be set).
+
+        All other bits reserved
+
+On exit : Registers must be preserved
+
+
+The flags in R1 give the cause of the interrupt, and are given in order of
+highest bit = highest priority. For example if bit 2 and bit 1 are both set
+the song will be about to stop because of the speed 0 effect (bit 2), and
+will not get to repeat.
+
+The default action if bit 0 of R1 is set on entry, can be altered by altering
+bit 1 of the music options word using SWI QTM_MusicOptions. If bit 1 of the
+options word is clear the song will be restarted by QTM after this interrupt,
+if set the song will stop after this interrupt.
+
+When this interrupt occurs, you can use SWI QTM_Pos to find out the NEXT
+sequence and event number to be played, if the song is allowed to continue.
+SWI QTM_Pause can be called from this interrupt (by first entering SVC mode
+and preserving R14) if you require to stop 'repeating' songs playing when
+they repeat. However when called from an interrupt QTM_Pause will not release
+QTM as the sound DMA handler, as this must be done from the foreground.
+
+
+
+MusicInterrupt_UnusedEffect                                           &000108
+-----------------------------------------------------------------------------
+
+On entry: R0=&108 (interrupt number)
+          R1=data byte
+
+On exit : All registers must be preserved
+
+This interrupt is called when an effect 8 (unused) is reached in the song.
+Its intended use is in programs which require graphics to be synchronised to
+music. SWI QTM_Pos can be used to find out which sequence number and event
+this was played on.

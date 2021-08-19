@@ -1,0 +1,47 @@
+object FrmMain: TFrmMain
+  Left = 203
+  Height = 123
+  Top = 338
+  Width = 358
+  AllowDropFiles = True
+  BorderIcons = []
+  BorderStyle = bsNone
+  Caption = 'AY-3-8910 & AY-3-8912 Emulator v2.9 Lazarus'
+  DragKind = dkDock
+  Font.Height = -23
+  Font.Style = [fsBold]
+  OnClose = FormClose
+  OnCreate = FormCreate
+  OnDeactivate = FormDeactivate
+  OnDropFiles = FormDropFiles
+  OnKeyDown = FormKeyDown
+  OnKeyUp = FormKeyUp
+  OnMouseDown = FormMouseDown
+  OnMouseMove = FormMouseMove
+  OnMouseUp = FormMouseUp
+  OnMouseWheelDown = FormMouseWheelDown
+  OnMouseWheelUp = FormMouseWheelUp
+  OnPaint = FormPaint
+  OnShow = FormShow
+  Position = poScreenCenter
+  ShowInTaskBar = stNever
+  LCLVersion = '2.0.12.0'
+  Visible = True
+  object SaveDialog1: TSaveDialog
+    Options = [ofOverwritePrompt, ofHideReadOnly, ofEnableSizing]
+    Left = 120
+    Top = 16
+  end
+  object OpenDialog1: TOpenDialog
+    Options = [ofHideReadOnly, ofAllowMultiSelect, ofEnableSizing, ofViewDetail]
+    Left = 40
+    Top = 16
+  end
+  object TrayIcon1: TTrayIcon
+    OnDblClick = TrayIcon1DblClick
+    OnMouseDown = TrayIcon1MouseDown
+    OnMouseUp = TrayIcon1MouseUp
+    Left = 200
+    Top = 16
+  end
+end

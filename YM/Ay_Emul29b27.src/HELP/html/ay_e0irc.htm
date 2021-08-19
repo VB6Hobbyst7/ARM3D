@@ -1,0 +1,56 @@
+<!doctype html><HTML><HEAD><META HTTP-EQUIV="Content-Type" Content="text/html; charset=Windows-1251"><LINK REL="stylesheet" TYPE="text/css" HREF="Ay_Emul.css"></HEAD><BODY>
+
+<H1><A NAME="vtx"></A>VTX</H1>
+
+<P>Roman Scherbakov (V_Soft) designed this type. This is the best format for storing interrupted music from different AY-3-8910/12 and YM2149 based platforms.</P>
+
+<P>From README.TXT (translation from Russian):</P>
+
+<P>---------------------------cut here-------------------</P>
+<pre>
+Offset  Size    Type     Description
+00 dec  2 bytes Word     VTX file identifier (ay or ym)
+                         Its chip type by default:
+                         this is 7961h or 31073 dec (ay)
+                         this is 6D79h or 28025 dec (ym)
+02      1                Byte bit               Playing mode by default:
+                         Bits 0-2 determine stereo mode:
+                         0 – MONO, 1 – ABC, 2 – ACB, 3 – BAC,
+                         4 – BCA, 5 – CAB, 6 – CBA (dec)
+03      2       Word     Loop VBL number (from zero =
+                         beginning of melody).
+05      4       Dword    AY chip frequency for this melody
+                         ( for compatibility with non-Spectrum platforms)
+                         Standard values:
+                         ZX_Spectrum: 1773400 (or 001B0F58h)
+                         Atari: 2000000 (or 001E8480h)
+                         Amstrad CPC: 1000000 (or 000F4240h)
+09      1       Byte     Player frequency (VBL per sec).
+                         Standard value 50 =
+                         1/50 sec (20ms).
+10      2 bytes Word     Year of composition creating.
+12      4       Dword    Size of not packed data.
+                         Needed for unpacking.
+16      1-255   NTString String with melody name
+                         (1-254 chars), must be ended with zero even
+                         if no title at all!
+??      1-255   NTString String with author name (see ^)
+??      1-255   NTString Melody source program (see ^)
+??      1-255   NTString Musical editor name (see ^)
+??      1-255   NTString Comment string (see ^)
+??      ??      Array    Compressed data packet...
+</pre>
+<P>---------------------------cut here-------------------</P>
+
+<P><B>Remarks.</B></P>
+
+<P>1) Data compressed with LHA type 5. May to pack with LHA.EXE (as YM files), but needed to cut header and last zero byte of compressed file. Header of LHA-archive file is found at start of file. Its length is value of first byte of header plus 2.</P>
+
+<P>2) After unpacking the data block is equivalent to YM3 data block.</P>
+
+<P>Also can be found old version of VTX files (of VTX player older than 2.00 version). AY Emulator can to play it too.</P>
+
+<P>VTX files can be converted from emulators sound dump files (for ZX Spectrum and MSX this is usually PSG-files). But last time you can find emulators, which can to dump music in VTX format too. One of them is Unreal Speccy by SMT.</P>
+
+</BODY>
+</HTML>

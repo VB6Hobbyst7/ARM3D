@@ -1,0 +1,8 @@
+<!doctype html><HTML><HEAD><META HTTP-EQUIV="Content-Type" Content="text/html; charset=Windows-1251"><LINK REL="stylesheet" TYPE="text/css" HREF="Ay_Emul.css"></HEAD><BODY>
+
+<H1><A NAME="outzxay"></A>Converting from OUT and ZXAY</H1>
+
+<P>All synchronized files (PSG, YM6, VTX) can be converted from OUT, EPSG, ZXAY, AY (EMUL) and AYM files in case of playing on real Speccy is really synchronized with interrupt frequency. Then can consider all registers of sound chip are loads instantly one time for each interrupt. EPSG file contains interrupt markers, so no additional parameters need for conversion. For correct conversion from OUT and ZXAY to other formats you must properly set two parameters of <B>"Mixer"</B> and <B>"Tools" </B>box. <I>TStates per frame</I> must be set accurately; by default it is 69888 tacts for compliance with 'Z80' Spectrum emulator. If after conversion music are plays little wrong, try change <I>First interrupt time</I> parameter by increasing or decreasing with half of first parameter (+35000 or –35000). If music is not synchronized on real Speccy with interrupt frequency, conversion cannot be correctly.</P>
+
+</BODY>
+</HTML>

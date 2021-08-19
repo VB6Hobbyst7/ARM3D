@@ -1,0 +1,33 @@
+ProTracker/QTM effect information               © Steve Harrison, 1993-2013
+---------------------------------------------------------------------------
+
+   The following 2 tables list the various effects available in ProTracker
+type songs. Table 1 lists the standard effects (0-F), and table 2 lists the
+'E' commands/effects.
+
+   Table 1 - standard ProTracker commands/effects
+   ----------------------------------------------
+
+   00 - Arpegio                         08 - <not used>
+   01 - Pitch slide up                  09 - Set sample offset
+   02 - Pitch slide down                0A - Volume slide
+   03 - Tone portamento                 0B - Jump to sequence
+   04 - Vibrato                         0C - Set volume
+   05 - Tone portamento + volume slide  0D - Pattern break
+   06 - Vibrato + volume slide          0E - Various, see table 2
+   07 - Tremelo                         0F - Set speed / tempo
+
+
+   Table 2 - 'E' commands/effects
+   ------------------------------
+
+ * E0 - Set filter                      E8 - <not used>
+   E1 - Fine pitch slide up             E9 - Retrig note
+   E2 - Fine pitch slide down           EA - Fine volume slide up
+   E3 - Glissando control               EB - Fine volume slide down
+   E4 - Set vibrato waveform            EC - Note cut
+   E5 - Set fine tuning                 ED - Note delay
+   E6 - Pattern loop                    EE - Pattern delay
+   E7 - Set tremelo waveform            EF - Invert loop
+
+   * The 'Set filter' command is not required (and not used) under RISC OS.

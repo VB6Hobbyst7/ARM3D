@@ -1,0 +1,2 @@
+C:\Users\Eric\source\repos\textpng\Debug\textpng.exe
+C:\Users\Eric\source\repos\textpng\Debug\textpng.pdb

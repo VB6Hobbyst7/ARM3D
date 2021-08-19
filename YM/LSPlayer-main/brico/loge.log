@@ -1,0 +1,104 @@
+Light Speed Player Converter v1.03
+Fastest AMIGA music player ever!
+Written by Leonard/Oxygene (@leonard_coder)
+
+Loading ELYSIUM.MOD...
+MOD Instr # 1: start=$000000 len=$00b26, repstart=$00000 replen=00002 | 00 00 00 00 01 01 00 c1 ...
+MOD Instr # 2: start=$000b26 len=$0335e, repstart=$00000 replen=00002 | 00 00 00 00 09 c2 ae 21 ...
+MOD Instr # 3: start=$003e84 len=$01580, repstart=$00000 replen=00002 | 00 00 00 00 fe 00 ec 0a ...
+MOD Instr # 4: start=$005404 len=$00e8e, repstart=$00000 replen=00002 | 00 00 00 04 00 00 f8 fe ...
+MOD Instr # 5: start=$006292 len=$0057c, repstart=$00000 replen=00002 | 00 00 00 00 10 0e 0e 0e ...
+MOD Instr # 6: start=$00680e len=$00930, repstart=$00000 replen=00002 | 00 00 00 00 00 00 00 00 ...
+MOD Instr # 7: start=$00713e len=$0097c, repstart=$00000 replen=00002 | 00 00 00 00 00 00 f9 f4 ...
+MOD Instr # 8: start=$007aba len=$00f6c, repstart=$00000 replen=00002 | 00 00 00 00 00 00 00 00 ...
+MOD Instr # 9: start=$008a26 len=$00c3a, repstart=$00000 replen=00002 | 00 00 00 00 0f 0c 0c 0d ...
+MOD Instr #10: start=$009660 len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #11: start=$009660 len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #12: start=$009660 len=$00956, repstart=$00000 replen=00002 | 00 00 00 00 ec f2 ef f1 ...
+MOD Instr #13: start=$009fb6 len=$009ec, repstart=$00000 replen=00002 | 00 00 00 00 f1 f4 f4 f4 ...
+MOD Instr #14: start=$00a9a2 len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #15: start=$00a9a2 len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #16: start=$00a9a2 len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #17: start=$00a9a2 len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #18: start=$00a9a2 len=$009ee, repstart=$00000 replen=00002 | 00 00 3d 6b 38 54 35 1a ...
+MOD Instr #19: start=$00b390 len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #20: start=$00b390 len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #21: start=$00b390 len=$00880, repstart=$00000 replen=00002 | 00 00 00 00 00 00 00 00 ...
+MOD Instr #22: start=$00bc10 len=$01308, repstart=$00000 replen=00002 | 00 00 00 00 01 00 00 00 ...
+MOD Instr #23: start=$00cf18 len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #24: start=$00cf18 len=$06628, repstart=$04986 replen=01ca2 | 00 00 00 00 f7 f7 f7 f7 ...
+MOD Instr #25: start=$013540 len=$0665a, repstart=$03ba4 replen=02ab6 | 00 00 00 00 fc f7 ef f7 ...
+MOD Instr #26: start=$019b9a len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #27: start=$019b9a len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #28: start=$019b9a len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #29: start=$019b9a len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #30: start=$019b9a len=$00000, repstart=$00000 replen=00000 | 
+MOD Instr #31: start=$019b9a len=$00000, repstart=$00000 replen=00000 | 
+00:07 | Seq # 1: frame 384
+00:15 | Seq # 2: frame 768
+00:23 | Seq # 3: frame 1152
+00:30 | Seq # 4: frame 1536
+00:38 | Seq # 5: frame 1920
+00:46 | Seq # 6: frame 2304
+00:53 | Seq # 7: frame 2688
+01:01 | Seq # 8: frame 3072
+01:09 | Seq # 9: frame 3456
+01:16 | Seq #10: frame 3840
+01:24 | Seq #11: frame 4224
+01:32 | Seq #12: frame 4608
+01:39 | Seq #13: frame 4992
+01:47 | Seq #14: frame 5376
+01:55 | Seq #15: frame 5760
+02:02 | Seq #16: frame 6144
+02:10 | Seq #17: frame 6528
+02:18 | Seq #18: frame 6912
+02:25 | Seq #19: frame 7296
+02:33 | Seq #20: frame 7680
+02:41 | Seq #21: frame 8064
+02:48 | Seq #22: frame 8448
+02:56 | Seq #23: frame 8832
+03:04 | Seq #24: frame 9216
+03:12 | Seq #25: frame 9600
+03:19 | Seq #26: frame 9984
+03:27 | Seq #27: frame 10368
+03:35 | Seq #28: frame 10752
+Loop, seq=9 (frame=3456)
+Instrument # 1: max replay rate = 16574Hz
+Instrument # 2: max replay rate = 28800Hz
+Instrument # 3: max replay rate = 16574Hz
+Warning: Instrument #3 only use 3978 sample bytes (len=5504)
+Instrument # 4: max replay rate = 8287Hz
+Instrument # 5: max replay rate = 24803Hz
+Instrument # 6: max replay rate = 24803Hz
+Instrument # 7: max replay rate = 24803Hz
+Instrument # 8: max replay rate = 24803Hz
+Warning: Instrument #8 only use 2976 sample bytes (len=3948)
+Instrument # 9: max replay rate = 15694Hz
+Warning: Instrument #9 only use 1883 sample bytes (len=3130)
+Instrument #12: max replay rate = 12445Hz
+Instrument #13: max replay rate = 15694Hz
+Instrument #18: max replay rate = 10462Hz
+Warning: Instrument #18 only use 1256 sample bytes (len=2542)
+Instrument #21: max replay rate = 16574Hz
+Instrument #22: max replay rate = 15694Hz
+Warning: Instrument #22 only use 3766 sample bytes (len=4872)
+Instrument #24: max replay rate = 27928Hz
+Instrument #25: max replay rate = 27928Hz
+MOD File........: 127 KiB
+  MOD Samples...: 105370 bytes
+  MOD Score.....: 24636 bytes
+  Main BPM......: 125 (50Hz)
+  Sample offset: No
+Writing LSP insane player source code (ELYSIUM_insane.asm)
+LSP File........: 140 KiB
+  LSP Samples...: 105374 bytes
+  LSP Score.....: 37883 bytes
+  Duration......: 03:43
+  LSP Frames....: 11136
+  LSP Instruments: 16
+  Cmd count......: 237
+  Stream details:
+    commands: 11137 bytes
+    volume..: 9498 bytes
+    periods.: 5828 bytes
+    note on.: 10724 bytes

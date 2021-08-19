@@ -81,4 +81,5 @@
 .equ	XSound_Volume,			0x60180
 .equ	XSound_Configure,		0x60140
 .equ	XSound_Enable,			0x60141
-
+.equ	Sound_Stereo,			0x40142
+.equ	XSound_Stereo,			0x60142

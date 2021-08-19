@@ -1,0 +1,258 @@
+Music file formats supported by QTM v1.45         © Steve Harrison, 1993-2013
+-----------------------------------------------------------------------------
+
+Internally, QTM supports ProTracker compatible 4-channel music modules and the closely related FastTracker 4/6/8 channel music modules (as well as several identical formats with different ID tags, eg. the Atari Octalyser 6/8 channel format). In addition, QTM also supports loading and conversion of Sound Tracker 15 sample modules and StarTrekker 8 channel modules, into ProTracker and FastTracker (respectively).
+
+There is no loss in effects or playback quality as a result of these conversions.
+
+The main difference between ProTracker 4-channel and FastTracker 6/8 channel, is that the pattern size is extended to support 6 or 8 channels for each event. FastTracker music modules also allow extended music range to 6-octaves (from 3-octaves supported by ProTracker). See below for more details.
+
+
+ProTracker 2.x/3.x file format
+------------------------------
+
+Offset | Length | Meaning
+-------+--------+------------------------------------------------------------
+     0 |     20 | Song name, ctrl character terminated, if less than 20 chars
+    20 |  31*30 | Sample information table, for 31 samples (see below)
+   950 |      1 | Number of sequences in song (1-128)
+   951 |      1 | Unused by ProTracker or QTM, set to 127 for compatibility
+   952 |    128 | Sequence table, 1 byte per sequence (see below)
+  1080 |      4 | Format recognition bytes, ascii characters "M.K." or "M!K!"
+  1084 |   1024 | Pattern 1
+  2108 |   1024 | Pattern 2
+  3132 |   1024 | Pattern 3
+  .... |   1024 | Pattern ....
+ xxxxx |  nnnnn | Sample data, stored in signed linear format
+       |        | (first sample starts immediately after end of last pattern)
+
+This is the 'main' 4 channel format supported by QTM. The 'format recognition bytes' are used by QTM to detect StarTrekker 4/8 channel music and FastTracker 4/6/8 channel music, other 4-channel varients also exist but are not treated differenly by QTM. The reason for this is that many ProTracker songs have deliberately corrupted, or blanked, recognition bytes, in order to stop ripping of music from games. Older tracker editors also used these recognition bytes to signify modules with >64 patterns present by setting the recognition bytes to "M!K!", rather than "M.K.". QTM does not need to take any special action in these cases, as it can cope with any number of patterns.
+
+However, if you are converting a song into ProTracker format, you should enter
+"M!K!" if the song has more than 64 patterns, to allow compaibility with
+other packages.
+
+
+ProTracker 1.x/Sound Tracker 15 sample file format
+--------------------------------------------------
+
+Offset | Length | Meaning
+-------+--------+------------------------------------------------------------
+     0 |     20 | Song name, ctrl character terminated, if less than 20 chars
+    20 |  15*30 | Sample information table, for 15 samples (see below)
+   470 |      1 | Number of sequences in song (1-128)
+   471 |      1 | Set to 120, to signify 15 sample format
+   472 |    128 | Sequence table, 1 byte per sequence (see below)
+       |        |
+   600 |   1024 | Pattern 1
+  1624 |   1024 | Pattern 2
+  2648 |   1024 | Pattern 3
+  .... |   1024 | Pattern ....
+       |        |
+ xxxxx |  nnnnn | Sample data, stored in signed linear format
+       |        | (first sample starts immediately after end of last pattern)
+
+This file format also differs in the effects supported. 15 sample songs
+do not have fine-tunning on samples and assume all 'F'-effect speed settings are based on 50Hz counter, not the extended CIA tempo settings (32-255) used by later/ProTracker modules. QTM can be set to use 50Hz-only timings by using SWI QTM_MusicOptions.
+
+
+FastTracker 4, 6 and 8 channel format (QTM v1.45)
+-------------------------------------------------
+
+Based on ProTracker 2.x/3.x file format, but with additional 6 or 8 channel capability through extended pattern sizes (1536 bytes for 6 channel and 2048 byutes for 8 channel).
+
+FastTracker format also uses 6-octaves (12 notes per octave, 72 notes total), starting one octave below ProTracker and continuing for 2 octaves above ProTracker.
+
+Offset | Length | Meaning
+-------+--------+------------------------------------------------------------
+     0 |     20 | Song name, ctrl character terminated, if less than 20 chars
+    20 |  31*30 | Sample information table, for 31 samples (see below)
+   950 |      1 | Number of sequences in song (1-128)
+   951 |      1 | Unused by ProTracker or QTM, set to 127 for compatibility
+   952 |    128 | Sequence table, 1 byte per sequence (see below)
+  1080 |      4 | Format recognition bytes, ascii characters "8CHN" or "6CHN"
+       |        |
+  1084 | patlen | Pattern 0
+  xxxx | patlen | Pattern 1
+  xxxx | patlen | Pattern 2
+  .... | patlen | Pattern ....
+       |        |
+ xxxxx |  nnnnn | Sample data, stored in signed linear format
+       |        | (first sample starts immediately after end of last pattern)
+
+To work out the number of patterns, scan the sequence table at 952, and take the highest number, and add 1 (pattern count starts at 0).
+
+The 6CHN and 8CHN format are treated as 31 instrument Protracker format, but with additional channels. Each pattern contains 6 or 8 channels per event, stored in the order channel 1 to channel 6 or 8.
+
+
+Atari Octalyser 6 and 8 channel format (QTM v1.45)
+--------------------------------------------------
+
+This format is almost identical to the FastTracker 6/8 channel format, the only change being the 'Format recognition bytes' which are changed to 'CD61' or 'CD81' for 6 and 8 channels respectively.
+
+This format should probably be limited to 3-octaves (like ProTracker), however I have not been able to confirm this yet, so currently all 6-octaves are made available (that really shouldn't make any difference to playback unless the track relies on specific limitations of 3-octave pitch slides...!).
+
+
+Startrekker 4 channel file format
+---------------------------------
+
+Offset | Length | Meaning
+-------+--------+------------------------------------------------------------
+     0 |     20 | Song name, ctrl character terminated, if less than 20 chars
+    20 |  31*30 | Sample information table, for 31 samples (see below)
+   950 |      1 | Number of sequences in song (1-128)
+   951 |      1 | Unused by Startrekker or QTM, set to 127 for compatibility
+   952 |    128 | Sequence table, 1 byte per sequence (see below)
+  1080 |      4 | Format recognition bytes, ascii characters "FLT4"
+       |        |
+  1084 |   1024 | Pattern 1
+  2108 |   1024 | Pattern 2
+  3132 |   1024 | Pattern 3
+  .... |   1024 | Pattern ....
+       |        |
+ xxxxx |  nnnnn | Sample data, stored in signed linear format
+       |        | (first sample starts immediately after end of last pattern)
+
+This format is identical to the ProTracker 2.x/3.x file format, appart from
+the format recognition bytes, at offset 1080. Although the range of effects
+supported in Startrekker songs is different to ProTracker songs. The main
+difference being the 'F'-effect speed settings are based on 50Hz counter, not the extended CIA tempo settings (32-255) used by later/ProTracker modules. QTM can be set to use 50Hz-only timings by using SWI QTM_MusicOptions.
+
+
+Startrekker 8 channel file format
+---------------------------------
+
+Offset | Length | Meaning
+-------+--------+------------------------------------------------------------
+     0 |     20 | Song name, ctrl character terminated, if less than 20 chars
+    20 |  31*30 | Sample information table, for 31 samples (see below)
+   950 |      1 | Number of sequences in song (1-128)
+   951 |      1 | Unused by Startrekker or QTM, set to 127 for compatibility
+   952 |    128 | Sequence table, 1 byte per sequence (see below)
+  1080 |      4 | Format recognition bytes, ascii characters "FLT8"
+       |        |
+  1084 |   1024 | Pattern 0 (channels 1-4)
+  2108 |   1024 | Pattern   (channels 5-8)
+  3132 |   1024 | Pattern 2 (channels 1-4)
+  .... |   1024 | Pattern n ....
+       |        |
+ xxxxx |  nnnnn | Sample data, stored in signed linear format
+       |        | (first sample starts immediately after end of last pattern)
+
+This 8-channel format implements 8 channel music in the ProTracker/Sound Tracker file layout by storing the data for channels 1-4 in the even numbered pattern entries and the data for channels 5-8 in the odd numbered pattern entries. So a whole 8-channel pattern takes up 2 x 1024 byte patterns.
+
+From QTM v1.45, this format is converted on loading, into FastTracker 8 channel, for ease of the QTM sound player routine and to minimise handling of multiple file formats. There is no loss in effects or playback quality as a result of these conversions.
+
+Note: Only even numbered patterns appear in the sequence table. Also, as with StarTrekker 4-channel format, the speed effect is assumed to be 50Hz timing only.
+
+
+Sample information table (all formats)
+--------------------------------------
+
+Information for one sample is:
+
+Offset | Length | Meaning
+-------+--------+------------------------------------------------------------
+    00 |     22 | Sample name
+    22 |      2 | Sample length, in bytes, divided by 2 (MSB-LSB data)
+    24 |      1 | Finetuning value, signed 4 bits ie. &F=-1, &E=-2, &7=+7
+       |        | Upper 4 bits should be 0 (Finetuning 0 on 15 sample format)
+    25 |      1 | Volume of sample, (min) 0-64 (max), linear scale
+    26 |      2 | Repeat offset, in bytes from sample start, divided by 2
+    28 |      2 | Repeat length, in bytes, divided by 2
+
+Note repeat offset + repeat length must NOT be greater than sample length.
+
+
+Sequence table (all formats)
+----------------------------
+
+The sequence table is 128 bytes long, and each byte holds a pattern number
+(0-99, even numbers only if 8 channel) for that sequence position. The number
+of patterns in the song is calculated by scanning for the largest number in
+the sequence table, and adding 1 (to get within the range 1-100).
+
+
+Pattern data (4 channel formats)
+--------------------------------
+
+Each pattern consists of 64 bars. Each bar contains data for 4 channels, as
+follows:
+
+Offset | Length | Meaning
+-------+--------+------------------------------------------------------------
+    00 |      4 | Note word for channel 1 \
+    04 |      4 | Note word for channel 2  \_ Bar 1
+    08 |      4 | Note word for channel 3  /
+    12 |      4 | Note word for channel 4 /
+    16 |      4 | Note word for channel 1
+    nn |      4 | ...
+
+Note word format:    bits   0-3 | High 4 bits of note period
+                     bits   4-7 | High 4 bits of sample number
+                     bits  8-15 | Low 8 bits of note period
+                     bits 16-19 | Effect number
+                     bits 20-23 | Low 4 bits of sample number
+                     bits 24-31 | Effect data
+
+From this you can calculate a 12 bit note period, 8 bit sample number, 4 bit
+effect number, and 8 bit effect data
+
+ProTracker uses 3-octaves (12 notes per octave, 36 notes total, spanning
+periods 113 [B-3] to 856 [C-1]), although this file format technically allows
+for >6 octaves based on Amiga period values (periods of 0001-4095 using the
+full 12 bit note numbers available), the highest octave is limited because at
+period values below 28, different notes would begin to overlap the same
+period values. The lowest notes are also limited by very low sample playback
+rates resulting in poor playback quality at periods above 2000. QTM v1.45
+therefore fully supports 6-octaves (periods 1712 [C-0] to 28 [B-5]), as used
+by the FastTracker file format (above).
+
+The only tracker known to the author (at the time of writing) which allows
+very low octaves (and sample periods effectively >2000) is Coconizer, which
+allows the equivalent of 2 further octaves below QTM's 'C-0' octave (1814 [B
+-1] to 6848 [C -2]). If Coconizer tracks are converted to QTM/FastTracker
+format, periods of 1814 [B -1] to 4064 [A -2] should still be entered in the
+QTM/FastTracker file format - and QTM will play these very low notes, however
+these notes are not fully supported and as such, fine-tuning (not supported
+by Coconizer in any case) or arpeggio will *not* work correctly below C-0.
+
+
+Pattern data (FastTracker 6 channel format)
+-------------------------------------------
+
+Each pattern consists of 64 bars, as above, however each bar now contains data for 6 channels, as follows:
+
+Offset | Length | Meaning
+-------+--------+------------------------------------------------------------
+    00 |      4 | Note word for channel 1 \
+    04 |      4 | Note word for channel 2  \
+    08 |      4 | Note word for channel 3   \_ Bar 1
+    12 |      4 | Note word for channel 4   /
+    16 |      4 | Note word for channel 5  /
+    20 |      4 | Note word for channel 6 /
+    24 |      4 | Note word for channel 1
+    nn |      4 | ...
+
+
+
+Pattern data (FastTracker 8 channel format)
+-------------------------------------------
+
+Each pattern consists of 64 bars, as above, however each bar now contains data for 8 channels, as follows:
+
+Offset | Length | Meaning
+-------+--------+------------------------------------------------------------
+    00 |      4 | Note word for channel 1 \
+    04 |      4 | Note word for channel 2  \
+    08 |      4 | Note word for channel 3   \
+    12 |      4 | Note word for channel 4    \_ Bar 1
+    16 |      4 | Note word for channel 5    /
+    20 |      4 | Note word for channel 6   /
+    24 |      4 | Note word for channel 7  /
+    28 |      4 | Note word for channel 8 /
+    32 |      4 | Note word for channel 1
+    nn |      4 | ...
+
+
+S. Harrison 22/12/13

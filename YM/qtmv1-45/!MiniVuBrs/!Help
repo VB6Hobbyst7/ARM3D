@@ -1,0 +1,40 @@
+!Help file for !MiniVuBrs 0.21 ('Probably the smallest VU Bars in the World')
+-----------------------------------------------------------------------------
+
+  This program, along with all its files are © 1993 Phoenix (of QUANTUM)
+
+  The purpose of this short program is to put a set of rather nice VU Bars
+on your icon bar - to keep you interested while you are listening to any
+computerised music/samples. You may ask "what is a VU Bar?" VU=Volume Unit.
+
+  This program has been tested on a load of different computers, from 1Mb to
+4Mb, Risc OS2/3 - so it should work on your one. If it doesn't work, or you
+find any bugs, send me details of your computer, and what went wrong. If you
+send a disc, then I might be able to find some other bits of P.D. to send
+back - I will reply to EVERY letter, as long as you send a stamped,
+addressed envelope...
+
+  History (...is boring!!!)
+  -------------------------
+
+0.00 10Apr93 Single tasking version, written - 'cos I had nothing else to do
+0.10 11Apr93 First desktop version, written on Easter day
+0.20 16Apr93 Added (excellent) 'Quantum' demo-type-thing in the background
+0.21 13Jun13 20 years later... runs a bit fast on RPi, added redraw delay :)
+
+  Plugs
+  -----
+
+  If you are interested in high quality music coming out of your computer,
+then look out for my very own Sound Tracker playing module, which shall
+hopefully be able to play EVERY effect that Amiga sound trackers can, at a
+very high quality sample rate. This should be appearing with your local P.D.
+supplier, as soon as I have finished it...
+
+  Get QUANTUM's 'New Dawn', the best disc magazine for the Arc - available
+from DataFile P.D.
+
+  Look out for other QUANTUM stuff & my other P.D. bits and pieces.
+
+
+  P.S. Hello to Leon, Gary, Tim, Ben Carter + everyone (else) in QUANTUM!!!

@@ -1,0 +1,61 @@
+<!doctype html><HTML><HEAD><META HTTP-EQUIV="Content-Type" Content="text/html; charset=Windows-1251"><LINK REL="stylesheet" TYPE="text/css" HREF="Ay_Emul.css"></HEAD><BODY>
+
+<H1><A NAME="psg"></A>PSG</H1>
+
+<P>Two types of PSG are exist – PSG and EPSG. On RDOSPLAY site you can find PSG2 files description also, but this type is not supported in Emulator. And also there are many PSGs from BK (Russian computers) emulators in the Internet.</P>
+
+<P><B>PSG</B></P>
+
+<P>These files are produced by 'x128' Speccy Emulator by James McKey and 'fMSX' emulator (I never saw this one). x128 creates PSG with errors. Therefore more better to use 'Z80 Stealth' Speccy Emulator by Kirill Kolpakov (Mr.Kirill). This emulator contains special features for creating PSG files and also has good debugger which very simplifies PSG creating process. Z80 Stealth Home Page is <a href="http://z80.da.ru/" target="_blank">http://z80.da.ru</a>.</P>
+
+<P>This is all data about PSG found in Internet:</P>
+<pre>
+Offset  Number of byte  Description
++0      3               Identifier 'PSG'
++3      1               Marker “End of Text” (1Ah)
++4      1               Version number
++5      1               Player frequency (for versions 10+)
++6      10              Unknown
+</pre>
+<P>Further byte strings follows. Each string begins from byte 0FFh or 0FEh. Byte 0FFh is marker of interrupt beginning. If after it byte exists (in range 0–15) then it is number of AY register, and next byte is value of this register. Further next pair of byte follows, first byte of which is register number, and second byte is register value. And so on, until end of file, or byte 0FFh (next interrupt), or byte 0FEh will be meet. Byte after 0FEh marker is multiplied by four is number of interrupts without outing to AY. For example sequence “FE 01 FF” is equivalent to sequence “FF FF FF FF FF”. If in PSG you will find register number in range 16–252, then you can ignore this and next byte (this is outing to other MSX devices).</P>
+
+<P>RDOSPLAY documentation describes yet another marker is 253 called as 'End Of Music', but this marker is not supported in Emulator.</P>
+
+<P>Also, RDOSPLAY documentation and some my researching of existing PSG-files talk about is more simple header of PSG. This header consists of only first 4 bytes of described header and outing log starts at +4 file offset (instead of +16). So, for correct playing this PSG, need to add zero to expanse header size to 16 bytes length. If you are trying to play such PSG-files without header correcting, you don't hear differences in the most cases.</P>
+
+<P><B>EPSG</B></P>
+
+<P>Z80 Stealth emulator creates these files. EPSG additionally contents information about time of outing to AY registers.</P>
+
+<P>Next text from z80s.faq file.</P>
+
+<pre>
+Q: What is it – this EPSG format?
+A: It's PSG format improved just a bit to handle output of digitized samples 
+
+Here's the description:
+
+Offset	Length	Value
+============================
+Header
+============================
+0	4	'EPSG'
+4	1	0x1A marker
+5	1	Machine type: 0x00 – ZX Spectrum 128 0x01 – Pentagon
+		0xFF – Other machines
+6	4	Zero for machine type 0x00 and 0x01 or
+		Number of Z80 tacts between interrupt markers
+		for other machines
+10	6	zeroes
+============================
+AY(YM) log during 1 frame
+============================
+16	1	AY(YM) register number
+17	1	value written to this register
+18	3	T-state
+.....
+??	5	0xFFFFFFFFFF – interrupt marker
+</pre>
+
+</BODY>
+</HTML>

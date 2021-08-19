@@ -1,0 +1,8 @@
+<!doctype html><HTML><HEAD><META HTTP-EQUIV="Content-Type" Content="text/html; charset=Windows-1251"><LINK REL="stylesheet" TYPE="text/css" HREF="Ay_Emul.css"></HEAD><BODY>
+
+<H1><A NAME="out"></A>OUT</H1>
+
+<P>Supported OUT files of ZX Spectrum emulator 'Z80' versions 3.02 and 3.03 by G.A. Lunter. OUT file has regular structure: sequence of five bytes blocks. First word in each block is time in Z80 processor tacts (range from 0 to 17471). Second word of block is ZX Spectrum port address. And last value of block (byte) is data is sent to this port during this tact. Each 17472nd tact in any case one block is wrote into OUT file, and if during this time no outing to any port of Speccy then first word of block is 65535. One tact of Z80 processor equal to 1/3494400 sec. OUT file can contain outing either to any Speccy ports or only to selected in 'Z80' emulator ports. To record outing only to AY-3-8910 ports (#BFFD and #FFFD), adjust 'Z80' emulator for storing only one port: #FD. And after creating OUT file convert it to other format (ZXAY file is optimized analog of OUT file).</P>
+
+</BODY>
+</HTML>

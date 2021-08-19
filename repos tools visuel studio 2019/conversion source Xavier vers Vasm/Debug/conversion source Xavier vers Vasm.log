@@ -1,0 +1,3 @@
+﻿  conversion source Xavier vers Vasm.cpp
+C:\Users\Eric\source\repos\conversion source Xavier vers Vasm\conversion source Xavier vers Vasm.cpp(390,28): warning C4244: 'initialisation' : conversion de 'double' en 'int', perte possible de données
+  conversion source Xavier vers Vasm.vcxproj -> C:\Users\Eric\source\repos\conversion source Xavier vers Vasm\Debug\conversion source Xavier vers Vasm.exe

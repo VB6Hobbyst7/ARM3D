@@ -1,0 +1,58 @@
+<!doctype html><HTML><HEAD><META HTTP-EQUIV="Content-Type" Content="text/html; charset=Windows-1251"><LINK REL="stylesheet" TYPE="text/css" HREF="Ay_Emul.css"></HEAD><BODY>
+
+<H1><A NAME="playlist"></A>"Playlist" window</H1>
+
+<P>Hot key is <B>E</B>. This window allows you manipulate play list items. You can move items from one position to another via mouse left button pressed. Type and time length of item are shown at the right side. If during loading item some error was occurred, corresponding item's file name and short error message are shown. Colors of playlist items in all states can be defined in “Tools” dialog.</P>
+
+<P>All main window hot keys work in playlist window too.</P>
+
+<P><B>Add items</B> button allows you add item(s) with standard “Open Files” dialog box. You can use <I>Insert</I> key also. If you hold <I>Shift</I> during clicking on this button, you call “Open files from folder” dialog (also you may use <I>Shift+Insert</I>). If you hold <I>Ctrl</I> during clicking on this button, you call “Add CD(s)” dialog (also you may use <I>Ctrl+Insert</I>).</P>
+
+<P><B>Clear list</B> button removes all list items and set playlist global settings to <I>By default</I>.</P>
+
+<P><B>Save list</B> button allows to save current playlist into file (AYL or M3U). Remember, that in M3U-files only a file names are stored. Some AY-files can contain more than one tune, and this situation cannot be saved in M3U. So, use AYL if you want to save all parameters of current playlist and of each item.</P>
+
+<P><B>List tools</B> button allows you to sort playlist in different ways and also to find an item by string queries (F7 hot key).</P>
+
+<P>Next button shows one of four icons and determines way of playing playlist items. These are backward, forward, random and only current selected cyclically.</P>
+
+<P>Loop button can be in two states: when it is lowered, playlist is looped (after finishing playing last item, it starts playing first and so on).</P>
+
+<P>Total number of playlist items and current item number both are shown in low-right corner.</P>
+
+<P><I>Delete</I> key deletes selected items from playlist.</P>
+
+<P>Ctrl-A allows to select all items in playlist.</P>
+
+<P>Use cursor keys for navigation.</P>
+
+<P>Shift and Ctrl keys with cursor keys and mouse clicks can be used to selecting/unselecting items.</P>
+
+<P>Use mouse double clicking or <I>Enter</I> key to play an item.</P>
+
+<P>You can drag and drop files and folders to playlist window to add it to the end of list or at any desired point.</P>
+
+<P>You may call popup menu by mouse right button clicking on an item. There are</P>
+
+<UL>
+	<LI><I>Item adjusting...</I> calls <I>"List's item adjusting" </I>dialog box.<BR><BR></LI>
+
+	<LI><I>Convert to WAV...</I> allows you convert an item to WAV-file. It is recommended to create WAV-file at sample rate, equal to AY/YM counters frequency (AY frequency / 8, use corresponding button in mixer to set this rate), and then resample it to 44100 Hz with any quality resampler. This way can give you better result, than Ay_Emul built-in resampler.<BR><BR></LI>
+
+	<LI><I>Convert to ZXAY...</I> allows you convert an item to ZXAY-file (only from OUT, EPSG, AY and AYM files).<BR><BR></LI>
+
+	<LI><I>Convert to VTX...</I> allows you convert an item to VTX-file.<BR><BR></LI>
+
+	<LI><I>Convert to YM6...</I> allows you convert an item to YM6-file.<BR><BR></LI>
+
+	<LI><I>Convert to PSG...</I> allows you convert an item to PSG-file.<BR><BR></LI>
+
+	<LI><I>Save as…</I> calls standard dialog for saving selected item with new name (only for tracker modules). This feature is useful as alternative method of searching tunes in files. You can open TRD or SNA file and then save all found modules one by another.</LI>
+</UL>
+
+<P>There is total playlist time length is shown at the lower right corner. Usually, it includes time length of all visible items (in this case '+' sign added at the right). To include length of invisible for the moment items, click on this field. During time calculation, Ay_Emul extracts additional information from MIDI-files and from files playing by BASS library.</P>
+
+<P>Use<B> Esc, E</B> or <B>Alt+F4</B> to close playlist.</P>
+
+</BODY>
+</HTML>

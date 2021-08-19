@@ -1,0 +1,138 @@
+Note and sample periods numbers for QTM v1.45    © Steve Harrison, 1993-2013
+----------------------------------------------------------------------------
+
+QTM v1.45 introduces full 6-octave support (notes 'C-0' to 'B-5'), with fine tuning, for sample playing and music playback (FastTracker music modules).
+
+In addition, from v1.45 of QTM, partial music playback support (fixed period-only, no fine tuning) is also enabled for a 7th and 8th octave 'C- —¹' down to 'A- —²', although at these octaves, sample playback speed is very slow and so is poor quality and is unused by any Amiga Tracker editor that I am aware of. However one early RISC OS tracker player (Coconizer) did allow use of these octaves, so QTM has retained support of these to enable better conversion of Coconizer modules to QTM. Any converters wishing to make use of these low octaves should output the converted module in FastTracker 4/6/8 channel format ('xCHN' in ID bytes) and QTM will enable the lower octaves.
+
+Listed below are the Amiga periods stored in ProTracker/FastTracker module for all supported QTM notes:
+
+Note    QTM note   Amiga period   ProTracker note   Approx playback rate (Hz)
+
+A- —²   n/a        4064            -                   873
+A# —²   n/a        3840            -                   924
+B- —²   n/a        3628            -                   978
+C- —¹   n/a        3424            -                  1036
+C# —¹   n/a        3232            -                  1097
+D- —¹   n/a        3048            -                  1164
+D# —¹   n/a        2880            -                  1232
+E- —¹   n/a        2712            -                  1308
+F- —¹   n/a        2560            -                  1386
+F# —¹   n/a        2416            -                  1468
+G- —¹   n/a        2280            -                  1556
+G# —¹   n/a        2152            -                  1648
+A- —¹   n/a        2032            -                  1746
+A# —¹   n/a        1920            -                  1847
+B- —¹   n/a        1814            -                  1955
+C-0      1         1712            -                  2072
+C#0      2         1616            -                  2195
+D-0      3         1524            -                  2327
+D#0      4         1440            -                  2463
+E-0      5         1356            -                  2616
+F-0      6         1280            -                  2771
+F#0      7         1208            -                  2936
+G-0      8         1140            -                  3111
+G#0      9         1076            -                  3296
+A-0     10         1016            -                  3491
+A#0     11          960            -                  3695
+B-0     12          907            -                  3911
+C-1     13          856            1                  4144
+C#1     14          808            2                  4390
+D-1     15          762            3                  4655
+D#1     16          720            4                  4926
+E-1     17          678            5                  5231
+F-1     18          640            6                  5542
+F#1     19          604            7                  5872
+G-1     20          570            8                  6223
+G#1     21          538            9                  6593
+A-1     22          508           10                  6982
+A#1     23          480           11                  7389
+B-1     24          453           12                  7830
+C-2     25          428           13                  8287
+C#2     26          404           14                  8779
+D-2     27          381           15                  9309
+D#2     28          360           16                  9852
+E-2     29          339           17                 10463
+F-2     30          320           18                 11084
+F#2     31          302           19                 11745
+G-2     32          285           20                 12445
+G#2     33          269           21                 13185
+A-2     34          254           22                 13964
+A#2     35          240           23                 14779
+B-2     36          226           24                 15694
+C-3     37          214           25                 16574
+C#3     38          202           26                 17559
+D-3     39          190           27                 18668
+D#3     40          180           28                 19705
+E-3     41          170           29                 20864
+F-3     42          160           30                 22168
+F#3     43          151           31                 23489
+G-3     44          143           32                 24803
+G#3     45          135           33                 26273
+A-3     46          127           34                 27928
+A#3     47          120           35                 29557
+B-3     48          113           36                 31388
+C-4     49          107            -                 33149
+C#4     50          101            -                 35118
+D-4     51           95            -                 37336
+D#4     52           90            -                 39410
+E-4     53           85            -                 41728
+F-4     54           80            -                 44336
+F#4     55           75            -                 47292
+G-4     56           71            -                 49956
+G#4     57           67            -                 52939
+A-4     58           63            -                 56300
+A#4     59           60            -                 59115
+B-4     60           56            -                 63337
+C-5     61           53            -                 66923
+C#5     62           50            -                 70938
+D-5     63           47            -                 75466
+D#5     64           45            -                 78820
+E-5     65           42            -                 84450
+F-5     66           40            -                 88672
+F#5     67           37            -                 95862
+G-5     68           35            -                101340
+G#5     69           33            -                107482
+A-5     70           31            -                114416
+A#5     71           30            -                118230
+B-5     72           28            -                126675
+
+There are 12 notes in an octave, and the playback frequency (and Amiga period) of each note doubles with each increasing octave.
+
+Samples and sample rates
+------------------------
+
+Many ProTracker instrument samples were recorded at 16.6kHz, so C-3 provides the closest match. In which case to play the sample one octave lower use C-2 and use C-1 for 2 octaves lower, etc. Sometimes percussion instruments were sampled at higher frequencies to give better reproduction, such as 22.2kHz (approximately half CD frequency, which is 44.1kHz), in this case F-3 gives the closest match. Although a finetuned sample with tuning =-1 gives a closer frequency, see below.
+
+FastTracker and QTM allow you to use F-4 which is a close match to actual CD frequency (although only 8-bit), however with the ProTracker file format imposing a maximum 64kb sample size, a 64Kb sample played at F-4 will only last 1.48 seconds. Againg, finetuning by -1 will be even closer to the actual 44.1kHz frequency, see below.
+
+Finetuning
+----------
+
+The exact frequencies accessible from the above amiga periods are however limited by the required steps between each note, so to widen the range of frequencies available, ProTracker introduced 'finetuning' for samples. This divides the gap between each note into 8 further steps. Finetuning values range from +7 to -8, with 0 being the default amiga period (as above), -8 being one whole note below, then -1 to -7 being the steps down to the lower note, and +1 to +7 being steps up to the next higher note.
+
+For finetuned samples, ProTracker still stores the actual notes in the music file as the periods shown above. However when playing back those notes on a finetuned sample, the player (ProTracker, QTM, etc.) will adjust the period to the corresponding finetuned period first.
+
+To calculate the actual finetuned periods, the calculation shown below can be used, however ProTracker originally used manually calculated and then tweaked values, so some do not match this calculation exactly. Therefore QTM uses the same pre-calculated tables for accuracy of music playback (see source file QTMv1.45).
+
+Finetuned period = Original period * 2^(-finetune/12/8)
+
+Where 'finetune' is an integar value between -8 and +7
+
+The same calculation can be applied to frequencies:
+
+Finetuned frequency = Original frequency * 2^(-finetune/12/8)
+
+For example, period F-3 has a standard frequency of 22168Hz, which is close to half CD sampling rate of 22.05kHz. But if we set a sample's fine tuning value to -1, then play F-3, this will actually produce a frequency even closer to the desired rate:
+
+ 22.168kHz * 2^(-1/12/8) = 22.009kHz   [vs half-CD rate of 22.050kHz]
+
+The same applies to F-4 with frequency 44336Hz:
+
+ 44.336kHz * 2^(-1/12/8) = 44.017kHz   [vs CD rate of 44.100kHz]
+
+Many musicians will tune their samples manually, adjusting fine tuning 'by ear', until the desired tone is reached.
+
+QTM supports fine tuning for all 6 octaves C-0 to B-5.
+
+S. Harrison, 22/12/13

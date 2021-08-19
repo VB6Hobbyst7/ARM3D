@@ -1,0 +1,142 @@
+liste sequence en 4700
+
+---
+1237
+affiche sequences : 0 , 0 ,1 , crash
+
+- la repetition de la plage de sequence ne marche pas
+
+
+
+
+
+
+- apres 1 plage => problème, depasse la plage de fin quand il y a 2 sequences dans la plage
+crash quand arrive à la fin
+
+
+
+----------
+niveaux :
+boucle de frames affichage de N sprites
+parcours de la plage de sequences
+parcours de la liste de de plages de sequences
+
+
+
+
+-------------------------------------
+table de sequences : 
+	- numéro de séquence de début 	: numero_sequence_debut , numero_sequence_en_cours
+	- numéro de séquence de fin	: numero_sequence_fin
+	- nombre de repetitions de cette plage de séquence : nb_repetition_sequence_affichage
+
+si nombre_frames_sequence_en_cours_affichage>0 => on ne fait rien
+
+si nombre_frames_sequence_en_cours_affichage=0 
+	on est arrivé au bout de la séquence, il faut passer à la séquence suivante
+		- numéro_de_séquence_en_cours => récuperation de pointeur sur la mémoire de calcul & nombre d'étapes frames d'affichage & nombre de points/sprites de la séquence
+		- numéro_de_séquence_en_cours + 1
+			- si numéro_de_séquence_en_cours > numéro de séquence de fin : numero_sequence_fin
+				- si infinie ??
+				- nb_répétition_actuel=nb_répétition_actuel -1
+				- si nb_répétition_actuel > 0
+					- numéro_de_séquence_en_cours = numéro de séquence de début : numero_sequence_debut 
+					- 
+
+				- si nb_répétition_actuel = 0, on a fait toute la plage de la séquence avec N répétitions, il faut avancer le pointeur de séquence pour lire la table de sequence
+
+
+
+
+
+
+; gestion du nombre de frame de la séquence
+	ldr		R0,nombre_frames_sequence_en_cours_affichage
+	subs		R0,R0,#1
+	bgt		pas_fin_frames_affichage_sequence_en_cours
+
+
+
+
+LIGNE 2421 !!!
+init !!!
+
+
+
+ancienne routine:
+	ldr		R1,sequence_infinie
+	cmp		R1,#0
+	beq		pas_sequence_infinie
+; on est sur une sequence infinie
+	ldr		R0,nombre_frames_initial_sequence_en_cours_affichage
+	ldr		R1,pointeur_initial_lecture_calculs_pendant_affichage
+	str		R1,pointeur_lecture_calculs_pendant_affichage
+	
+	b		pas_fin_frames_affichage_sequence_en_cours
+	
+	
+pas_sequence_infinie:
+	ldr		R1,nb_repetition_sequence_affichage
+	subs	R1,R1,#1
+	str		R1,nb_repetition_sequence_affichage
+	beq		fin_de_repetition_de_sequence
+
+; on repete la sequence
+	ldr		R0,nombre_frames_initial_sequence_en_cours_affichage
+	ldr		R1,pointeur_initial_lecture_calculs_pendant_affichage
+	str		R1,pointeur_lecture_calculs_pendant_affichage
+	
+	b		pas_fin_frames_affichage_sequence_en_cours	
+
+fin_de_repetition_de_sequence:
+	ldr		R2,pointeur_lecture_sequences_affichage
+; - numéro de séquence
+; - nb répétition de la séquence
+	ldr		R3,[R2],#4				; R3 = numéro de séquence début
+	
+	cmp		R3,#-1					; on est à la fin de la liste de sequences ?
+	
+	
+	ldr		R5,[R2],#4				; R5 = numéro de séquence fin
+	ldr		R4,[R2],#4				; R4 = nb répétition de la séquence
+
+	str		R4,nb_repetition_sequence_affichage
+	str		R3,numero_sequence_debut
+	str		R3,numero_sequence_en_cours
+	str		R5,numero_sequence_fin
+	str		R2,pointeur_lecture_sequences_affichage
+	
+	cmp		R4,#-1
+	bgt		la_nouvelle_sequence_n_est_pas_infinie
+	str		R4,sequence_infinie							; on bascule en sequence infinie
+
+la_nouvelle_sequence_n_est_pas_infinie:
+; 	- pointeur mémoire debut séquence
+;	- nb étapes de la séquence
+;	- nb points de la séquence
+	
+	ldr		R1,pointeur_buffer_sequences_affichage
+; R3 = numéro de séquence début
+; R3 * 12 = 4+8
+	mov		R3,R3,lsl #2				; R3*4
+	add		R3,R3,R3, lsl #1			; R3 = R3*4 + R3*4*2 = 12*R3
+	ldr		R4,[R1,R3]					; pointeur mémoire debut séquence
+	str		R4,pointeur_lecture_calculs_pendant_affichage
+	str		R4,pointeur_initial_lecture_calculs_pendant_affichage
+	add		R1,R1,#4
+	ldr		R4,[R1,R3]					; nb étapes/frames de la séquence
+	str		R4,nombre_frames_sequence_en_cours_affichage
+	str		R4,nombre_frames_initial_sequence_en_cours_affichage
+	add		R1,R1,#4
+	ldr		R4,[R1,R3]					; nb points de la séquence
+	str		R4,nombre_sprites_sequence_en_cours_affichage	
+	
+	b		continuer_apres_gestion_sequence
+
+
+	
+pas_fin_frames_affichage_sequence_en_cours:
+	str		R0,nombre_frames_sequence_en_cours_affichage
+
+continuer_apres_gestion_sequence:

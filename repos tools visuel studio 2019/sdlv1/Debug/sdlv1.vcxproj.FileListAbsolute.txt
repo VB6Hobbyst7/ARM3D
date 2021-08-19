@@ -1,0 +1,2 @@
+C:\Users\Eric\source\repos\sdlv1\Debug\sdlv1.exe
+C:\Users\Eric\source\repos\sdlv1\Debug\sdlv1.pdb

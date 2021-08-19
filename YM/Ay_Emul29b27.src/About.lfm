@@ -1,0 +1,23 @@
+object AboutBox: TAboutBox
+  Left = 238
+  Height = 347
+  Top = 168
+  Width = 343
+  BorderIcons = []
+  BorderStyle = bsNone
+  Caption = 'About program'
+  Color = clWhite
+  DragKind = dkDock
+  Font.Height = -11
+  OnCreate = FormCreate
+  OnDeactivate = FormDeactivate
+  OnDestroy = FormDestroy
+  OnKeyPress = FormKeyPress
+  OnMouseDown = FormMouseDown
+  OnMouseMove = FormMouseMove
+  OnMouseUp = FormMouseUp
+  OnPaint = FormPaint
+  OnShow = FormShow
+  Position = poScreenCenter
+  LCLVersion = '2.0.12.0'
+end
