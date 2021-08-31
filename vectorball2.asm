@@ -1205,18 +1205,19 @@ boucle_affiche_sprites_vbl:
 
 
 ; décodage
+; 6 bits = position X + N° sprite = 64/4 sprites = 16 sprites actuellement. avec 19 bits de position ecran  => 13 bits pour N° sprites = 1024 sprites en 8 tailles
 ; R0 = Y*416 +x << 4 + n° sprite
 ; cible : R0=position, R5 = X n° décalage, R6 = n° sprite
 	
 	and		R6,R0,#0b111111					; R6 = position X * 16 + n° sprite
-	mov		R0,R0,asr #4
+	mov		R0,R0,asr #4					; R0  = position ecran 26 bits mais peut etre réduit à 19 bits
 	adr		R3,table_positions_sprites64
 
 	ldr		r2,screenaddr2
 	add		R1,R2,R0			; R1=R2+R0 offset ecran
 
 ; saut dans la routine de sprite
-	ldr		R15,[R3,R6, lsl #2]				; R15 = adresse routine sprite
+	ldr		R15,[R3,R6, lsl #2]				; PC = R15 = adresse routine sprite
 	
 retour_copie_sprite:
 

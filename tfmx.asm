@@ -8,15 +8,33 @@
 ; il faut convertir:
 ; - SONGPLAY : changement de morceau/musique dans le module
 ; - IRQIN : routine de replay
-; - INITDATA : initialisation de TFMX + du module
-; - 
+; - OK : INITDATA : initialisation de TFMX + du module
+; - setv7freq : mets d0 dans v7mixrate + 
 
+; DMACON: set à 0 = on coupe le canal / set a 1 = on active le canal en prenant en entrée : pointeur adresse smaple et longeur sample
+
+
+; interruptions:
+; level 1 - vector $64 : soft/DskBlk/Tbe
+; level 2 - vector $68 : keyboard					IRQVEC2
+; level 3 - vector $6c : Vbl/Copper/Blitter			IRQVEC3
+; level 4 - vector $70 : audio
+; level 5 - vector $74 : DskSyn/Rbf
+; level 6 - vector $78 : Cia-b 
+
+; IRQVEC4 = mwadr = interruption audio = 
+; IRQVEC6 = timerin = Cia-b = player audio aussi
+; IRQVEC3 = irq1 = Vbl/Copper/Blitter = routine de replay une fois par VBL
 
 ; paramètres
 .equ tfmx_maxbyts,		480+792			; extended buffer - taille du buffer passer en D2 lors des inits. - buffer pour la gestion de la musique
-
+.equ tfmx_maxbyts_div2_moins32,		((tfmx_maxbyts)/2)-32
+.equ tfmx_maxbyts_fois3_div4,		((tfmx_maxbyts*3)/4)
 
 	.org 0x8000
+main:
+
+
 
 ; ----------- début de Initdata
 initdata:
@@ -189,18 +207,551 @@ pointeur_initdata_tfmx_Synthfield6:				.long		tfmx_Synthfield6
 pointeur_initdata_tfmx_Synthfield7:				.long		tfmx_Synthfield7
 ; ----------- fin de Initdata
 
+tfmx_init7voice:
+		adr			R6,tfmx_MasterDataBlock			; CHfield0
+		adr			R5,tfmx_v7field
+		mov			R8,#0
+		strb		R8,[R6,#tfmx_v7flag-tfmx_MasterDataBlock]
+		strb		R8,[R6,#tfmx_v7initflag-tfmx_MasterDataBlock]
+		
+		adr			R0,tfmx_v7contab
+		mov			R8,#384					; boucle de 384 fois
+		mov			R9,#0x80
+		mov			R10,#0x7F
+tfmx_init7voice_loop1:
+		strb		R9,[R0],#1				; $80
+		strb		R10,[R0,#640-1]			; $7F
+		subs		R8,R8,#1
+		bgt			tfmx_init7voice_loop1
 
-; routine specifiques aux voies mixées
-tfmx_set_v7wave1:
-tfmx_set_v7wave2:
-tfmx_set_v7wave3:
-tfmx_set_v7wave4:
+; conversion table ?
+		adr			R0,tfmx_v7contab+384
+		mov			R8,#256
+		mov			R9,#0x80
+tfmx_init7voice_loop2:		
+		strb		R9,[R0],#1
+		add			R9,R9,#1
+		subs		R8,R8,#1
+		bgt			tfmx_init7voice_loop2
+		
+; volume table		
+		adr			R0,tfmx_v7voltab
+		mov			R11,#0					; d7
+		mov			R8,#64					; d0 / 64-1
+tfmx_init7voice_loop3:
+		mov			R9,#0					; d6
+		mov			R10,#256				; d1 / 255
+tfmx_init7voice_loop4:
+		mov			R2,R9					; d6=>d2
+		mul			R2,R11,R2				; d2=d2*d7
+		mov			R2,R2,lsr #6
+		eor			R2,R2,#0x80
+		strb		R2,[R0],#1
+		add			R9,R9,#1				; d6
+		subs		R10,R10,#1
+		bgt			tfmx_init7voice_loop4
+;		lea	128(a0),a0
+		add			R11,R11,#1
+		subs		R8,R8,#1
+		bgt			tfmx_init7voice_loop3
+
+
+		bl			tfmx_set7off
+		mov			pc,lr
 		
 
-mdat:		.incbin		"T2_intro_and_title.mdat"
-		.p2align	2
-smpl:		.incbin		"T2_intro_and_title.smpl"
-		.p2align	2
+tfmx_set7off:
+		
+		adr			R6,tfmx_MasterDataBlock			; CHfield0
+		mov			R8,#0
+		
+		str			R8,[R6,#tfmx_v7dmahelp-tfmx_MasterDataBlock]
+		adr			R5,tfmx_v7field
+		strb		R8,[R6,#tfmx_v7flag-tfmx_MasterDataBlock]
+		strb		R8,[R6,#tfmx_v7initflag-tfmx_MasterDataBlock]
+
+		mov			R8,#3
+		bl			tfmx_channeloff
+		adr			R6,tfmx_MasterDataBlock			; CHfield0
+
+		adr			R5,tfmx_flagtab
+		mov			R8,#0
+		str			R8,[R5],#4
+		str			R8,[R5],#4
+		str			R8,[R5],#4
+		str			R8,[R5],#4
+
+		adr			R5,tfmx_v7field
+		mov			R8,#0xD0
+		str			R8,[R5,#tfmx_v7loopd1-tfmx_v7field]
+		str			R8,[R5,#tfmx_v7loopd2-tfmx_v7field]
+		str			R8,[R5,#tfmx_v7loopd3-tfmx_v7field]
+		str			R8,[R5,#tfmx_v7loopd4-tfmx_v7field]				; prolonger sur 7 voies réelles
+		
+		mov			R8,#0
+		str			R8,[R5,#tfmx_v7freq1-tfmx_v7field]
+		str			R8,[R5,#tfmx_v7freq2-tfmx_v7field]
+		str			R8,[R5,#tfmx_v7freq3-tfmx_v7field]
+		str			R8,[R5,#tfmx_v7freq4-tfmx_v7field]				; prolonger sur 7 voies réelles
+		
+		mov			R8,#0b00000000									; sf
+		strb		R8,[R5,#tfmx_v7wset1-tfmx_v7field]
+		strb		R8,[R5,#tfmx_v7wset2-tfmx_v7field]
+		strb		R8,[R5,#tfmx_v7wset3-tfmx_v7field]
+		strb		R8,[R5,#tfmx_v7wset4-tfmx_v7field]
+
+		mov			R8,#0xFFF0
+		ldr			R9,[R6,#tfmx_v7buffer3-tfmx_MasterDataBlock]
+		
+		str			R9,[R5,#tfmx_v7loopv1-tfmx_v7field]
+		str			R9,[R5,#tfmx_v7loopv2-tfmx_v7field]
+		str			R9,[R5,#tfmx_v7loopv3-tfmx_v7field]
+		str			R9,[R5,#tfmx_v7loopv4-tfmx_v7field]
+		
+		str			R8,[R5,#tfmx_v7regstore-tfmx_v7field]
+		str			R8,[R5,#tfmx_v7regstore-tfmx_v7field+4]
+		str			R8,[R5,#tfmx_v7regstore-tfmx_v7field+8]
+		str			R8,[R5,#tfmx_v7regstore-tfmx_v7field+12]
+		str			R9,[R5,#tfmx_v7regstore-tfmx_v7field+16]
+		str			R9,[R5,#tfmx_v7regstore-tfmx_v7field+20]
+		str			R9,[R5,#tfmx_v7regstore-tfmx_v7field+24]
+		str			R9,[R5,#tfmx_v7regstore-tfmx_v7field+28]
+		
+		bl			tfmx_set_v7wave1
+		bl			tfmx_set_v7wave2
+		bl			tfmx_set_v7wave3
+		bl			tfmx_set_v7wave4
+		
+		ldr			R5,[R6,#tfmx_mixbufbase-tfmx_MasterDataBlock]
+		mov			R8,#tfmx_maxbyts_fois3_div4
+		mov			R9,#0
+set7off_loop5:
+		str			R9,[r5],#4
+		subs		R8,R8,#1
+		bgt			set7off_loop5
+		
+		mov			pc,lr
+		
+		
+tfmx_channeloff:
+; en entrée, R8 = channel number
+		str		R5,tfmx_channeloff_save_r5
+		adr		R5,tfmx_Synoffsets
+		and		R8,R8,#0x0F
+		mov		R8,R8,lsl #2			; * 4
+		ldr		R5,[R5,R8]
+		ldrb	R9,[R5,#tfmx_offset_Synoffsets_priority]
+		cmp		R9,#0
+		bne		tfmx_channeloff_out
+		;move.w	clibits(a5),CHIP+INTENA							; dff000+09a = Interrupt enable bits
+		;//// pas géré
+		;move.w	offbits(a5),CHIP+DMACON	;dma disable			; dff000+096 = dmacon, a gérer
+		ldr		R9,[R5,#tfmx_offset_Synoffsets_offbits]
+		str		R9,AMIGA_HARDWARE_REG_DMACON
+		mov		R9,#0
+		strb	R9,[R5,#tfmx_offset_Synoffsets_mstatus]
+		str		R9,[R5,#tfmx_offset_Synoffsets_ims_dlen]
+		strb	R9,[R5,#tfmx_offset_Synoffsets_riffstats]
+		
+		str		R0,tfmx_channeloff_save_r0
+		ldr		R0,[R5,#tfmx_offset_Synoffsets_dmaconadr]
+		cmp		R0,#0
+		beq		tfmx_channeloff_out
+		str		R9,[R0]
+		ldr		R0,[R5,#tfmx_offset_Synoffsets_set_v7wave]
+		mov		lr,pc
+		mov		pc,R0						; jsr a0, a0=set_v7wave(a5)
+		
+		ldr		R0,tfmx_channeloff_save_r0
+tfmx_channeloff_out:
+		ldr		R5,tfmx_channeloff_save_r5
+
+		mov			pc,lr
+
+tfmx_channeloff_save_r5:			.long		0
+tfmx_channeloff_save_r0:			.long		0
+		
+; routine specifiques aux voies mixées
+tfmx_sauvegarde_R0_R1_R2_R3_R4_R5_R8_R9_R10:		.long		0,0,0,0,0,0,0,0,0
+; altere R12
+tfmx_set_v7wave1:
+		adr			R12,tfmx_sauvegarde_R0_R1_R2_R3_R4_R5_R8_R9_R10
+		stmia		R12,{R0-R5,R8-R10}
+		adr			R5,tfmx_v7field
+		add			R0,R5,#tfmx_voice1dat-tfmx_v7field
+		add			R1,R5,#tfmx_v7regstore-tfmx_v7field
+		adr			R2,tfmx_flagtab
+		add			R3,R5,#tfmx_v7freq1-tfmx_v7field
+		add			R4,R5,#tfmx_v7wset1-tfmx_v7field
+		bl			tfmx_v7dma
+		ldmia		R12,{R0-R5,R8-R10}
+		mov			pc,lr
+
+tfmx_set_v7wave2:
+		adr			R12,tfmx_sauvegarde_R0_R1_R2_R3_R4_R5_R8_R9_R10
+		stmia		R12,{R0-R5,R8-R9}
+		adr			R5,tfmx_v7field
+		add			R0,R5,#tfmx_voice2dat-tfmx_v7field
+		add			R1,R5,#tfmx_v7regstore-tfmx_v7field+4
+		adr			R2,tfmx_flagtab+4
+		add			R3,R5,#tfmx_v7freq2-tfmx_v7field
+		add			R4,R5,#tfmx_v7wset2-tfmx_v7field
+		bl			tfmx_v7dma
+		ldmia		R12,{R0-R5,R8-R10}
+		mov			pc,lr
+
+
+tfmx_set_v7wave3:
+		adr			R12,tfmx_sauvegarde_R0_R1_R2_R3_R4_R5_R8_R9_R10
+		stmia		R12,{R0-R5,R8-R9}
+		adr			R5,tfmx_v7field
+		add			R0,R5,#tfmx_voice3dat-tfmx_v7field
+		add			R1,R5,#tfmx_v7regstore-tfmx_v7field+8
+		adr			R2,tfmx_flagtab+8
+		add			R3,R5,#tfmx_v7freq3-tfmx_v7field
+		add			R4,R5,#tfmx_v7wset3-tfmx_v7field
+		bl			tfmx_v7dma
+		ldmia		R12,{R0-R5,R8-R10}
+		mov			pc,lr
+
+tfmx_set_v7wave4:
+		adr			R12,tfmx_sauvegarde_R0_R1_R2_R3_R4_R5_R8_R9_R10
+		stmia		R12,{R0-R5,R8-R9}
+		adr			R5,tfmx_v7field
+		add			R0,R5,#tfmx_voice4dat-tfmx_v7field
+		add			R1,R5,#tfmx_v7regstore-tfmx_v7field+12
+		adr			R2,tfmx_flagtab+12
+		add			R3,R5,#tfmx_v7freq4-tfmx_v7field
+		add			R4,R5,#tfmx_v7wset4-tfmx_v7field
+		bl			tfmx_v7dma
+		ldmia		R12,{R0-R5,R8-R10}
+		mov			pc,lr
+
+tfmx_v7dma_valeur_3FFFF:			.long			0x3FFFF
+
+tfmx_v7dma:
+		ldrb		R8,[R2]
+		cmp			R8,#0
+		bne			tfmx_v7dma_dma1
+
+		mov			R9,#0
+		str			R9,[R3]
+		mov			R9,#0b11111111
+		strb		r9,[R4]		
+		mov			pc,lr
+
+tfmx_v7dma_dma1:
+		ldr		R8,[R0]					; R8=startadr
+		ldr		R9,[R0,#4]				; R9=length
+		cmp		R9,#0x20				; $20=minimal length for sample
+		bge		tfmx_v7dma_noone
+		mov		R9,#tfmx_maxbyts_div2_moins32
+		ldr		R8,[R5,#tfmx_v7clrbuffer-tfmx_v7field]
+tfmx_v7dma_noone:
+		ldr		R12,tfmx_v7dma_valeur_3FFFF
+		and		R9,R9,R12				; longeur maximale du sample en mots = $40000
+		mov		R9,R9,lsl #1			; en octets
+		add		R8,R9,R8				; R8=fin du sample
+		str		R8,[R0,#16]				; ex 10
+		str		R9,[R0,#20]				; ex 14
+
+		ldrb	R8,[R4]					; tst v7wset
+		cmp		R8,#0
+		beq		tfmx_v7dma_dma2
+
+		mov		R8,#0b00000000
+		strb	R8,[R4]
+		ldr		R9,[R0]					; d1
+		ldr		R8,[R0,#4]				; d0
+		cmp		R9,#0x20				; 32?
+		bge		tfmx_v7dma_noone2
+		mov		R8,#tfmx_maxbyts_div2_moins32
+		ldr		R9,[R5,#tfmx_v7clrbuffer-tfmx_v7field]
+tfmx_v7dma_noone2:
+		ldr		R12,tfmx_v7dma_valeur_3FFFF
+		and		R8,R8,R12				; longeur maximale du sample en mots = $40000
+		mov		R8,R8,lsl #1			; en octets
+		add		R9,R9,R8				; R9=fin du sample
+		str		R9,[R1,#16]				; ex 16
+		rsbs	R8,R8,#0
+		str		R8,[R1]
+tfmx_v7dma_dma2:
+		mov		pc,lr
+
+
+;--------------------------------------------------------------------------------------
+tfmx_songplay:
+; d0=numéro de la piste dans le module
+; R0 = numéro de la piste dans le module
+		adr			R6,tfmx_MasterDataBlock			; CHfield0
+		str			R0,[R6,#tfmx_songfl-tfmx_MasterDataBlock]
+		mov			R8,#0
+		strb		R8,[R6,tfmx_re_in_save-tfmx_MasterDataBlock]
+		bl			tfmx_songset
+		mov			pc,lr
+
+;
+tfmx_playcont:
+		adr			R6,tfmx_MasterDataBlock			; CHfield0
+		orr			R0,R0,#0b100000000
+		str			R0,[R6,#tfmx_songfl-tfmx_MasterDataBlock]
+		mov			R8,#0
+		strb		R8,[R6,tfmx_re_in_save-tfmx_MasterDataBlock]		
+		bl			tfmx_songset
+		mov			pc,lr
+;		
+tfmx_songset:
+		bl			tfmx_alloff					; conserve R6
+		mov			R8,#0
+		strb		R8,[R6,#tfmx_allon-tfmx_MasterDataBlock]		;disable routine
+		str			R8,[R6,#tfmx_custom-tfmx_MasterDataBlock]		;disable custom pattern
+
+		ldr			R4,[R6,#tfmx_database-tfmx_MasterDataBlock]		;adress of musicdata
+		ldr			R8,[R6,#tfmx_songfl-tfmx_MasterDataBlock]		; new songnumber
+		and			R8,R8,#0x1F
+		add			R4,R4,R8, lsl #1						; R4=R4+R8*2 = extend to wordpointer + add database
+
+		adr			R5,tfmx_PatternDataBlock			; CHfield2		
+
+		ldrb		R9,[R6,#tfmx_song-tfmx_MasterDataBlock]			;old song number
+		mov			R9,R9,asl #24							; pour le passer en signé
+		mov			R9,R9,asr #24
+		bmi			tfmx_songset_nocont
+		and			R9,R9,#0x1F								; maxi 32 tracks / songs
+		adr			R0,tfmx_songcont
+		add			R0,R0,R9, lsl #1						; R0=R0+R9*2 / extend to wordpointer / a0=contvar.
+		
+		ldr			R8,[R5,#tfmx_offset_PatternDataBlock_cstep]		;put current step to buffer
+		str			R8,[R0]
+		ldr			R8,[R5,#tfmx_offset_PatternDataBlock_speed]
+		str			R8,[R0,#tfmx_PatternDataBlock_songspeed-tfmx_songcont]	;and songspeed
+		
+tfmx_songset_nocont:
+
+		ldr		R8,[R4,#tfmx_offset_fsteps]
+		str		R8,[R5,#tfmx_offset_PatternDataBlock_cstep]		; set current step
+		str		R8,[R5,#tfmx_offset_PatternDataBlock_fstep]		; set first   step
+		ldr		R8,[R4,#tfmx_offset_lsteps]
+		str		R8,[R5,#tfmx_offset_PatternDataBlock_lstep]		; set last    step
+
+		ldr		R10,[R4,#tfmx_offset_speeds]					;set song speed
+		
+
+		move.w	speeds(a4),d2
+		btst.b	#0,songfl(a6)		;test cont flag
+		beq.s	.norm1
+
+		lea	songcont(pc),a0		;a0=contvar.
+		adda.w	d0,a0
+		move.w	(a0),cstep(a5)		;set old current step
+		moveq.l	#0,d2
+		move.b	65(a0),d2		;and songspeed
+.norm1
+		move.w	#28,d1
+		lea	emptypatt(pc),a4
+.loop
+		move.l	a4,padress(a5,d1.w)
+		move.w	#$ff00,patterns(a5,d1.w)
+		clr.l	pstep(a5,d1.w)
+		subq.w	#4,d1
+		bpl.s	.loop
+		move.w	d2,speed(a5)
+
+		tst.b	songfl+1(a6)
+		bmi.s	.noplay
+		move.l	database(a6),a4		;a4=adress of musicdata
+		bsr	newtrack
+.noplay
+		clr.b	newstep(a6)		;clr flag for endofpattern
+		clr.w	scount(a6)		;clr sequencer speed counter
+		st.b	tloopcount(a6)
+		move.b	songfl+1(a6),song(a6)	;save new songnumber
+		clr.b	songfl(a6)		;clr songmode
+		clr.w	dmaconhelp(a6)
+		lea	infodat(pc),a4
+		clr.w	info_fade(a4)
+		clr.b	info_seqrun(a4)
+
+		bset.b	#1,PRA			;disable low-pass filter
+		move.w	#$ff,CHIP+ADKCON	;clr modulations
+		move.b	#1,allon(a6)		;enable routine
+;		tst.b	v7flag(a6)
+;		beq.s	.no7
+;		move.w	#$8208,CHIP+DMACON
+;		move.w	#$c400,CHIP+INTENA	;enable soundirq
+;		move.w	#$8400,CHIP+INTREQ	;do soundirqs immediatly
+;.no7
+		rts
+
+newtrack:
+		movem.l	a0-a1,-(sp)
+back
+		move.w	cstep(a5),d0		;current step
+		lsl.w	#4,d0			;*16
+		move.l	trackbase(a6),a0	;track-step-table
+		add.w	d0,a0			;+step
+		move.l	pattnbase(a6),a1	;pattern-adress-table
+
+		move.w	(a0)+,d0	;get statment (? special)
+		cmp.w	#$effe,d0	;if not equal $effe
+		bne.s	cont		;to continue (normal step)
+		move.w	(a0)+,d0	;get special-statment
+		add.w	d0,d0
+		add.w	d0,d0		;d0*4=pointer to adress of routine
+		cmp.w	#efxx2,d0
+		bcs.s	.ok
+		moveq.l	#0,d0
+.ok
+		jmp	.jumptable3(pc,d0.w)
+.jumptable3
+jumptable3
+		bra.w	stopsong	;$0000
+		bra.w	loopsong	;$0001
+		bra.w	speedsong	;$0002
+		bra.w	set7freq	;$0003
+		bra.w	fadesong	;$0004
+efxx1
+.efxx1
+efxx2		= efxx1-jumptable3
+cont
+					;track 1
+		move.w	d0,patterns(a5)	;store patternnumber/transpose
+		bmi.s	.pp1		;play pattern ?
+		clr.b	d0		;yes
+		lsr.w	#6,d0		;*64
+		move.l	(a1,d0.w),d0	;get 1st patternadress
+		add.l	a4,d0		;add database
+		move.l	d0,padress(a5)	;store pattern-adress
+		clr.l	pstep(a5)	;clear pattern-step
+		sf.b	ploopcount(a5)	;reset loops
+.pp1
+		movem.w	(a0)+,d0-d6
+		move.w	d0,patterns+4(a5)
+		bmi.s	.pp2
+		clr.b	d0
+		lsr.w	#6,d0
+		move.l	(a1,d0.w),d0
+		add.l	a4,d0
+		move.l	d0,padress+4(a5)
+		clr.l	pstep+4(a5)
+		sf.b	ploopcount+4(a5)
+.pp2
+		move.w	d1,patterns+8(a5)
+		bmi.s	.pp3
+		clr.b	d1
+		lsr.w	#6,d1
+		move.l	(a1,d1.w),d0
+		add.l	a4,d0
+		move.l	d0,padress+8(a5)
+		clr.l	pstep+8(a5)
+		sf.b	ploopcount+8(a5)
+.pp3
+		move.w	d2,patterns+12(a5)
+		bmi.s	.pp4
+		clr.b	d2
+		lsr.w	#6,d2
+		move.l	(a1,d2.w),d0
+		add.l	a4,d0
+		move.l	d0,padress+12(a5)
+		clr.l	pstep+12(a5)
+		sf.b	ploopcount+12(a5)
+.pp4
+		move.w	d3,patterns+16(a5)
+		bmi.s	.pp5
+		clr.b	d3
+		lsr.w	#6,d3
+		move.l	(a1,d3.w),d0
+		add.l	a4,d0
+		move.l	d0,padress+16(a5)
+		clr.l	pstep+16(a5)
+		sf.b	ploopcount+16(a5)
+.pp5
+		move.w	d4,patterns+20(a5)
+		bmi.s	.pp6
+		clr.b	d4
+		lsr.w	#6,d4
+		move.l	(a1,d4.w),d0
+		add.l	a4,d0
+		move.l	d0,padress+20(a5)
+		clr.l	pstep+20(a5)
+		sf.b	ploopcount+20(a5)
+.pp6
+		move.w	d5,patterns+24(a5)
+		bmi.s	.pp7
+		clr.b	d5
+		lsr.w	#6,d5
+		move.l	(a1,d5.w),d0
+		add.l	a4,d0
+		move.l	d0,padress+24(a5)
+		clr.l	pstep+24(a5)
+		sf.b	ploopcount+24(a5)
+.pp7
+		tst.w	custom(a6)
+		bne.s	.pp8
+		move.w	d6,patterns+28(a5)
+		bmi.s	.pp8
+		clr.b	d6
+		lsr.w	#6,d6
+		move.l	(a1,d6.w),d0
+		add.l	a4,d0
+		move.l	d0,padress+28(a5)
+		clr.l	pstep+28(a5)
+		sf.b	ploopcount+28(a5)
+.pp8
+		movem.l	(sp)+,a0-a1
+		rts
+
+aclear
+		clr.b	mstatus(a6)		;stop macro
+		sf.b	mskipflag(a6)
+		clr.l	priority(a6)		;clr priority/priority2/priocount
+		clr.l	fxnote(a6)
+		clr.w	ims_dlen(a6)
+		clr.b	riffstats(a6)
+		rts
+
+alloff
+		move.l	a6,-(sp)
+		lea	CHfield0(pc),a6
+		clr.b	allon(a6)		;disable routine
+		clr.w	dmaconhelp(a6)
+		lea	Synthfield0(pc),a6
+		bsr.s	aclear
+		lea	Synthfield1(pc),a6
+		bsr.s	aclear
+		lea	Synthfield2(pc),a6
+		bsr.s	aclear
+		lea	Synthfield3(pc),a6
+		bsr.s	aclear
+		lea	Synthfield4(pc),a6
+		bsr.s	aclear
+		lea	Synthfield5(pc),a6
+		bsr.s	aclear
+		lea	Synthfield6(pc),a6
+		bsr.s	aclear
+		lea	Synthfield7(pc),a6
+		bsr.b	aclear
+		bsr.w	set7off
+		clr.w	$dff0a8			;clr volume channel 1-...
+		clr.w	$dff0b8
+		clr.w	$dff0c8
+		clr.w	$dff0d8			;...-4
+		move.w	#$f,CHIP+DMACON		;stop sound DMA
+		move.w	#$780,CHIP+INTREQ	;clr soundirqs
+		move.w	#$780,CHIP+INTENA	;disable soundirq
+		move.w	#$780,CHIP+INTREQ	;clr soundirqs
+		lea	infodat(pc),a6
+		clr.b	info_seqrun(a6)
+		move.l	(sp)+,a6
+		rts
+		
+
+
+; AMIGA Hardware registers / a voir ensuite avec le mixage
+AMIGA_HARDWARE_REG_DMACON:		.long		0
+
+		
+
 
 ; variables pour les 4 voies gerées sur une seule
 tfmx_v7field:
@@ -215,14 +766,14 @@ tfmx_v7laut4:		.long		0
 
 ; valeurs pour écrire dans Paula
 tfmx_voice1dat:
-		.long		0			; startadr  : 0 (0)
-		.long		0			; len		: 4 (4)
-		.long		0			; period	: 8 (6)
-		.long		63			; volume	: 12 (8)
+		.long		0			; startadr  : 0 (0)   .l
+		.long		0			; len		: 4 (4)		.w
+		.long		0			; period	: 8 (6)		.w
+		.long		63			; volume	: 12 (8)		.w
 tfmx_v7loopv1:
-		.long		0
+		.long		0			;				16 (10)		.l
 tfmx_v7loopd1:
-		.long		0
+		.long		0			;				20 (14)		.w
 
 tfmx_voice2dat:
 		.long		0			; startadr
@@ -267,7 +818,7 @@ tfmx_v7clrbuffer:	.long	0
 tfmx_v7bytes:		.long	0					; .w => .long
 tfmx_v7bytes2:		.long	0					; .w => .long
 tfmx_v7perlong:		.long	0					;
-tfmx_v7regstore:	.long	0
+tfmx_v7regstore:	.long	0,0,0,0,0,0,0,0
 tfmx_v7stackbuffer:	.long 	0
 tfmx_flagtab:		.long	0,0,0,0
 tfmx_EndFlag:
@@ -334,7 +885,7 @@ tfmx_v7dmahelp:		.long		0
 ;***
 ;	offsets for Synthfields (synthesizer)
 ;
-Synoffsets:
+tfmx_Synoffsets:
  		.skip		16*4			; 16 .long
 ;0
 .equ tfmx_offset_Synoffsets_mstatus,			0		; .byte		1	;	 **
@@ -430,8 +981,7 @@ Synoffsets:
 .equ tfmx_offset_Synoffsets_set_v7wave,			216		; rs.l	1	;
 
 
-tfmx_Synoffsets:
-		.skip		16*4
+
 		
 
 tfmx_Synthfield0:
@@ -936,4 +1486,13 @@ tfmx_nottab:
 	.long	214, 202, 191, 180, 170, 160, 151, 143, 135, 127, 120, 113
 	.long	214, 202, 191, 180
 
-tfmx_buffer_musique:			.skip		maxbyts
+tfmx_v7contab:		.skip		4*256
+tfmx_v7voltab:		.skip		64*256
+tfmx_Header:		.skip		248*2
+tfmx_buffer_musique:			.skip		tfmx_maxbyts
+
+mdat:		.incbin		"T2_intro_and_title.mdat"
+		.p2align	2
+smpl:		.incbin		"T2_intro_and_title.smpl"
+		.p2align	2
+

@@ -1,5 +1,3 @@
-; version 8 voies
-
 ; OK : - demarrer sur un petit buffer vide : en fait ecrire dans sptr : 0x36C0000
 ; OK - remplir chaque VBL N samples
 ; OK - remplir chaque VBL N samples à une autre fréquence : 416 octets / 48 / 20833.333 hz.
@@ -72,7 +70,6 @@
 
 .equ		ecart_sample,		1024
 
-.equ		nombre_de_voies,	8
 
 
 ; parametre de qualité
@@ -81,28 +78,23 @@
 
 .if frequence_replay = 20833	
 	.equ		nb_octets_par_vbl,	416								; 416 : 416x50.0801282 = 20 833,333
-	.equ		nb_octets_par_vbl_fois_nb_canaux,	nb_octets_par_vbl*nombre_de_voies
+	.equ		nb_octets_par_vbl_fois_4,	nb_octets_par_vbl*4
 	.equ		ms_freq_Archi,		48								; 48 : 1 000 000 / 48 = 20 833,333
 	.equ		ms_freq_Archi_div_4_pour_registre_direct,		ms_freq_Archi/4
 .endif
 
 .if frequence_replay = 31250	
 	.equ		nb_octets_par_vbl,	624								; 624x50.0801282 = 31 249,9999968
-	.equ		nb_octets_par_vbl_fois_nb_canaux,	nb_octets_par_vbl*nombre_de_voies
+	.equ		nb_octets_par_vbl_fois_4,	nb_octets_par_vbl*4
 	.equ		ms_freq_Archi,		32								;  1000000/32=31250
 	.equ		ms_freq_Archi_div_4_pour_registre_direct,		ms_freq_Archi/4
 .endif
 
 .if frequence_replay = 62500
 	.equ		nb_octets_par_vbl,	1248							; 1248x50.0801282 = 62 499,999999936
-	.equ		nb_octets_par_vbl_fois_nb_canaux,	nb_octets_par_vbl*nombre_de_voies
+	.equ		nb_octets_par_vbl_fois_4,	nb_octets_par_vbl*4
 	.equ		ms_freq_Archi,		16								;  1000000/16=62500
 	.equ		ms_freq_Archi_div_4_pour_registre_direct,		ms_freq_Archi/4
-.endif
-
-.if	nombre_de_voies = 8
-	.equ		nb_octets_par_vbl_fois_nb_canaux,	nb_octets_par_vbl*8
-	.equ		ms_freq_Archi_div_8_pour_registre_direct,		ms_freq_Archi/8
 .endif
 
 	.org 0x8000
@@ -291,9 +283,6 @@ boucle_attente_dma_modifie2:
 
 	mov		R0,R0
 	bl		LSP_PlayerInit_standard
-	.if		nombre_de_voies=8
-		bl		LSP_PlayerInit_standard_voies_5a8
-	.endif
 	bl		convertion_samples_instruments_en_mu_law
 	bl		ajout_ecart_entre_instruments_et_copie_repetitions
 
@@ -301,9 +290,7 @@ boucle_attente_dma_modifie2:
 ; pointeur sur stream words : LSPVars_standard+4
 ; pointeur sur stream bytes = fin du stream words = LSPVars_standard
 	bl		inverse_bytes_stream_words
-	.if		nombre_de_voies=8
-		bl		inverse_bytes_stream_words_voies_5a8
-	.endif
+
 
 	
 	
@@ -311,6 +298,15 @@ boucle_attente_dma_modifie2:
 ;	bl		LSP_Player_standard
 	
 
+
+
+		
+
+
+
+
+	
+	
 
  ; Set screen size for number of buffers
 	MOV 	r0, #DynArea_Screen
@@ -338,15 +334,11 @@ boucle_attente_dma_modifie2:
 	;add		R0,R0,#4096
 	; add		R0,R0,#65536
 	
-	ldr		R2,pointeur_adresse_dma1_logical
-	str		R0,[R2]
-
+	str		R0,adresse_dma1_logical
 	add		R1,R0,#8192
-
-	ldr		R2,pointeur_adresse_dma2_logical
-	str		R1,[R2]
-	
-	
+	str		R1,adresse_dma2_logical
+	add		R1,R1,#8192
+	str		R1,adresse_petit_dma_logical	
 
 
 ;------------------	
@@ -366,10 +358,9 @@ boucle_attente_dma_modifie2:
 
 	
 	
-		ldr		R6,pointeur_adresse_dma1_logical
-		ldr		R6,[R6]
-		ldr		R5,pointeur_adresse_dma2_logical
-		ldr		R5,[R5]
+	
+		ldr		R6,adresse_dma1_logical
+		ldr		R5,adresse_dma2_logical
 	
 		SWI       OS_ReadMemMapInfo 		;  read the page size used by the memory controller and the number of pages in use
 		STR       R0,pagesize
@@ -394,8 +385,7 @@ boucle_attente_dma_modifie2:
 		LDR       R4,pagesize
 		MUL       R1,R4,R1
 		ADD       R1,R1,R5
-		ldr		R10,pointeur_adresse_dma2_memc
-		STR       R1,[R10] 			;got the correct phys addr of buf2 (R7)
+		STR       R1,adresse_dma2_memc 			;got the correct phys addr of buf2 (R7)
 	
 
 		MOV       R1,#0
@@ -409,10 +399,32 @@ boucle_attente_dma_modifie2:
 		LDR       R4,pagesize
 		MUL       R1,R4,R1
 		ADD       R1,R1,R6
-		ldr		R10,pointeur_adresse_dma1_memc
-		STR       R1,[R10]			 ;got the correct phys addr of buf1 (R8)
+		STR       R1,adresse_dma1_memc ;got the correct phys addr of buf1 (R8)
 
 
+		ldr			R5,adresse_petit_dma_logical
+	
+		SWI       OS_ReadMemMapInfo 		;  read the page size used by the memory controller and the number of pages in use
+		STR       R0,pagesize
+		STR       R1,numpages
+
+		SUB       R4,R0,#1			; R4 = pagesize - 1
+		BIC       R7,R5,R4          ; page for dmabuffer2 : 
+		SUB       R5,R5,R7          ;offset into page dma2
+
+		ADR       R0,pagefindblk
+		MOV       R1,#0
+		STR       R1,[R0,#0]
+		STR       R1,[R0,#8]
+		MVN       R1,#0
+		STR       R1,[R0,#12]
+		STR       R7,[R0,#4]
+		SWI       OS_FindMemMapEntries 		;not RISC OS 2 or earlier
+		LDR       R1,[R0,#0]
+		LDR       R4,pagesize
+		MUL       R1,R4,R1
+		ADD       R1,R1,R5
+		STR       R1,adresse_petit_dma_memc 			;got the correct phys addr of petit dma buf (R5)
 	
 
 
@@ -495,18 +507,16 @@ boucle_attente_dma_modifie2:
 	;SWI		22
 	;MOVNV R0,R0  
 
-	ldr		R1,pointeur_adresse_dma1_logical
-	ldr		R1,[R1]
-	mov		R2,#nb_octets_par_vbl*2					; buffer 1 
+	ldr		R1,adresse_dma1_logical
+	mov		R2,#nb_octets_par_vbl/4					; buffer 1 
 	mov		R0,#0
 boucle_cls_buffer_dma1:
 	strb	R0,[R1],#1
 	subs	R2,R2,#1
 	bgt		boucle_cls_buffer_dma1
 
-	ldr		R1,pointeur_adresse_dma2_logical
-	ldr		R1,[R1]
-	mov		R2,#nb_octets_par_vbl*2					; buffer 2
+	ldr		R1,adresse_dma2_logical
+	mov		R2,#nb_octets_par_vbl/4					; buffer 2
 	mov		R0,#0
 boucle_cls_buffer_dma2:
 	strb	R0,[R1],#1
@@ -542,7 +552,7 @@ boucle_cls_buffer_dma2:
 ; bug sound configure
 
 	MOV       R0,#1							;  	Channels for 8 bit sound
-	MOV       R1,#nb_octets_par_vbl_fois_nb_canaux		; Samples per channel (in bytes)
+	MOV       R1,#nb_octets_par_vbl_fois_4		; Samples per channel (in bytes)
 	MOV       R2,#ms_freq_Archi				; Sample period (in microseconds per channel)  = 48  / 125 pour 8000hz
 	MOV       R3,#0
 	MOV       R4,#0
@@ -554,15 +564,15 @@ boucle_cls_buffer_dma2:
 
 
 
-	MOV       R0,#nombre_de_voies			;  	Channels for 8 bit sound
+	MOV       R0,#4							;  	Channels for 8 bit sound
 	MOV       R1,#0							; Samples per channel (in bytes)
 	MOV       R2,#0							; Sample period (in microseconds per channel)  = 48  / 125 pour 8000hz
 	MOV       R3,#0
 	MOV       R4,#0
 	SWI       XSound_Configure						;"Sound_Configure"
 
-	MOV       R0,#nombre_de_voies				;  	Channels for 8 bit sound
-	MOV       R1,#nb_octets_par_vbl_fois_nb_canaux		; Samples per channel (in bytes)
+	MOV       R0,#4							;  	Channels for 8 bit sound
+	MOV       R1,#nb_octets_par_vbl_fois_4		; Samples per channel (in bytes)
 	MOV       R2,#ms_freq_Archi				; Sample period (in microseconds per channel)  = 48  / 125 pour 8000hz
 	MOV       R3,#0
 	MOV       R4,#0
@@ -570,7 +580,7 @@ boucle_cls_buffer_dma2:
 
 
 
-	bl		set_my_stereos_8voies
+	bl		set_my_stereos
 
 	MOV       R0,#0							;  	Channels for 8 bit sound
 	MOV       R1,#0						; Samples per channel (in bytes)
@@ -580,7 +590,7 @@ boucle_cls_buffer_dma2:
 	SWI       XSound_Configure						;"Sound_Configure"
 	MUL       R0,R1,R0
 	
-	bl		set_my_stereos_8voies
+	bl		set_my_stereos
 
 
 
@@ -603,7 +613,6 @@ boucle_cls_buffer_dma2:
 ; OK : DMACon = 0
 
 	adr		R0,Paula_registers_external
-	adr		R5,Paula_registers_external_voies_5a8
 	ldr		R1,pointeur_debut_silence
 	adr		R4,LSPBank
 	subs	R2,R1,R4			; offset debut silence
@@ -613,44 +622,29 @@ boucle_cls_buffer_dma2:
 	str		R2,[R0,#0x14]
 	str		R2,[R0,#0x28]
 	str		R2,[R0,#0x3C]
-	str		R2,[R5,#0x00]		; External Audio channel 0 location
-	str		R2,[R5,#0x14]
-	str		R2,[R5,#0x28]
-	str		R2,[R5,#0x3C]
 	
 	mov		R2,R2,lsl #12		; << 12
 	str		R2,[R0,#0x50]		; internal offsets pointeur debut sample A B C D
 	str		R2,[R0,#0x60]
 	str		R2,[R0,#0x70]
 	str		R2,[R0,#0x80]
-	str		R2,[R5,#0x50]		; internal offsets pointeur debut sample A B C D
-	str		R2,[R5,#0x60]
-	str		R2,[R5,#0x70]
-	str		R2,[R5,#0x80]		
+		
 	
 	mov		R2,#0					; External
 	
 	str		R2,[R0,#0x90]			; DMACon = 0000
-	str		R2,[R5,#0x90]			; DMACon = 0000
 	
 	str		R2,[R0,#0x0C]			; volume canal A
 	str		R2,[R0,#0x20]			; volume canal B
 	str		R2,[R0,#0x34]			; volume canal C
 	str		R2,[R0,#0x48]			; volume canal D
-	str		R2,[R5,#0x0C]			; volume canal A
-	str		R2,[R5,#0x20]			; volume canal B
-	str		R2,[R5,#0x34]			; volume canal C
-	str		R2,[R5,#0x48]			; volume canal D
-	
+
 	mov		R2,#0					; Internal increment A B C D << 12
 	str		R2,[R0,#0x5C]
 	str		R2,[R0,#0x6C]
 	str		R2,[R0,#0x7C]
 	str		R2,[R0,#0x8C]
-	str		R2,[R5,#0x5C]
-	str		R2,[R5,#0x6C]
-	str		R2,[R5,#0x7C]
-	str		R2,[R5,#0x8C]	
+	
 	
 	ldr		R3,pointeur_LSPBank
 	ldr		R3,pointeur_fin_silence
@@ -661,11 +655,7 @@ boucle_cls_buffer_dma2:
 	str		R3,[R0,#0x64]
 	str		R3,[R0,#0x74]
 	str		R3,[R0,#0x84]
-	str		R3,[R5,#0x54]			; end sample offset channel 0
-	str		R3,[R5,#0x64]
-	str		R3,[R5,#0x74]
-	str		R3,[R5,#0x84]
-	
+
 	mov		R3,#fin_silence-silence	; taille du silence
 	mov		R3,R3,lsr #1			; en mots/word 
 	
@@ -673,20 +663,13 @@ boucle_cls_buffer_dma2:
 	str		R3,[R0,#0x18]			; External Audio channel 1 length
 	str		R3,[R0,#0x2C]			; External Audio channel 2 length
 	str		R3,[R0,#0x40]			; External Audio channel 3 length
-	str		R3,[R5,#0x04]			; External Audio channel 0 length
-	str		R3,[R5,#0x18]			; External Audio channel 1 length
-	str		R3,[R5,#0x2C]			; External Audio channel 2 length
-	str		R3,[R5,#0x40]			; External Audio channel 3 length
 	
 	mov		R2,#512
 	str		R2,[R0,#0x08]			; External Audio period 0 / note
 	str		R2,[R0,#0x1C]			; External Audio period 1 / note
 	str		R2,[R0,#0x30]			; External Audio period 2 / note
 	str		R2,[R0,#0x44]			; External Audio period 3 / note
-	str		R2,[R5,#0x08]			; External Audio period 0 / note
-	str		R2,[R5,#0x1C]			; External Audio period 1 / note
-	str		R2,[R5,#0x30]			; External Audio period 2 / note
-	str		R2,[R5,#0x44]			; External Audio period 3 / note
+
 
 
 
@@ -710,15 +693,7 @@ boucle_cls_buffer_dma2:
 ; change bien la frequence
 ;sound frequency register ? 0xC0 / VIDC
 	;mov		R0,#12-1
-	.if		nombre_de_voies=4
-		mov		R0,#ms_freq_Archi_div_4_pour_registre_direct-1
-	.endif
-
-	.if		nombre_de_voies=8
-		mov		R0,#ms_freq_Archi_div_8_pour_registre_direct-1
-	.endif
-
-
+	mov		R0,#ms_freq_Archi_div_4_pour_registre_direct-1
 
 	mov		r1,#0x3400000               
 ; sound frequency VIDC
@@ -780,9 +755,7 @@ boucle_cls_buffer_dma2:
 
 ; remplit le premier buffer 
 	bl		Paula_remplissage_DMA_416
-	.if		nombre_de_voies=8
-		bl		Paula_remplissage_DMA_416_voies_5a8
-	.endif
+
 
 
 	SWI		22
@@ -836,9 +809,6 @@ boucle_attente:
 	mov   r0,r0	
 
 	bl		LSP_Player_standard
-	.if		nombre_de_voies=8
-		bl		LSP_Player_standard_voies_5a8
-	.endif
 
 ; on passe le fond en rouge
 	SWI		22
@@ -858,10 +828,18 @@ boucle_attente:
 
 ; remplissage 
 	bl		Paula_remplissage_DMA_416
-	.if		nombre_de_voies=8
-		bl		Paula_remplissage_DMA_416_voies_5a8
-	.endif
 	
+	
+	.ifeq		1
+	mov		R0,#0
+	bl		mixage_DMA_1_voie
+	mov		R0,#1
+	bl		mixage_DMA_1_voie
+	mov		R0,#2
+	bl		mixage_DMA_1_voie
+	mov		R0,#3
+	bl		mixage_DMA_1_voie
+	.endif
 
 	SWI		22
 	MOVNV R0,R0
@@ -999,12 +977,6 @@ fake_fill_routine:
 		mov		R0,R0
 		mov		R0,R0
 		LDMFD   R13!,{PC}
-
-
-pointeur_debut_silence:		.long	silence
-pointeur_fin_silence:		.long	fin_silence
-longueur_silence:			.long	02
-
 		
 mask_sound_off_memc_control_register:		.long		0b011111111111
 
@@ -1024,8 +996,36 @@ valeur_moins_16384:		.long		-16384
 
 sauve_R1_compteur:		.long		0
 
+memc_control_register_original:			.long	0
+taille_actuelle_memoire_ecran:			.long		0
 
 
+adresse_dma1_logical:				.long		0
+;adresse_dma1_logical_courant:		.long		0
+;adresse_dma1_logical_fin:			.long		0
+adresse_dma1_memc:					.long		0
+;adresse_dma1_memc_courant:			.long		0
+
+adresse_petit_dma_logical:			.long		0
+adresse_petit_dma_memc:				.long		0
+
+adresse_dma2_logical:				.long		0
+;adresse_dma2_logical_courant:		.long		0
+;adresse_dma2_logical_fin:			.long		0
+adresse_dma2_memc:					.long		0
+;adresse_dma2_memc_courant:			.long		0
+
+;adresse_dma3_logical:				.long		0
+;adresse_dma3_logical_courant:		.long		0
+;adresse_dma3_logical_fin:			.long		0
+;adresse_dma3_memc:					.long		0
+;adresse_dma3_memc_courant:			.long		0
+
+;adresse_dma4_logical:				.long		0
+;adresse_dma4_logical_courant:		.long		0
+;adresse_dma4_logical_fin:			.long		0
+;adresse_dma4_memc:					.long		0
+;adresse_dma4_memc_courant:			.long		0
 
 
 pagesize:		.long	0
@@ -1035,6 +1035,10 @@ physicaldma1:	.long	0
 physicaldma2:	.long	0
 
 
+offset_silence:				.long	silence-LSPBank
+pointeur_debut_silence:		.long	silence
+pointeur_fin_silence:		.long	fin_silence
+longueur_silence:			.long	02
 
 nombre_instruments_du_module:		.long		0
 
@@ -1052,18 +1056,6 @@ Amiga_multiplier:	.long		0xE3005235
 valeur9521122:		.long		9521122
 
 fin_de_la_memoire_video:	.long		0
-
-
-memc_control_register_original:			.long	0
-taille_actuelle_memoire_ecran:			.long		0
-
-pointeur_adresse_dma1_logical:		.long		adresse_dma1_logical
-pointeur_adresse_dma1_memc:			.long		adresse_dma1_memc
-pointeur_adresse_dma2_logical:		.long		adresse_dma2_logical
-pointeur_adresse_dma2_memc:			.long		adresse_dma2_memc
-
-
-
 
 ;--------------------------------------------------------------------------------------------
 ; routines LSP
@@ -1436,373 +1428,6 @@ r_chgbpm_Player_standard:
 	b		process_Player_standard	
 
 
-;-------------------------------------
-; version voies 5 à 8
-LSP_Player_standard_voies_5a8:								; player tick handle
-	adr		R6,Paula_registers_external_voies_5a8
-	adr		R1,LSPVars_standard_voies_5a8
-	ldr		R0,[R1]							; byte stream	= $C412
-
-process_Player_standard_voies_5a8:
-	mov		R11,#0
-	ldrb	R10,[R0],#1						; read 1 byte
-	cmp		R10,#0
-	bne		swCode_Player_standard_voies_5a8
-	mov		R11,#0x100
-	ldrb	R10,[R0],#1						; read 1 byte
-	cmp		R10,#0
-	bne		swCode_Player_standard_voies_5a8
-	mov		R11,#0x200
-	ldrb	R10,[R0],#1						; read 1 byte
-
-swCode_Player_standard_voies_5a8:
-	add		R10,R10,R11					; gere le +$100 et le +$200
-	
-	add		R10,R10,R10					; R10*2 ; valeur byte stream * 2
-
-	ldr		R2,[R1,#12]					; R2=m_codeTableAddr = table des codes
-
-	ldrb	R8,[R2,R10]					; 1 byte : code
-	add		R10,R10,#1
-	ldrb	R9,[R2,R10]					; 1 byte : code
-	adds	R10,R9,R8,asl #8			; R10=code
-
-	beq		noInst_Player_standard_voies_5a8		; code = 0 => no instrument, aucune action
-
-	mov		R8,#0xFFFF
-	cmp		R10,R8
-	beq		r_rewind_Player_standard_voies_5a8
-
-	mov		R8,#0xF00F
-	cmp		R10,R8
-	beq		r_chgbpm_Player_standard_voies_5a8
-	
-;.optim:
-optim_Player_standard_voies_5a8:	
-	mov		R11,#15
-	and		R11,R11,R10					; = 4 bits du bas du code = modif DMACon
-
-; R13=mask pour tests
-	mov		R13,#0b1000000000000000	
-
-; ------------ repetitions ------------------
-	tst		R10,R13						; test bit 15
-	beq		noRd_Player_standard_voies_5a8
-; repetition canal D
-	
-	ldr		R3,resetv_voies_5a8
-	add		R7,R6,#0x3C
-	ldmia	R3!,{R8-R9}
-	stmia	R7,{R8-R9}
-	;ldr		R8,[R3],#4					; pointeur sur instrument, partie repetition
-	;str		R8,[R6,#0x3C]				; D0=AUD3LCH_L Audio channel 3 location offset	
-	;ldr		R8,[R3],#4	
-	;str		R8,[R6,#0x40]				; AUD3LEN	
-
-noRd_Player_standard_voies_5a8:
-	mov		R13,R13,lsr #1				; rotation du masque de test pour test bit suivant
-	tst		R10,R13						; test bit 14
-	beq		noRc_Player_standard_voies_5a8
-
-;	swi		BKP
-; repetition canal C
-	ldr		R3,resetv_voies_5a8+4
-	add		R7,R6,#0x28
-	ldmia	R3!,{R8-R9}
-	stmia	R7,{R8-R9}
-	;ldr		R8,[R3],#4					; pointeur sur instrument, partie repetition
-	;str		R8,[R6,#0x28]				; D0=AUD2LCH_L Audio channel 2 location offset	
-	;ldr		R8,[R3],#4	
-	;str		R8,[R6,#0x2C]				; AUD2LEN		
-
-noRc_Player_standard_voies_5a8:	
-	mov		R13,R13,lsr #1				; rotation du masque de test pour test bit suivant
-	tst		R10,R13						; test bit 13
-	beq		noRb_Player_standard_voies_5a8
-; repetition canal B
-	ldr		R3,resetv_voies_5a8+8
-	add		R7,R6,#0x14
-	ldmia	R3!,{R8-R9}
-	stmia	R7,{R8-R9}
-	;ldr		R8,[R3],#4					; pointeur sur instrument, partie repetition
-	;str		R8,[R6,#0x14]				; D0=AUD1LCH_L Audio channel 1 location offset	
-	;ldr		R8,[R3],#4	
-	;str		R8,[R6,#0x18]				; AUD1LEN		
-	
-noRb_Player_standard_voies_5a8:
-	mov		R13,R13,lsr #1				; rotation du masque de test pour test bit suivant
-	tst		R10,R13						; test bit 12
-	beq		noRa_Player_standard_voies_5a8
-; repetition canal A
-	ldr		R3,resetv_voies_5a8+12
-	;add		R7,R6,#0x00
-	ldmia	R3!,{R8-R9}
-	stmia	R6,{R8-R9}
-	;ldr		R8,[R3],#4					; pointeur sur instrument, partie repetition
-	;str		R8,[R6,#0x00]				; D0=AUD1LCH_L Audio channel 1 location offset	
-	;ldr		R8,[R3],#4	
-	;str		R8,[R6,#0x04]				; AUD1LEN	
-
-; ------------ volumes - stream bytes ------------------
-; 4 tests pour les volumes	
-noRa_Player_standard_voies_5a8:
-	mov		R13,R13,lsr #1				; test bit 11
-	tst		R10,R13
-	beq		no_V_d_Player_standard_voies_5a8
-	ldrb	R8,[R0],#1
-	str		R8,[R6,#0x48]				; volume D
-
-no_V_d_Player_standard_voies_5a8:
-	mov		R13,R13,lsr #1				; test bit 10
-	tst		R10,R13
-	beq		no_V_c_Player_standard_voies_5a8
-	ldrb	R8,[R0],#1
-	str		R8,[R6,#0x34]				; volume C
-	
-no_V_c_Player_standard_voies_5a8:
-	mov		R13,R13,lsr #1				; test bit 09
-	tst		R10,R13
-	beq		no_V_b_Player_standard_voies_5a8
-	ldrb	R8,[R0],#1
-	str		R8,[R6,#0x20]				; volume B
-
-no_V_b_Player_standard_voies_5a8:
-	mov		R13,R13,lsr #1				; test bit 08
-	tst		R10,R13
-	beq		no_V_a_Player_standard_voies_5a8
-	ldrb	R8,[R0],#1
-	str		R8,[R6,#0x0C]				; volume A
-
-no_V_a_Player_standard_voies_5a8:
-
-	str		R0,[R1],#4					; store byte stream ptr
-	
-; --------- debut lecture du flux en word
-	ldr		R0,[R1]
-
-; ------------ notes/periods ------------------
-; 4 tests pour les notes
-	mov		R13,R13,lsr #1				; test pour note canal D
-	tst		R10,R13						; test bit 07
-	beq		no_P_d_Player_standard_voies_5a8
-	ldr		R8,[R0],#2					; lecture d'un word inversé
-	mov		R8,R8,lsl #16
-	mov		R8,R8,asr #16
-	str		R8,[R6,#0x44]				; changement de note canal D
-	
-no_P_d_Player_standard_voies_5a8:
-	mov		R13,R13,lsr #1				; test pour note canal C
-	tst		R10,R13						; test bit 06
-	beq		no_P_c_Player_standard_voies_5a8
-	ldr		R8,[R0],#2					; lecture d'un word inversé
-	mov		R8,R8,lsl #16
-	mov		R8,R8,asr #16
-	str		R8,[R6,#0x30]				; changement de note canal C
-	
-no_P_c_Player_standard_voies_5a8:
-	mov		R13,R13,lsr #1				; test pour note canal B
-	tst		R10,R13						; test bit 05
-	beq		no_P_b_Player_standard_voies_5a8
-	ldr		R8,[R0],#2					; lecture d'un word inversé
-	mov		R8,R8,lsl #16
-	mov		R8,R8,asr #16
-	str		R8,[R6,#0x1C]				; changement de note canal B
-	
-no_P_b_Player_standard_voies_5a8:
-	mov		R13,R13,lsr #1				; test pour note canal A
-	tst		R10,R13						; test bit 04
-	beq		no_P_a_Player_standard_voies_5a8
-	ldr		R8,[R0],#2					; lecture d'un word inversé
-	mov		R8,R8,lsl #16
-	mov		R8,R8,asr #16
-	str		R8,[R6,#0x08]				; changement de note canal A
-	
-no_P_a_Player_standard_voies_5a8:
-;.noPa
-	cmp		R11,#0
-	beq		noInst_Player_standard_voies_5a8
-	
-; gestion du dmacon patch, donc coupe certaines voies
-; Notez que si vous remettez en route ces canaux DMA, Paula recommencera le son du début
-; dmacon : 0x90
-
-	orr		R3,R11,#0x8000				; activation des canaux, bit 15=0
-	;str		R3,DMAcon_Temp
-	str		R11,[R6,#0x90]				; DMACon
-
-	adr		R3,resetv_voies_5a8
-
-	mov		R2,#0						; position courante et actualisée par rapport aux instruments en version * 12
-
-	adr		R4,table_12_16
-	adr		R5,LSP_InstrumentInfo-16	
-
-; ------------ instruments ------------------
-
-; utilisés :	R13,R10,R0,R1,R2,R3,R4,R8,R9,R6
-; le numéro d'instrument est relatif au numéro de l'instrument précédent	
-; le numéro d'instrument est multiplié par 12 et doit etre multiplié par 16 : table de conversion.
-	mov		R13,R13,lsr #1				; test bit 03
-	tst		R10,R13
-	beq		no_I_d_Player_standard_voies_5a8
-	ldr		R8,[R0],#2					; lecture d'un word inversé signé
-	mov		R8,R8,lsl #16
-	mov		R8,R8,asr #16
-
-	adds	R2,R2,R8					; position relative en *12
-	ldr		R8,[R4,R2]					; *16 en fonction de la position relative
-	
-; on doit ecraser : location:OK, length:OK, current sample offset:OK,end sample offset:OK
-	
-	add		R12,R5,R8					; LSP_InstrumentInfo-16 + n°instrument * 16
-; pointeurs debut sample
-
-;	ldr		R8,[R12],#4					; AUD3LCH = offset instrument canal D0
-;	str		R8,[R6,#0x3C]				; External Audio channel 3 location
-;	mov		R9,R8,lsl #12
-;	str		R9,[R6,#0x80]				; Internal current sample offset channel 3 << 12
-; longeur sample
-;	ldr		R9,[R12],#4					; AUD3LEN : longueur instrument
-;	str		R9,[R6,#0x40]				; Audio channel 3 length
-;	add		R8,R8,R9, lsl #1			; R8 = debut + 2 x longueur en mot => fin
-;	str		R8,[R6,#0x84]				; end sample offset channel 3
-; on remplit Internal
-
-
-	ldmia	R12!,{R8-R9}				; R8=AUD3LCH = offset instrument canal D0 / R9=AUD3LEN : longueur instrument
-	add		R11,R6,#0x3C
-	stmia	R11,{R8-R9}				; en 0x3C et 0x40
-	add		R9,R8,R9, lsl #1			; R9 = debut + 2 x longueur en mot => fin
-	mov		R8,R8,lsl #12				; Internal current sample offset channel 3 << 12
-	add		R11,R6,#0x80				; 
-	stmia	R11,{R8-R9}				; Internal current sample offset channel 3 << 12 + end sample offset channel 3
-
-	
-	
-	str		R12,[R3]					; pointeur position de la repetition de l'instrument canal D
-	add		R2,R2,#6					; on avance le pointeur relatif car on a lu debut ins + longueur ins = 6 octets
-	
-no_I_d_Player_standard_voies_5a8:	
-	mov		R13,R13,lsr #1				; test bit 02
-	tst		R10,R13
-	beq		no_I_c_Player_standard_voies_5a8
-	ldr		R8,[R0],#2					; lecture d'un word inversé signé
-	mov		R8,R8,lsl #16
-	mov		R8,R8,asr #16
-
-	adds	R2,R2,R8					; position relative en *12
-	ldr		R8,[R4,R2]					; en fonction de la position relative	
-	
-	add		R12,R5,R8					; LSP_InstrumentInfo-16 + n°instrument
-	
-	
-	
-	;ldr		R8,[R12],#4					; AUD2LCH = offset instrument canal D0
-	;str		R8,[R6,#0x28]				; Audio channel 2 location
-	;mov		R9,R8,lsl #12
-	;str		R9,[R6,#0x70]				; Internal current sample offset channel 2 << 12
-
-	;ldr		R9,[R12],#4					; AUD2LEN : longueur instrument
-	;str		R9,[R6,#0x2C]				; Audio channel 2 length
-	;add		R8,R8,R9, lsl #1			; R8 = debut + 2 x longueur en mot => fin
-	;str		R8,[R6,#0x74]				; end sample offset channel 2
-	ldmia	R12!,{R8-R9}				; R8=AUD2LCH = offset instrument canal D0 / R9=AUD2LEN : longueur instrument
-	add		R11,R6,#0x28
-	stmia	R11,{R8-R9}				; en 0x28 et 0x2C
-	add		R9,R8,R9, lsl #1			; R9 = debut + 2 x longueur en mot => fin
-	mov		R8,R8,lsl #12				; Internal current sample offset channel 3 << 12
-	add		R11,R6,#0x70				; 
-	stmia	R11,{R8-R9}				; Internal current sample offset channel 3 << 12 + end sample offset channel 2
-
-	str		R12,[R3,#04]				; pointeur position de la repetition de l'instrument canal C
-	add		R2,R2,#6					; on avance le pointeur relatif car on a lu debut ins + longueur ins = 6 octets
-
-no_I_c_Player_standard_voies_5a8:	
-	mov		R13,R13,lsr #1				; test bit 01
-	tst		R10,R13
-	beq		no_I_b_Player_standard_voies_5a8
-	ldr		R8,[R0],#2					; lecture d'un word inversé signé
-	mov		R8,R8,lsl #16
-	mov		R8,R8,asr #16
-
-	adds	R2,R2,R8					; position relative en *12
-	ldr		R8,[R4,R2]					; *16 en fonction de la position relative		
-	
-	add		R12,R5,R8					; LSP_InstrumentInfo-16 + n°instrument
-	
-	;ldr		R8,[R12],#4					; AUD3LCH = offset instrument canal D0
-	;str		R8,[R6,#0x14]				; Audio channel 3 location
-	;mov		R9,R8,lsl #12
-	;str		R9,[R6,#0x60]				; Internal current sample offset channel 1 << 12
-
-	;ldr		R9,[R12],#4					; AUD3LEN : longueur instrument
-	;str		R9,[R6,#0x18]				; Audio channel 3 length
-	;add		R8,R8,R9, lsl #1			; R8 = debut + 2 x longueur en mot => fin
-	;str		R8,[R6,#0x64]				; end sample offset channel 1
-	ldmia	R12!,{R8-R9}				; R8=AUD2LCH = offset instrument canal D0 / R9=AUD2LEN : longueur instrument
-	add		R11,R6,#0x14
-	stmia	R11,{R8-R9}				; en 0x14 et 0x18
-	add		R9,R8,R9, lsl #1			; R9 = debut + 2 x longueur en mot => fin
-	mov		R8,R8,lsl #12				; Internal current sample offset channel 3 << 12
-	add		R11,R6,#0x60				; 
-	stmia	R11,{R8-R9}				; Internal current sample offset channel 3 << 12 + end sample offset channel 2
-	
-	str		R12,[R3,#8]					; pointeur position de la repetition de l'instrument canal B
-	add		R2,R2,#6					; on avance le pointeur relatif car on a lu debut ins + longueur ins = 6 octets
-	
-no_I_b_Player_standard_voies_5a8:	
-	mov		R13,R13,lsr #1				; test bit 00
-	tst		R10,R13
-	beq		no_I_a_Player_standard_voies_5a8
-	ldr		R8,[R0],#2					; lecture d'un word inversé signé
-	mov		R8,R8,lsl #16
-	mov		R8,R8,asr #16
-
-	adds	R2,R2,R8					; position relative en *12
-	ldr		R8,[R4,R2]					; *16 en fonction de la position relative		
-	
-	add		R12,R5,R8					; LSP_InstrumentInfo-16 + n°instrument
-;	ldr		R8,[R12],#4					; AUD3LCH = offset instrument canal D0
-;	str		R8,[R6,#0x00]				; Audio channel 0 location
-;	mov		R9,R8,lsl #12
-;	str		R9,[R6,#0x50]				; Internal current sample offset channel 0 << 12
-
-;	ldr		R9,[R12],#4					; AUD3LEN : longueur instrument
-;	str		R9,[R6,#0x04]				; Audio channel 0 length
-;	add		R8,R8,R9, lsl #1			; R8 = debut + 2 x longueur en mot => fin
-;	str		R8,[R6,#0x54]				; end sample offset channel 0
-	ldmia	R12!,{R8-R9}				; R8=AUD2LCH = offset instrument canal D0 / R9=AUD2LEN : longueur instrument
-	;add		R11,R6,#0x00
-	stmia	R6,{R8-R9}					; en 0x00 et 0x04
-	add		R9,R8,R9, lsl #1			; R9 = debut + 2 x longueur en mot => fin
-	mov		R8,R8,lsl #12				; Internal current sample offset channel 3 << 12
-	add		R11,R6,#0x50				; 
-	stmia	R11,{R8-R9}					; Internal current sample offset channel 3 << 12 + end sample offset channel 2
-
-	str		R12,[R3,#12]				; pointeur position de la repetition de l'instrument canal A
-	add		R2,R2,#6					; on avance le pointeur relatif car on a lu debut ins + longueur ins = 6 octets
-	
-no_I_a_Player_standard_voies_5a8:
-	
-noInst_Player_standard_voies_5a8:
-
-	str		R0,[R1]
-	
-	mov		pc,lr	
-; ------------ fin analyse code du stream ------------------
-
-
-r_rewind_Player_standard_voies_5a8:
-	ldr		R0,[R1,#28]					; m_byteStreamLoop
-	ldr		R2,[R1,#32]					; m_wordStreamLoop
-	str		R2,[R1,#4]					; m_wordStream
-	b		process_Player_standard_voies_5a8
-	
-r_chgbpm_Player_standard_voies_5a8:
-	ldrb	R10,[R0],#1					; BPM
-	str		R10,[R1,#24]				; m_currentBpm
-	b		process_Player_standard_voies_5a8
-
 
 
 ; ------------ inits LSP ------------------
@@ -1922,124 +1547,6 @@ boucle_copie_table_instruments:
 	
 	mov		pc,lr
 
-
-LSP_PlayerInit_standard_voies_5a8:
-
-	ldr		R0,pointeur_LSPMusic_voies_5a8
-	ldr		R1,pointeur_LSPBank
-	adr		R3,LSPVars_standard_voies_5a8
-	
-	add		R0,R0,#4					; skip 'LSP1'
-	add		R0,R0,#4					; skip unique id identique dans lsmusic & lsbank
-	
-	add		R0,R0,#2					; skip major & minor version of LSP (1.03)
-; lecture du BPM	
-	ldrb	R5,[R0],#1					; lecture d'un word...
-	ldrb	R4,[R0],#1
-	add		R4,R4,R5,lsl #8				; R4=R5*256+R4 = 1 word
-	str		R4,[R3,#24]					; m_currentBpm default BPM : 125
-; lecture nombre d'instruments
-	ldrb	R5,[R0],#1					; lecture d'un word...
-	ldrb	R4,[R0],#1
-	add		R4,R4,R5,lsl #8				; instrument count : 0x000F R4=R5*256+R4 = 1 word
-	
-	sub		R5,R0,#12					; LSP data has -12 offset on instrument tab ( to win 2 cycles in fast player :) )
-	str		R5,[R3,#16]					; instrument tab addr
-	
-	; pas de relocation des instruments
-
-;	adr		R8,LSP_InstrumentInfo
-;	mov		R9,R4						; nb instruments
-;	str		R4,nombre_instruments_du_module
-
-;boucle_copie_table_instruments:
-; copie les infos des instruments dans LSP_InstrumentInfo
-;	ldrb	R4,[R0],#1					; lecture d'un double word...
-;	ldrb	R5,[R0],#1
-;	ldrb	R6,[R0],#1					
-;	ldrb	R7,[R0],#1
-;	add		R7,R7,R6,lsl #8
-;	add		R7,R7,R5,lsl #16
-;	add		R7,R7,R4,lsl #24
-;	str		R7,[R8],#4					; stock offset debut instrument
-	
-;	ldrb	R4,[R0],#1					; lecture d'un double word...
-;	ldrb	R5,[R0],#1
-;	add		R5,R5,R4,lsl #8				; 
-;	str		R5,[R8],#4					; stock longueur instrument
-	
-;	ldrb	R4,[R0],#1					; lecture d'un double word...
-;	ldrb	R5,[R0],#1
-;	ldrb	R6,[R0],#1					
-;	ldrb	R7,[R0],#1
-;	add		R7,R7,R6,lsl #8
-;	add		R7,R7,R5,lsl #16
-;	add		R7,R7,R4,lsl #24
-;	str		R7,[R8],#4					; stock offset debut repetition
-	
-;	ldrb	R4,[R0],#1					; lecture d'un double word...
-;	ldrb	R5,[R0],#1
-;	add		R5,R5,R4,lsl #8				; 
-;	str		R5,[R8],#4					; stock longueur repetition
-	
-;	subs	R9,R9,#1
-;	bgt		boucle_copie_table_instruments
-	
-
-
-; saute 12 x nb instruments R4 : 12=8+4
-	add		R4,R4,R4					;  x2
-	add		R4,R4,R4					;  x4
-	add		R4,R4,R4, lsl #1			; x4 + x8 = x12
-	add		R0,R0,R4					; R0+nb instruements * 12 = +180 => +194/+$C2
-	
-	ldrb	R5,[R0],#1					; lecture d'un word...
-	ldrb	R4,[R0],#1
-	add		R4,R4,R5,lsl #8				; codes count (+2)		d0=0x01c3
-
-	str		R0,[R3,#12]					; code table addr
-	add		R4,R4,R4					; *2 = +902   : $c4+ = $456
-	add		R0,R0,R4					; saute la table de code
-
-; word stream size = $0000 BFBC ( en $44a dans le fichier lsmusic)	
-	ldrb	R10,[R0],#1					; 00
-	ldrb	R11,[R0],#1					; 00
-	ldrb	R12,[R0],#1					; BF
-	ldrb	R13,[R0],#1					; BC 
-	add		R13,R13,R10,lsl #24 
-	add		R13,R13,R11,lsl #16
-	add		R5,R13,R12,lsl #8 			; 4 octets => 1 mot long
-
-; byte stream loop point = $0000 1ADA = 6874
-	ldrb	R10,[R0],#1					; 00
-	ldrb	R11,[R0],#1					; 00
-	ldrb	R12,[R0],#1					; 1A
-	ldrb	R13,[R0],#1					; DA 
-	add		R13,R13,R10,lsl #24 
-	add		R13,R13,R11,lsl #16
-	add		R6,R13,R12,lsl #8 			; 4 octets => 1 mot long
-	
-; word stream loop point = $0000 30F2 = 12530
-	ldrb	R10,[R0],#1					; 00
-	ldrb	R11,[R0],#1					; 00
-	ldrb	R12,[R0],#1					; 30
-	ldrb	R13,[R0],#1					; F2 
-	add		R13,R13,R10,lsl #24 
-	add		R13,R13,R11,lsl #16
-	add		R7,R13,R12,lsl #8 			; 4 octets => 1 mot long
-	
-	str		R0,[R3,#4]					; m_wordStream = pointeur sur stream des words 
-	add		R1,R0,R5					; byte stream = a0+d0  = R5 = taille du stream des words
-	str		R1,[R3,#0]					; m_byteStream
-	
-	add		R0,R0,R7
-	add		R1,R1,R6
-	str		R0,[R3,#32]					; m_wordStreamLoop
-	str		R1,[R3,#28]					; m_byteStreamLoop
-	
-	mov		pc,lr
-
-; table de conversion de 12 en 16 pour les valeurs d'instruments dans le stream words
 	.set	valeur16,-16*2
 	.rept	2
 		.long	valeur16,valeur16,valeur16
@@ -2260,38 +1767,8 @@ boucle_inverse_bytes_stream_words:
 
 	mov		pc,lr
 
-inverse_bytes_stream_words_voies_5a8:
-; pour la 2eme partie du module
-; inversion des octets de chaque word du stream word
-; pointeur sur stream words : LSPVars_standard
-; pointeur sur stream bytes = fin du stream words = LSPVars_standard+4
-
-	adr		R3,LSPVars_standard_voies_5a8
-	ldr		R2,[R3]					; fin du stream words = byte stream
-	ldr		R1,[R3,#4]				; pointeur sur stream words
-	
-inverse_bytes_stream_word_voies_5a8:
-	ldrb	R8,[R1]
-	ldrb	R9,[R1,#1]
-	strb	R9,[R1],#1
-	strb	R8,[R1],#1
-	cmp		R1,R2
-	blt		inverse_bytes_stream_word_voies_5a8
-	
-
-	mov		pc,lr
-
-
-
-
 
 pointeur_module_Amiga:		.long	moduleAmiga
-
-pointeur_LSPMusic:				.long		LSPMusic
-pointeur_LSPMusic_voies_5a8:	.long		LSPMusic_4a8voies
-pointeur_LSPBank:			.long		LSPBank
-pointeur_LSPBank_end:		.long		LSPBank_end
-
 	
 LSPVars_standard:
 m_byteStream:			.long		0			; 0 byte stream
@@ -2303,18 +1780,6 @@ m_relocDone:			.long		0			; 20 reloc done flag
 m_currentBpm:			.long		0			; 24 current BPM
 m_byteStreamLoop:		.long		0			; 28 byte stream loop point
 m_wordStreamLoop:		.long		0			; 32 word stream loop point
-
-LSPVars_standard_voies_5a8:
-m_byteStream_voies_5a8:			.long		0			; 0 byte stream
-m_wordStream_voies_5a8:			.long		0			; 4 word stream
-m_dmaconPatch_voies_5a8:		.long		0			; 8 m_lfmDmaConPatch
-m_codeTableAddr_voies_5a8:		.long		0			; 12 code table addr
-m_lspInstruments_voies_5a8:		.long		0			; 16 LSP instruments table addr
-m_relocDone_voies_5a8:			.long		0			; 20 reloc done flag
-m_currentBpm_voies_5a8:			.long		0			; 24 current BPM
-m_byteStreamLoopv_voies_5a8:	.long		0			; 28 byte stream loop point
-m_wordStreamLoop_voies_5a8:		.long		0			; 32 word stream loop point
-
 	
 LSPVars_Insane:
 			.long		0			; 0  word stream loop
@@ -2378,12 +1843,9 @@ resetv:
 		.long		0			; canal B
 		.long		0			; canal A
 
-resetv_voies_5a8:
-		.long		0			; pointeur dans la table d'instruments LSP_InstrumentInfo, sur l'adresse de repetition du canal D
-		.long		0			; canal C
-		.long		0			; canal B
-		.long		0			; canal A
-
+pointeur_LSPMusic:			.long		LSPMusic
+pointeur_LSPBank:			.long		LSPBank
+pointeur_LSPBank_end:		.long		LSPBank_end
 
 stockage_stereos:			.long		0,0
 mes_stereos:				
@@ -2392,20 +1854,8 @@ mes_stereos:
 			;.endr
 			;.byte		0,0,0,0,0,0,0,0		
 			.byte		-79,79,47,-47,-79,79,47,-47
-
-mes_stereos_8voies:
-			.byte		-79,79,47,-47,-63,63,24,-24
-
-adresse_dma1_logical:				.long		0
-adresse_dma1_memc:					.long		0
-
-adresse_dma2_logical:				.long		0
-adresse_dma2_memc:					.long		0
-
-
 ;--------------------------------------------------------------------------------------------
 
-; steros pour 4 voies
 set_my_stereos:
 	MOV     R0,#1
 	adr		R2,mes_stereos
@@ -2421,24 +1871,8 @@ set_mes_stloop:
 	BLE     set_mes_stloop
 	mov		pc,lr	
 
-; steros pour 4 voies
-set_my_stereos_8voies:
-	MOV     R0,#1
-	adr		R2,mes_stereos_8voies
-
-set_mes_stloop_8voies:
-	LDRB	R1,[R2,R0]
-	MOV     R1,R1,LSL#24
-	MOV     R1,R1,ASR#24
-	SWI     XSound_Stereo
-	ADD     R0,R0,#1
-	
-	CMP     R0,#8
-	BLE     set_mes_stloop_8voies
-	mov		pc,lr	
-
-
 readstereos:
+
 	MOV     R0,#1
 	adr		R2,stockage_stereos
 	
@@ -2512,9 +1946,6 @@ increment_frequence12bits:		.long	4719				; 12 bits de precision
 
 mask_bits_virgule_frequence:	.long	0b11111111111111111111
 save_R14_Paula:		.long	0
-
-
-
 ;-------------------------------
 ; copie avec calcul d'avancée en fonction de la frequence
 ; sample = 8000
@@ -2559,11 +1990,7 @@ save_R14_Paula:		.long	0
 ;------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 valeur0x167a2:		.long		0x167a2+0x80*4
 pointeur_expanded_mixing:	.long		expanded_filling_routine
-
-offset_silence:				.long	silence-LSPBank
-
-
-; mixage avec gestion du Paula voies 1 a 4
+; mixage avec gestion du Paula
 Paula_remplissage_DMA_416:
 	str	R14,save_R14_Paula
 	
@@ -2691,7 +2118,7 @@ continue_DMACon_Canal_D:
 
 	adr		R1,LSPBank
 
-	ldr		R10,pointeur_retour_mixage
+	
 ; sauve au code débouclé
 	ldr		pc,pointeur_expanded_mixing
 
@@ -2883,278 +2310,6 @@ pas_de_bouclage_canal_D_Paula:
 
 	ldr		R15,save_R14_Paula
 
-
-; mixage avec gestion du Paula voies 5 a 8
-Paula_remplissage_DMA_416_voies_5a8:
-	str		R14,save_R14_Paula
-	
-
-;----------
-; U: R0,R1,R2,R3,R4
-
-	adr		R4,table_increments_frequence
-
-	adr		R0,Paula_registers_external_voies_5a8
-
-	adr		R14,table_volume
-
-	ldr		R1,[R0,#0x90]						; DMACon
-	mov		R1,#0b000001111
-
-; canal A	
-	tst		R1,#01							; bit 0 de DMACon ?
-	bne		DMACon_Canal_A_On_voies_5a8
-
-	ldr		R2,offset_silence				; on pointe sur silence
-	mov		R2,R2,lsl #12
-	mov		R3,#0							; increment = 0
-	mov		R13,#64							; volume = 0
-	b		continue_DMACon_Canal_A_voies_5a8
-DMACon_Canal_A_On_voies_5a8:
-	ldr		R2,[R0,#0x50]					; current sample ptr channel 0 / Paula_registers_internal
-
-	
-	ldr		R3,[R0,#0x08]					; note Amiga canal A
-	mov		R3,R3,lsl #2					; *4
-	ldr		R3,[R4,R3]
-	
-	ldr		R13,[R0,#0x0C]						; volume canal A
-continue_DMACon_Canal_A_voies_5a8:
-	ldrb	R13,[R14,R13]					; R13=volume A
-
-; canal B
-	tst		R1,#02							; bit 1 de DMACon ?
-	bne		DMACon_Canal_B_On_voies_5a8
-	ldr		R5,offset_silence				; on pointe sur silence
-	mov		R5,R5,lsl #12
-	mov		R6,#0							; increment = 0
-	mov		R10,#64							; volume = 0
-	b		continue_DMACon_Canal_B_voies_5a8
-DMACon_Canal_B_On_voies_5a8:
-	ldr		R5,[R0,#0x60]
-	ldr		R6,[R0,#0x1C]					; note Amiga canal B
-	mov		R6,R6,lsl #2					; *4
-	ldr		R6,[R4,R6]
-
-	ldr		R10,[R0,#0x20]						; volume canal B
-continue_DMACon_Canal_B_voies_5a8:
-	ldrb	R10,[R14,R10]					; R10=volume
-	orr		R13,R10,R13,lsl #8
-
-; canal C
-	tst		R1,#04							; bit 2 de DMACon ?
-	bne		DMACon_Canal_C_On_voies_5a8
-	ldr		R8,offset_silence				; on pointe sur silence
-	mov		R8,R8,lsl #12
-	mov		R9,#0							; increment = 0
-	mov		R10,#64							; volume = 0
-	b		continue_DMACon_Canal_C_voies_5a8
-DMACon_Canal_C_On_voies_5a8:
-	ldr		R8,[R0,#0x70]					; current sample offset C
-	ldr		R9,[R0,#0x30]					; note Amiga canal C
-	mov		R9,R9,lsl #2					; *4
-	ldr		R9,[R4,R9]
-
-	ldr		R10,[R0,#0x34]						; volume canal C
-continue_DMACon_Canal_C_voies_5a8:
-	ldrb	R10,[R14,R10]					; R10=volume
-	orr		R13,R10,R13,lsl #8
-
-; canal D
-	tst		R1,#8							; bit 3 de DMACon ?
-	bne		DMACon_Canal_D_On_voies_5a8
-	ldr		R11,offset_silence				; on pointe sur silence
-	mov		R11,R11,lsl #12
-	mov		R12,#0							; increment = 0
-	mov		R10,#64							; volume = 0
-	b		continue_DMACon_Canal_D_voies_5a8
-DMACon_Canal_D_On_voies_5a8:
-	ldr		R11,[R0,#0x80]					; offset actuel position instrument
-	ldr		R12,[R0,#0x44]					; note Amiga canal D
-	mov		R12,R12,lsl #2					; *4
-	ldr		R12,[R4,R12]
-	ldr		R10,[R0,#0x48]				; volume canal D
-continue_DMACon_Canal_D_voies_5a8:
-	ldrb	R10,[R14,R10]					; R10=volume
-	orr		R13,R10,R13,lsl #8
-
-; R13 = vAvBvCvD
-
-
-;---------- Mixage
-
-	;mov		R2,#0xEA62
-	;add		R2,R2,#0x110
-	;mov		R2,R2,lsl #12
-
-	
-	;mov		R10,#nb_octets_par_vbl
-
-	ldr		R14,adresse_dma1_logical
-	add		R14,R14,#4						; saute les 4 premiers canaux
-
-
-	adr		R1,LSPBank
-
-	ldr		R10,pointeur_retour_mixage_voies_5a8
-; saute au code débouclé
-	ldr		pc,pointeur_expanded_mixing
-
-
-;---------- FIN Mixage voies 5 a 8
-retour_mixage_voies_5a8:
-	SWI		22
-	MOVNV R0,R0            
-
-	mov   r0,#0x3400000               
-	mov   r1,#600
-; border	
-	orr   r1,r1,#0x40000000              
-	str   r1,[r0]                     
-
-	teqp  r15,#0                     
-	mov   r0,r0	
-
-
-; verif fin de sample ?
-; conserver : R2,R5,R8,R11
-
-	adr		R10,Paula_registers_external_voies_5a8
-	mov		R14,#4095
-
-; gestion bouclage canal A
-	mov		R0,R2,asr #12			; R2 = offset actuel << 12
-	ldr		R1,[R10,#0x54]			; AUD0END : end sample offset channel 0
-	subs	R0,R0,R1				; R0 = offset en cours - offset de fin
-	blt		pas_de_bouclage_canal_A_Paula_voies_5a8
-
-; R0=depassement
-	ldr		R12,[R10,#0x04]			; R12 = longueur du sample en mots
-	cmp		R12,#01					; repetition courte, silence
-	moveq	R0,#0
-	beq		OK_depassement_canal_A_voies_5a8
-	add		R12,R12,R12					; en octets	
-test_depassement_canal_A_voies_5a8:
-	cmp		R0,R12
-	blt		OK_depassement_canal_A_voies_5a8
-	subs	R0,R0,R12
-	b		test_depassement_canal_A_voies_5a8
-OK_depassement_canal_A_voies_5a8:	
-	ldr		R3,[R10,#0x00]			; Audio channel 1 location
-	add		R0,R0,R3				; offset début + dépassement
-	and		R2,R2,R14
-	orr		R2,R2,R0,lsl #12			; << 12
-	
-	ldr		R0,[R10,#0x04]			; Audio channel 1 length
-	add		R0,R0,R0				; en octets = 2 x longeur en word
-	add		R0,R0,R3				; offset de fin du sample = Audio channel 1 location + Audio channel 1 length
-	str		R0,[R10,#0x54]			; AUD0END : end sample offset channel 1
-pas_de_bouclage_canal_A_Paula_voies_5a8:
-
-; gestion bouclage canal B
-	mov		R0,R5,asr #12
-	ldr		R1,[R10,#0x64]			; AUD0END : end sample offset channel 1
-	subs	R0,R0,R1				; R0 = offset en cours - offset de fin
-	blt		pas_de_bouclage_canal_B_Paula_voies_5a8
-
-; R0=depassement
-	ldr		R12,[R10,#0x18]			; R12 = longueur du sample en mots
-	cmp		R12,#01					; repetition courte, silence
-	moveq	R0,#0
-	beq		OK_depassement_canal_B_voies_5a8
-	add		R12,R12,R12					; en octets	
-test_depassement_canal_B_voies_5a8:
-	cmp		R0,R12
-	blt		OK_depassement_canal_B_voies_5a8
-	subs	R0,R0,R12
-	b		test_depassement_canal_B_voies_5a8
-OK_depassement_canal_B_voies_5a8:	
-	ldr		R3,[R10,#0x14]			; Audio channel 1 location
-	add		R0,R0,R3				; offset début + dépassement
-	and		R5,R5,R14
-	orr		R5,R5,R0,lsl #12			; << 12
-	
-	ldr		R0,[R10,#0x18]			; Audio channel 1 length
-	add		R0,R0,R0				; en octets = 2 x longeur en word
-	add		R0,R0,R3				; offset de fin du sample = Audio channel 1 location + Audio channel 1 length
-	str		R0,[R10,#0x64]			; AUD0END : end sample offset channel 1
-pas_de_bouclage_canal_B_Paula_voies_5a8:
-
-; gestion bouclage canal C
-	mov		R0,R8,asr #12
-	ldr		R1,[R10,#0x74]			; AUD0END : end sample offset channel 0
-	subs	R0,R0,R1				; R0 = offset en cours - offset de fin
-	blt		pas_de_bouclage_canal_C_Paula_voies_5a8
-
-; R0=depassement
-	ldr		R12,[R10,#0x2C]			; R12 = longueur du sample en mots
-	cmp		R12,#01					; repetition courte, silence
-	moveq	R0,#0
-	beq		OK_depassement_canal_C_voies_5a8
-	add		R12,R12,R12					; en octets	
-test_depassement_canal_C_voies_5a8:
-	cmp		R0,R12
-	blt		OK_depassement_canal_C_voies_5a8
-	subs	R0,R0,R12
-	b		test_depassement_canal_C_voies_5a8
-OK_depassement_canal_C_voies_5a8:	
-	ldr		R3,[R10,#0x28]			; Audio channel 2 location
-	add		R0,R0,R3				; offset début + dépassement
-	and		R8,R8,R14
-	orr		R8,R8,R0,lsl #12			; << 12
-	
-	ldr		R0,[R10,#0x2C]			; Audio channel 2 length
-	add		R0,R0,R0				; en octets = 2 x longeur en word
-	add		R0,R0,R3				; offset de fin du sample = Audio channel 0 location + Audio channel 0 length
-	str		R0,[R10,#0x74]			; AUD0END : end sample offset channel 0
-pas_de_bouclage_canal_C_Paula_voies_5a8:
-
-; gestion bouclage canal D
-	mov		R0,R11,asr #12
-	ldr		R1,[R10,#0x84]			; AUD0END : end sample offset channel 3
-	subs	R0,R0,R1				; R0 = offset en cours - offset de fin
-	blt		pas_de_bouclage_canal_D_Paula_voies_5a8
-
-; R0=depassement
-	ldr		R12,[R10,#0x40]			; R12 = longueur du sample en mots
-	cmp		R12,#01					; repetition courte, silence
-	moveq	R0,#0
-	beq		OK_depassement_canal_D_voies_5a8
-	add		R12,R12,R12					; en octets	
-test_depassement_canal_D_voies_5a8:
-	cmp		R0,R12
-	blt		OK_depassement_canal_D_voies_5a8
-	subs	R0,R0,R12
-	b		test_depassement_canal_D_voies_5a8
-OK_depassement_canal_D_voies_5a8:	
-	ldr		R3,[R10,#0x3C]			; Audio channel 3 location
-	add		R0,R0,R3				; offset début + dépassement
-	and		R11,R11,R14
-	orr		R11,R11,R0,lsl #12			; << 12
-	
-	ldr		R0,[R10,#0x40]			; Audio channel 3 length
-	add		R0,R0,R0				; en octets = 2 x longeur en word
-	add		R0,R0,R3				; offset de fin du sample = Audio channel 0 location + Audio channel 0 length
-	str		R0,[R10,#0x84]			; AUD0END : end sample offset channel 0
-pas_de_bouclage_canal_D_Paula_voies_5a8:
-
-; stockage des registres à jour
-
-	str		R2,[R10,#0x50]			; offset par rapport au debut des samples / canal A
-
-	str		R5,[R10,#0x60]			; offset par rapport au debut des samples / canal B
-
-	str		R8,[R10,#0x70]			; offset par rapport au debut des samples / canal C
-
-	str		R11,[R10,#0x80]			; offset par rapport au debut des samples / canal D
-
-
-	ldr		R15,save_R14_Paula
-
-pointeur_retour_mixage:		.long		retour_mixage
-pointeur_retour_mixage_voies_5a8:		.long		retour_mixage_voies_5a8
-
-
 ;-------------------------------------------------------------------------------------------------------------------------------------
 ; mixage voie par voie
 ; en entrée : R0 = numéro de la voie à mixer
@@ -3275,7 +2430,7 @@ swap_pointeurs_dma_son:
 set_dma_dma1:
 
 	ldr		  R3,adresse_dma1_memc
-	mov       R4,#nb_octets_par_vbl_fois_nb_canaux
+	mov       R4,#nb_octets_par_vbl_fois_4
 	ADD       R4,R4,R3         ;SendN
 	SUB       R4,R4,#16         ; fixit ;-)
 
@@ -3775,59 +2930,6 @@ DMACon:		.long		0		; DMA Control bits 03-00					90
 
 DMAcon_Temp:	.long	0		; valeur DMACon temporaire avant traitement
 
-Paula_registers_external_voies_5a8:
-; $dff0a0
-; canal A
-AUD0LCH_L_voies_5a8:	.long		0		; 00: Audio channel 0 location				00
-AUD0LEN_voies_5a8:	.long		0		; 04: Audio channel 0 length				04
-AUD0PER_voies_5a8:	.long		0		; 06: Audio channel 0 period				08
-AUD0VOL_voies_5a8:	.long		0		; 08: Audio channel 0 volume				0C
-AUD0DAT_voies_5a8:	.long		0		; 0A: Audio channel 0 data					10
-; canal B
-AUD1LCH_L_voies_5a8:	.long		0		; 10: Audio channel 1 location				14
-AUD1LEN_voies_5a8:	.long		0		; 14: Audio channel 1 length				18
-AUD1PER_voies_5a8:	.long		0		; 16: Audio channel 1 period				1C
-AUD1VOL_voies_5a8:	.long		0		; 18: Audio channel 1 volume				20
-AUD1DAT_voies_5a8:	.long		0		; 1A: Audio channel 1 data					24
-; canal C
-AUD2LCH_L_voies_5a8:	.long		0		; 10: Audio channel 2 location				28
-AUD2LEN_voies_5a8:	.long		0		; 14: Audio channel 2 length				2C
-AUD2PER_voies_5a8:	.long		0		; 16: Audio channel 2 period				30
-AUD2VOL_voies_5a8:	.long		0		; 18: Audio channel 2 volume				34
-AUD2DAT_voies_5a8:	.long		0		; 1A: Audio channel 2 data					38
-; canal D
-AUD3LCH_L_voies_5a8:	.long		0		; 10: Audio channel 3 location				3C
-AUD3LEN_voies_5a8:	.long		0		; 14: Audio channel 3 length				40
-AUD3PER_voies_5a8:	.long		0		; 16: Audio channel 3 period				44
-AUD3VOL_voies_5a8:	.long		0		; 18: Audio channel 3 volume				48
-AUD3DAT_voies_5a8:	.long		0		; 1A: Audio channel 3 data					4C
-Paula_registers_internal_voies_5a8:
-; canal A internal
-AUD0POSCUR_voies_5a8:	.long		0		; current sample offset channel 0 << 12		50
-AUD0END_voies_5a8:	.long		0		; end sample offset channel 0				54
-AUD0FIXEDP_voies_5a8:	.long		0		; current fixed point channel 0				58
-AUD0INC_voies_5a8:	.long		0		; increment <<12 channel 0					5C
-; canal B internal
-AUD1POSCUR_voies_5a8:	.long		0		; current sample offset channel 1 << 12		60
-AUD1END_voies_5a8:	.long		0		; end sample offset channel 1				64
-AUD1FIXEDP_voies_5a8:	.long		0		; current fixed point channel 1				68
-AUD1INC_voies_5a8:	.long		0		; increment <<12 channel 1					6C
-; canal C internal
-AUD2POSCUR_voies_5a8:	.long		0		; current sample offset channel 2 << 12		70
-AUD2END_voies_5a8:	.long		0		; end sample offset channel 2				74
-AUD2FIXEDP_voies_5a8:	.long		0		; current fixed point channel 2				78
-AUD2INC_voies_5a8:	.long		0		; increment <<12 channel 2					7C
-; canal D internal
-AUD3POSCUR_voies_5a8:	.long		0		; current sample offset channel 3 << 12		80
-AUD3END_voies_5a8:	.long		0		; end sample offset channel 3				84
-AUD3FIXEDP_voies_5a8:	.long		0		; current fixed point channel 3				88
-AUD3INC_voies_5a8:	.long		0		; increment <<12 channel 3					8C
-
-DMACon_voies_5a8:		.long		0		; DMA Control bits 03-00					90
-
-DMAcon_Temp_voies_5a8:	.long	0		; valeur DMACon temporaire avant traitement
-
-
 table_volume:
 	.byte		0xFE,0xB6,0x9A,0x8A,   0x7C,0x74,0x6C,0x64
 	.byte		0x5C,0x58,0x54,0x50,   0x4C,0x48,0x44,0x40
@@ -3866,7 +2968,7 @@ expanded_filling_routine:
 ; R7 = résultat 32 bits 4*8 bits = 4 * sample
 ; R8 = offset sample canal 3
 ; R9 = incrément fréquence canal 3
-; R10 = adresse de retour après la routine de mixage
+; R10 = 
 ; R11 = offset sample canal 4
 ; R12 = incrément fréquence canal 4
 ; R13 = volume canaux 1 2 3 4
@@ -3901,23 +3003,18 @@ expanded_filling_routine:
 	movmi	R0,#0
 	orr		R7,R7,R0
 
-	str		R7,[R14],#8						; 8 pour 8 voies	
+	str		R7,[R14],#4		
 	.endr
-	mov		pc,R10
-	;ldr		pc,pointeur_retour_mixage
+	ldr		pc,pointeur_retour_mixage
 
+pointeur_retour_mixage:		.long		retour_mixage
 
 
 LSPMusic:
 	;.incbin		"knullakuk.lsmusic"
 	.incbin		"8canaux1.lsmusic"
 	.p2align	2
-	
-LSPMusic_4a8voies:
-	;.incbin		"knullakuk.lsmusic"
-	.incbin		"8canaux2.lsmusic"
-	.p2align	2
-	
+
 LSPBank:
 	;.incbin		"knullakuk.lsbank"
 	.incbin		"8canaux1.lsbank"
@@ -4480,6 +3577,27 @@ boucle_R1_compteur:
 	MOV     R2,R0,LSR R6		; R2=0x6CF => décalage de note
 	.endif
 	
+	.ifeq		1
+; met dans le dma - petit buffer
+	ldr		R12,adresse_petit_dma_memc
+	add		R10,R12,#128-16
+
+
+	mov		r12,r12,lsr #4
+	mov		r12,r12,lsl #2
+	
+	mov		r10,r10,lsr #4
+	mov		r10,r10,lsl #2
+
+	MOV		R0,#0x36A0000     ; SendN
+	add		R10,R10,R0
+
+
+	MOV		R0,#0x3680000     ; Sstart
+	add		R12,R12,R0
+	str		R10,[R10]	
+	str		R12,[R12]	
+	.endif
 	
 	
 		.ifeq	1
